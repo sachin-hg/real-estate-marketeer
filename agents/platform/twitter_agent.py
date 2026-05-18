@@ -49,9 +49,9 @@ async def run_twitter_agent(draft: CreativeDraft, settings) -> PlatformPost:
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     zomato_hook = draft.get("zomato_hook") or draft.get("hook", "")
-    # If no explicit city_hint, fall back to first city extracted by re_signals
-    re_signals = draft.get("re_signals", {}) or {}
-    city_hint = draft.get("city_hint") or (re_signals.get("cities") or [None])[0]
+    from tools.re_signals_utils import safe_signals
+    re_signals = safe_signals(draft)
+    city_hint = draft.get("city_hint") or (re_signals["cities"] or [None])[0]
     city_link = _resolve_city_link(city_hint)
     links = draft.get("internal_links", [])
     primary_link = city_link or (links[0]["url"] if links else "https://housing.com")

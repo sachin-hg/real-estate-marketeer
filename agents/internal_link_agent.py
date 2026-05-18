@@ -13,6 +13,7 @@ Signals extracted:
 """
 from __future__ import annotations
 
+import json
 import logging
 
 from config import get_settings

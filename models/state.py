@@ -29,6 +29,21 @@ class InternalLink(TypedDict):
     placement: str        # where in the article/post to insert it
 
 
+class RESignalsFilters(TypedDict, total=False):
+    bedroom_count: Optional[int]
+    budget_min: Optional[int]
+    budget_max: Optional[int]
+    property_type: Optional[str]   # "apartment" | "villa" | "plot" | "commercial"
+
+
+class RESignals(TypedDict, total=False):
+    cities: list[str]
+    localities: list[str]
+    filters: RESignalsFilters
+    re_intent: str    # "buy" | "rent" | "invest" | "none"
+    theme: str        # "price_trend" | "infra" | "policy" | "lifestyle" | "viral"
+
+
 class CreativeDraft(TypedDict):
     id: str               # uuid
     draft_type: str       # "social" | "news"
@@ -50,7 +65,7 @@ class CreativeDraft(TypedDict):
     media_format: str     # "branded_card" | "meme_overlay" | "text_only"
     trend_hashtag: str    # the single original trending hashtag driving this post (e.g. "#FA9LA")
     # structured RE signals extracted by internal_link_agent (filled after creative node)
-    re_signals: Optional[dict]  # {cities, localities, filters, re_intent, theme}
+    re_signals: Optional[RESignals]
 
 
 class PlatformPost(TypedDict):
@@ -103,6 +118,18 @@ class PublishedPost(TypedDict):
     output_path: str           # local file path (dry_run mode)
 
 
+class ContentBrief(TypedDict):
+    topic: str
+    angle: str
+    draft_type: str           # "social" | "news"
+    target_platforms: list[str]
+    tone: str                 # "hinglish_viral" | "formal_seo" | "educational"
+    city_hint: Optional[str]
+    urgency: str
+    seo_keywords: list[str]   # news only; [] for social
+    source_summary: str       # 1-2 sentence context injected into creative prompt
+
+
 class WorkflowState(TypedDict):
     # ── Inputs ────────────────────────────────────────────────────────────────
     run_id: str
@@ -117,7 +144,8 @@ class WorkflowState(TypedDict):
     trends: list[TrendItem]
 
     # ── Content phase ─────────────────────────────────────────────────────────
-    creative_drafts: list[CreativeDraft]
+    content_briefs: list[ContentBrief]      # written by planner; read by creative nodes
+    creative_drafts: Annotated[list[CreativeDraft], operator.add]
 
     # ── Platform phase (accumulated from parallel platform agents) ────────────
     platform_posts: Annotated[list[PlatformPost], operator.add]
