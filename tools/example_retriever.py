@@ -80,13 +80,19 @@ TAG_ALIASES: dict[str, str] = {
 
 
 @lru_cache(maxsize=1)
-def _load_bank() -> list[dict]:
+def _load_bank() -> dict:
     path = Path("prompts/hooks_bank.json")
     if not path.exists():
         logger.warning("hooks_bank.json not found at %s", path.resolve())
-        return []
-    data = json.loads(path.read_text(encoding="utf-8"))
-    logger.info("Example retriever: loaded %d examples from hooks_bank.json", len(data))
+        return {"examples": [], "negative_examples": []}
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    # Support both old flat-list format and new dict format
+    if isinstance(raw, list):
+        data = {"examples": raw, "negative_examples": []}
+    else:
+        data = raw
+    logger.info("Example retriever: loaded %d examples + %d negative examples from hooks_bank.json",
+                len(data.get("examples", [])), len(data.get("negative_examples", [])))
     return data
 
 
@@ -122,13 +128,14 @@ def get_relevant_examples(
         fallback_n: examples to return when no tag overlap (diverse fallback)
     """
     bank = _load_bank()
-    if not bank:
+    all_examples = bank.get("examples", [])
+    if not all_examples:
         return ""
 
     query = _normalise_tags(trend_tags)
 
     scored: list[tuple[int, dict]] = []
-    for ex in bank:
+    for ex in all_examples:
         ex_tags = _normalise_tags(ex.get("tags", []))
         overlap = len(query & ex_tags)
         if overlap > 0:
@@ -153,7 +160,7 @@ def get_relevant_examples(
     if not selected:
         # No tag overlap — return a diverse fallback spread across different categories
         seen_tags: set[str] = set()
-        for ex in bank:
+        for ex in all_examples:
             ex_tags = set(ex.get("tags", []))
             if not ex_tags & seen_tags:
                 selected.append(ex)
@@ -165,11 +172,26 @@ def get_relevant_examples(
         "Example retriever: query_tags=%s → %d/%d examples selected (top overlap=%d)",
         sorted(query)[:6],
         len(selected),
-        len(bank),
+        len(all_examples),
         scored[0][0] if scored else 0,
     )
 
-    return _format_examples(selected)
+    positives_block = _format_examples(selected)
+
+    # Append tag-matched negative examples (or global fallback)
+    all_negatives = bank.get("negative_examples", [])
+    relevant_negs = [n for n in all_negatives
+                     if not query or any(t in _normalise_tags(n.get("tags", [])) for t in query)]
+    neg_block = relevant_negs[:2] or all_negatives[:2]
+
+    if neg_block:
+        neg_lines = ["\n\nAVOID THIS (do not write like these):"]
+        for n in neg_block:
+            neg_lines.append(f"✗ Card: {n['card']}")
+            neg_lines.append(f"  WHY BAD: {n['avoid_because']}")
+        return positives_block + "\n".join(neg_lines)
+
+    return positives_block
 
 
 _WHAT_NOT_TO_DO = """
@@ -208,6 +230,6 @@ def get_all_tags() -> list[str]:
     """Return all unique tags in the bank — useful for prompt/UI tooling."""
     bank = _load_bank()
     tags: set[str] = set()
-    for ex in bank:
+    for ex in bank.get("examples", []):
         tags.update(ex.get("tags", []))
     return sorted(tags)

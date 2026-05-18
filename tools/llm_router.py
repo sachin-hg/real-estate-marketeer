@@ -56,16 +56,20 @@ def call_json_sync(
     user_msg: str,
     max_tokens: int = 512,
     log_label: str = "",
+    *,
+    temperature: float = 1.0,
 ) -> dict:
     """Synchronous JSON call — safe to use in sync LangGraph nodes."""
     from config import get_settings
     settings = get_settings()
 
     if tier == "fast" and settings.gemini_api_key:
-        return _gemini_sync(settings.gemini_api_key, GEMINI_FAST_MODEL, system, user_msg, max_tokens, log_label)
+        return _gemini_sync(settings.gemini_api_key, GEMINI_FAST_MODEL, system, user_msg,
+                            max_tokens, log_label, temperature=temperature)
 
     model = _model_for_tier(tier, settings)
-    return _anthropic_sync(settings.anthropic_api_key, model, system, user_msg, max_tokens, log_label)
+    return _anthropic_sync(settings.anthropic_api_key, model, system, user_msg,
+                           max_tokens, log_label, temperature=temperature)
 
 
 # ── Async interface ───────────────────────────────────────────────────────────
@@ -76,21 +80,26 @@ async def call_json_async(
     user_msg: str,
     max_tokens: int = 512,
     log_label: str = "",
+    *,
+    temperature: float = 1.0,
 ) -> dict:
     """Async JSON call — for use in async agents."""
     from config import get_settings
     settings = get_settings()
 
     if tier == "fast" and settings.gemini_api_key:
-        return await _gemini_async(settings.gemini_api_key, GEMINI_FAST_MODEL, system, user_msg, max_tokens, log_label)
+        return await _gemini_async(settings.gemini_api_key, GEMINI_FAST_MODEL, system, user_msg,
+                                   max_tokens, log_label, temperature=temperature)
 
     model = _model_for_tier(tier, settings)
-    return await _anthropic_async(settings.anthropic_api_key, model, system, user_msg, max_tokens, log_label)
+    return await _anthropic_async(settings.anthropic_api_key, model, system, user_msg,
+                                  max_tokens, log_label, temperature=temperature)
 
 
 # ── Gemini ────────────────────────────────────────────────────────────────────
 
-def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_tokens: int, label: str) -> dict:
+def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
+                 label: str, *, temperature: float = 1.0) -> dict:
     from tools.json_utils import extract_json
     try:
         from google import genai
@@ -101,7 +110,7 @@ def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_token
             system_instruction=system,
             response_mime_type="application/json",
             max_output_tokens=max_tokens,
-            temperature=0.1,
+            temperature=temperature,
         )
         response = client.models.generate_content(
             model=model,
@@ -109,7 +118,6 @@ def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_token
             config=config,
         )
         raw = response.text or ""
-        # Log token usage if available
         usage = getattr(response, "usage_metadata", None)
         if usage:
             _log_cost(model,
@@ -126,7 +134,8 @@ def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_token
         return {}
 
 
-async def _gemini_async(api_key: str, model: str, system: str, user_msg: str, max_tokens: int, label: str) -> dict:
+async def _gemini_async(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
+                        label: str, *, temperature: float = 1.0) -> dict:
     from tools.json_utils import extract_json
     try:
         from google import genai
@@ -137,7 +146,7 @@ async def _gemini_async(api_key: str, model: str, system: str, user_msg: str, ma
             system_instruction=system,
             response_mime_type="application/json",
             max_output_tokens=max_tokens,
-            temperature=0.1,
+            temperature=temperature,
         )
         response = await client.aio.models.generate_content(
             model=model,
@@ -172,6 +181,7 @@ async def acall_message(
     *,
     retries: int | None = None,
     timeout: float | None = None,
+    temperature: float = 1.0,
 ) -> Any:
     """
     Retry-aware wrapper around AsyncAnthropic.messages.create.
@@ -193,6 +203,7 @@ async def acall_message(
                 client.messages.create(
                     model=model, max_tokens=max_tokens,
                     system=system, messages=messages,
+                    temperature=temperature,
                 ),
                 timeout=t,
             )
@@ -221,6 +232,7 @@ def call_message(
     max_tokens: int,
     *,
     retries: int | None = None,
+    temperature: float = 1.0,
 ) -> Any:
     """
     Synchronous retry-aware wrapper around Anthropic.messages.create.
@@ -238,6 +250,7 @@ def call_message(
             return client.messages.create(
                 model=model, max_tokens=max_tokens,
                 system=system, messages=messages,
+                temperature=temperature,
             )
         except (
             _anthropic.RateLimitError, _anthropic.APIStatusError,
@@ -258,12 +271,14 @@ def call_message(
 
 # ── Anthropic ─────────────────────────────────────────────────────────────────
 
-def _anthropic_sync(api_key: str, model: str, system: str, user_msg: str, max_tokens: int, label: str) -> dict:
+def _anthropic_sync(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
+                    label: str, *, temperature: float = 1.0) -> dict:
     import anthropic
     from tools.json_utils import extract_json
     try:
         client = anthropic.Anthropic(api_key=api_key)
-        resp = call_message(client, model, system, [{"role": "user", "content": user_msg}], max_tokens)
+        resp = call_message(client, model, system, [{"role": "user", "content": user_msg}],
+                            max_tokens, temperature=temperature)
         _log_cost(model, resp.usage.input_tokens, resp.usage.output_tokens, label)
         raw = resp.content[0].text
         data = extract_json(raw)
@@ -273,12 +288,14 @@ def _anthropic_sync(api_key: str, model: str, system: str, user_msg: str, max_to
         return {}
 
 
-async def _anthropic_async(api_key: str, model: str, system: str, user_msg: str, max_tokens: int, label: str) -> dict:
+async def _anthropic_async(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
+                           label: str, *, temperature: float = 1.0) -> dict:
     import anthropic
     from tools.json_utils import extract_json
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
-        resp = await acall_message(client, model, system, [{"role": "user", "content": user_msg}], max_tokens)
+        resp = await acall_message(client, model, system, [{"role": "user", "content": user_msg}],
+                                   max_tokens, temperature=temperature)
         _log_cost(model, resp.usage.input_tokens, resp.usage.output_tokens, label)
         raw = resp.content[0].text
         data = extract_json(raw)

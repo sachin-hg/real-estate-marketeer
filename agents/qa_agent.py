@@ -394,11 +394,12 @@ async def _evaluate_post(
     logger.info("QA evaluating post %s [%s] attempt=%d chars=%d",
                 post["id"][:8], platform, attempt, len(post["content"]))
 
-    # Pass 1: Safety — binary gate, fast tier
+    # Pass 1: Safety — binary gate, fast tier, deterministic (temperature=0)
     with Timer() as t1:
         safety = await call_json_async(
             tier="fast", system=SAFETY_SYSTEM, user_msg=post_text,
             max_tokens=512, log_label=f"qa/safety/{platform}/{post['id'][:8]}",
+            temperature=0.0,
         )
     logger.info("QA Pass1 Safety [%s] passed=%s violations=%s | %.0fms",
                 platform, safety.get("passed", "?"), safety.get("violations", []), t1.elapsed_ms)
@@ -416,9 +417,11 @@ async def _evaluate_post(
     with Timer() as t23:
         quality, engagement = await asyncio.gather(
             call_json_async(tier="balanced", system=quality_system, user_msg=quality_ctx,
-                            max_tokens=1200, log_label=f"qa/quality/{platform}/{post['id'][:8]}"),
+                            max_tokens=1200, log_label=f"qa/quality/{platform}/{post['id'][:8]}",
+                            temperature=0.0),
             call_json_async(tier="fast", system=engagement_system, user_msg=post_text,
-                            max_tokens=768, log_label=f"qa/engagement/{platform}/{post['id'][:8]}"),
+                            max_tokens=768, log_label=f"qa/engagement/{platform}/{post['id'][:8]}",
+                            temperature=0.0),
         )
     logger.info("QA Pass2+3 [%s] quality=%.1f failing=%s pred_er=%.1f%% | %.0fms",
                 platform, quality.get("overall_quality_score", 0),
