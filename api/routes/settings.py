@@ -48,6 +48,13 @@ KEY_META: dict[str, dict] = {
     "SLACK_CHANNEL_ID":     {"desc": "Slack channel ID for notifications", "section": "Notifications / Bot"},
     "SLACK_APP_TOKEN":      {"desc": "Slack app-level token (xapp-...) for Socket Mode", "section": "Notifications / Bot"},
     "SLACK_SIGNING_SECRET": {"desc": "Slack signing secret for request verification", "section": "Notifications / Bot"},
+    # Asset Storage (Cloudflare R2 — recommended free tier)
+    "ASSET_STORAGE_BACKEND": {"desc": "Storage backend: local | r2 | s3 | gcs", "section": "Asset Storage"},
+    "R2_ACCOUNT_ID":      {"desc": "Cloudflare account ID (from R2 dashboard)", "section": "Asset Storage"},
+    "R2_ACCESS_KEY_ID":   {"desc": "R2 API token Access Key ID", "section": "Asset Storage"},
+    "R2_SECRET_ACCESS_KEY": {"desc": "R2 API token Secret Access Key", "section": "Asset Storage"},
+    "R2_BUCKET":          {"desc": "R2 bucket name", "section": "Asset Storage"},
+    "R2_PUBLIC_URL":      {"desc": "R2 public bucket URL (e.g. https://pub-xxx.r2.dev)", "section": "Asset Storage"},
     # Infrastructure
     "DATABASE_URL":        {"desc": "SQLAlchemy database URL", "section": "Infrastructure"},
     "DRY_RUN":             {"desc": "Skip live publishing — save output to local files instead", "section": "Pipeline Behaviour", "type": "boolean"},

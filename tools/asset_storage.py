@@ -40,7 +40,7 @@ def _content_type(filename: str) -> str:
 def upload_asset(local_path: Path, run_id: str, filename: str) -> str:
     """
     Upload a local file to the configured storage backend.
-    Returns a public URL (S3/GCS) or a relative URL (/output/...) for local.
+    Returns a public URL (S3/GCS/R2) or a relative URL (/output/...) for local.
     Falls back to local if upload fails.
     """
     backend = os.getenv("ASSET_STORAGE_BACKEND", "local").lower().strip()
@@ -49,6 +49,8 @@ def upload_asset(local_path: Path, run_id: str, filename: str) -> str:
             return _upload_s3(local_path, run_id, filename)
         if backend == "gcs":
             return _upload_gcs(local_path, run_id, filename)
+        if backend == "r2":
+            return _upload_r2(local_path, run_id, filename)
     except Exception as exc:
         logger.warning("Asset upload to %s failed: %s — serving from local path", backend, exc)
     return f"/output/{run_id}/{filename}"
@@ -72,6 +74,37 @@ def _upload_s3(local_path: Path, run_id: str, filename: str) -> str:
     )
     url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
     logger.info("Asset uploaded to S3: %s", url)
+    return url
+
+
+def _upload_r2(local_path: Path, run_id: str, filename: str) -> str:
+    import boto3  # noqa: PLC0415
+
+    account_id = os.getenv("R2_ACCOUNT_ID", "").strip()
+    access_key = os.getenv("R2_ACCESS_KEY_ID", "").strip()
+    secret_key = os.getenv("R2_SECRET_ACCESS_KEY", "").strip()
+    bucket = os.getenv("R2_BUCKET", "").strip()
+    public_url = os.getenv("R2_PUBLIC_URL", "").strip().rstrip("/")
+    prefix = os.getenv("R2_PREFIX", "housing-marketeer").strip().rstrip("/")
+
+    if not all([account_id, access_key, secret_key, bucket, public_url]):
+        logger.warning("ASSET_STORAGE_BACKEND=r2 but R2_* vars not fully set — falling back to local")
+        return f"/output/{run_id}/{filename}"
+
+    key = f"{prefix}/{run_id}/{filename}"
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name="auto",
+    )
+    s3.upload_file(
+        str(local_path), bucket, key,
+        ExtraArgs={"ContentType": _content_type(filename)},
+    )
+    url = f"{public_url}/{key}"
+    logger.info("Asset uploaded to R2: %s", url)
     return url
 
 

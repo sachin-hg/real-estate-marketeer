@@ -193,8 +193,9 @@ function PostCard({ post }: { post: Post }) {
     setTagInput('')
   }
 
-  const imageUrl = !imgError && post.media_urls?.[0]
-    ? `/${post.media_urls[0]}`
+  const rawMedia = post.media_urls?.[0]
+  const imageUrl = !imgError && rawMedia
+    ? (rawMedia.startsWith('http') ? rawMedia : `/${rawMedia}`)
     : null
 
   return (

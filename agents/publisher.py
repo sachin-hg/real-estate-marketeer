@@ -492,9 +492,11 @@ def _save_to_db(
             qa.get("overall_quality_score", 0),
             qa.get("pred_engagement_rate", 0) * 100,
         )
-        # Try to get cloud URL for the first media asset (image card)
+        # Upload media assets to configured storage backend (R2/S3/GCS/local).
+        # On cloud backends the returned URL is absolute; replace the local path
+        # in media_urls so the UI can use it directly without knowing the backend.
         image_cloud_url: str | None = None
-        raw_media = post.get("media_urls") or []
+        raw_media = list(post.get("media_urls") or [])
         if raw_media:
             try:
                 from tools.asset_storage import upload_asset
@@ -502,7 +504,10 @@ def _save_to_db(
                 first_media = raw_media[0]
                 p = _Path(first_media)
                 if p.exists() and p.is_file():
-                    image_cloud_url = upload_asset(p, run_id, p.name)
+                    cloud_url = upload_asset(p, run_id, p.name)
+                    image_cloud_url = cloud_url
+                    if cloud_url.startswith("http"):
+                        raw_media[0] = cloud_url
             except Exception as _ue:
                 logger.debug("image_cloud_url upload skipped: %s", _ue)
 
@@ -515,7 +520,7 @@ def _save_to_db(
                 content=post["content"],
                 hashtags=json.dumps(post.get("hashtags", [])),
                 internal_links=json.dumps(post.get("internal_links", [])),
-                media_urls=json.dumps(post.get("media_urls", [])),
+                media_urls=json.dumps(raw_media or post.get("media_urls", [])),
                 published_url=result.get("url", ""),
                 output_path=result.get("output_path", ""),
                 image_cloud_url=image_cloud_url,

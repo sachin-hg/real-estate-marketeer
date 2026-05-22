@@ -222,7 +222,10 @@ export default function PostDetail() {
     </div>
   )
 
-  const imageUrl = !imgError && post.media_urls?.[0] ? `/${post.media_urls[0]}` : null
+  const rawMedia = post.media_urls?.[0]
+  const imageUrl = !imgError && rawMedia
+    ? (rawMedia.startsWith('http') ? rawMedia : `/${rawMedia}`)
+    : null
   const hasActuals = post.actual_impressions_6h != null || post.actual_impressions_24h != null ||
     post.actual_likes_24h != null || post.actual_engagement_7d != null ||
     post.actual_impressions_7d != null || post.actual_housing_traffic != null
