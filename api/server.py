@@ -689,6 +689,10 @@ async def health():
 
 
 async def _execute_run(run_id: str, initial_state: dict):
+    from tools.run_context import set_run_id as _set_run_id
+    from tools.run_logger import setup_run_logging
+    _set_run_id(run_id)        # propagate run_id to all tools via ContextVar
+    setup_run_logging(run_id)  # per-run file log at output/<run_id>/run.log
     _handler = _attach_log_handler(run_id)
     try:
         g = await get_graph()
