@@ -1,23 +1,32 @@
 #!/bin/sh
 set -e
 
-# On Railway, /data is the persistent volume.
-# Symlink /app/output → /data/output so the app writes to persistent storage
-# while still serving files from the path FastAPI expects.
-mkdir -p /data/output
-if [ ! -L /app/output ]; then
-  rm -rf /app/output
-  ln -s /data/output /app/output
+# Restore database from seed if not present.
+# With a Railway volume mounted at /data, DB persists across restarts.
+# Without a volume, DB resets on redeploy but is seeded from db/seed.sql.
+if [ -d "/data" ]; then
+  # Volume is mounted — use persistent storage
+  mkdir -p /data/output
+  if [ ! -L /app/output ]; then
+    rm -rf /app/output
+    ln -s /data/output /app/output
+  fi
+  DB_PATH="/data/housing_content.db"
+else
+  # No volume — use local filesystem (resets on redeploy)
+  DB_PATH="/app/housing_content.db"
 fi
 
-# Restore database from seed on first deploy (volume is empty).
-DB_PATH="/data/housing_content.db"
 SEED="/app/db/seed.sql"
 if [ ! -f "$DB_PATH" ] && [ -f "$SEED" ]; then
-  echo "No database found — restoring from seed..."
+  echo "No database found at $DB_PATH — restoring from seed..."
   sqlite3 "$DB_PATH" < "$SEED"
-  echo "Database restored."
+  echo "Database restored ($(sqlite3 "$DB_PATH" 'SELECT COUNT(*) FROM published_posts;') posts)."
 fi
+
+# Point the app at the correct DB path
+export DATABASE_URL="sqlite+aiosqlite:///${DB_PATH}"
+export CHECKPOINT_DB_PATH="${DB_PATH%housing_content.db}checkpoints.db"
 
 exec uvicorn api.server:app \
   --host 0.0.0.0 \
