@@ -126,15 +126,14 @@ Produce the tweet now. Keep it ≤280 chars."""
     media_urls = []
     if include_image:
         try:
-            from tools.branded_image_generator import generate_branded_card
-            import tempfile, asyncio, contextvars
+            from tools.branded_image_generator import generate_branded_card_async
+            from tools.run_context import get_run_id
             from pathlib import Path
             card_text = zomato_hook or main_tweet
-            tmp = Path(tempfile.mkdtemp()) / "twitter_card.png"
-            loop = asyncio.get_event_loop()
-            _ctx = contextvars.copy_context()
-            await loop.run_in_executor(None, _ctx.run, generate_branded_card, card_text, tmp)
-            media_urls = [str(tmp)]
+            _run_id = get_run_id() or draft["id"][:8]
+            img_path = Path("output") / _run_id / f"twitter_{draft['id'][:8]}.png"
+            await generate_branded_card_async(card_text, img_path)
+            media_urls = [str(img_path)]
         except Exception as exc:
             logger.warning("Twitter card generation failed: %s", exc)
 

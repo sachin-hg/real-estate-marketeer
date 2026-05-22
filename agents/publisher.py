@@ -508,8 +508,13 @@ def _save_to_db(
                     image_cloud_url = cloud_url
                     if cloud_url.startswith("http"):
                         raw_media[0] = cloud_url
+                        logger.info("Media uploaded to cloud: %s", cloud_url)
+                    else:
+                        logger.debug("Media stored locally: %s", cloud_url)
+                else:
+                    logger.warning("Media file not found, skipping upload: %s", p)
             except Exception as _ue:
-                logger.debug("image_cloud_url upload skipped: %s", _ue)
+                logger.warning("Media upload failed: %s", _ue)
 
         with get_db_session() as session:
             record = PublishedPostRecord(
