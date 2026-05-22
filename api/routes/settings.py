@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -66,16 +67,21 @@ def _mask_value(val: str) -> str:
 
 
 def _read_env() -> dict[str, str]:
-    if not ENV_PATH.exists():
-        return {}
     result: dict[str, str] = {}
-    for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" in line:
-            key, _, val = line.partition("=")
-            result[key.strip()] = val.strip().strip('"').strip("'")
+    # Read .env file (local dev)
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, val = line.partition("=")
+                result[key.strip()] = val.strip().strip('"').strip("'")
+    # Overlay with actual process environment (Railway / production injects these)
+    for key in KEY_META:
+        env_val = os.environ.get(key)
+        if env_val:
+            result[key] = env_val
     return result
 
 
