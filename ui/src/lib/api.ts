@@ -128,7 +128,7 @@ export const triggerRun = (opts: {
   topic_hint?: string
   target_platforms?: string[]
 }) =>
-  fetchJson<{ run_id: string; status: string }>('/run', {
+  fetchJson<{ run_id: string; status: string }>('/api/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(opts),
@@ -144,7 +144,7 @@ export const triggerDirectRun = (
     body: JSON.stringify({ slack_topic: topic, ...opts }),
   })
 
-export const getRunStatus = (runId: string) => fetchJson<RunStatus>(`/runs/${runId}`)
+export const getRunStatus = (runId: string) => fetchJson<RunStatus>(`/api/runs/${runId}/status`)
 
 export const getRuns = () =>
   fetchJson<

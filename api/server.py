@@ -114,7 +114,8 @@ class RunRequest(BaseModel):
     target_platforms: Optional[list[str]] = None
 
 
-@app.post("/run")
+@app.post("/run")  # kept for backwards compat
+@app.post("/api/run")
 async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks):
     settings = get_settings()
     run_id = str(uuid.uuid4())[:8]
@@ -144,7 +145,7 @@ async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks):
     return {"run_id": run_id, "status": "started"}
 
 
-@app.get("/runs/{run_id}")
+@app.get("/api/runs/{run_id}/status")
 async def get_run(run_id: str):
     run = _runs.get(run_id)
     if not run:
