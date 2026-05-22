@@ -23,38 +23,57 @@ def _get_engine():
         _engine = create_engine(sync_url, connect_args={"check_same_thread": False})
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
         from db.models import Base
-        Base.metadata.create_all(bind=_engine)
+        Base.metadata.create_all(bind=_engine)   # creates new tables (runs, etc.)
         _migrate(_engine)
     return _engine
 
 
 def _migrate(engine) -> None:
     """Apply additive column migrations for SQLite (ALTER TABLE ADD COLUMN)."""
-    new_cols = [
-        ("user_rating",      "INTEGER"),
-        ("user_tags",        "TEXT"),
-        ("user_feedback",    "TEXT"),
-        ("user_action",      "VARCHAR(32)"),
-        ("rejection_reason", "TEXT"),
-        ("draft_type",       "VARCHAR(16)"),
-        ("zomato_hook",      "TEXT"),
-        ("trend_hashtag",    "VARCHAR(128)"),
-        ("media_format",     "VARCHAR(32)"),
+    import sqlalchemy as sa
+
+    # ── published_posts migrations ────────────────────────────────────────────
+    post_cols = [
+        ("user_rating",           "INTEGER"),
+        ("user_tags",             "TEXT"),
+        ("user_feedback",         "TEXT"),
+        ("user_action",           "VARCHAR(32)"),
+        ("rejection_reason",      "TEXT"),
+        ("draft_type",            "VARCHAR(16)"),
+        ("zomato_hook",           "TEXT"),
+        ("trend_hashtag",         "VARCHAR(128)"),
+        ("media_format",          "VARCHAR(32)"),
+        ("qa_decision",           "VARCHAR(32)"),
+        ("post_status",           "VARCHAR(32)"),
+        ("qa_rejection_reasons",  "TEXT"),
+        ("qa_critique",           "TEXT"),
+        ("qa_quality_dimensions", "TEXT"),
+        ("engagement_reasoning",  "TEXT"),
+        ("trend_data",            "TEXT"),
+        ("extra_data",            "TEXT"),
+        ("image_cloud_url",       "TEXT"),
+        ("source_topic",          "TEXT"),
     ]
     with engine.connect() as conn:
         existing = {
             row[1]
-            for row in conn.execute(
-                __import__("sqlalchemy").text("PRAGMA table_info(published_posts)")
-            )
+            for row in conn.execute(sa.text("PRAGMA table_info(published_posts)"))
         }
-        for col_name, col_type in new_cols:
+        for col_name, col_type in post_cols:
             if col_name not in existing:
-                conn.execute(
-                    __import__("sqlalchemy").text(
-                        f"ALTER TABLE published_posts ADD COLUMN {col_name} {col_type}"
-                    )
-                )
+                conn.execute(sa.text(
+                    f"ALTER TABLE published_posts ADD COLUMN {col_name} {col_type}"
+                ))
+
+        # ── runs migrations ───────────────────────────────────────────────────
+        existing_runs = {
+            row[1]
+            for row in conn.execute(sa.text("PRAGMA table_info(runs)"))
+        }
+        for col_name, col_type in [("error", "TEXT"), ("summary_json", "TEXT")]:
+            if col_name not in existing_runs:
+                conn.execute(sa.text(f"ALTER TABLE runs ADD COLUMN {col_name} {col_type}"))
+
         conn.commit()
 
 

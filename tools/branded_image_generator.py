@@ -179,6 +179,18 @@ def generate_branded_card(text: str, output_path: str | Path) -> Path:
 
     img.save(str(output_path), "PNG")
     logger.info("Branded card saved: %s", output_path)
+
+    # Upload to cloud storage if backend is configured; log the URL
+    try:
+        from tools.asset_storage import upload_asset
+        from tools.run_context import get_run_id
+        run_id = get_run_id() or output_path.parent.name
+        cloud_url = upload_asset(output_path, run_id, output_path.name)
+        if not cloud_url.startswith("/output"):   # only log if actually uploaded to cloud
+            logger.info("Branded card uploaded: %s", cloud_url)
+    except Exception as _upload_exc:
+        logger.debug("Asset upload skipped: %s", _upload_exc)
+
     return output_path
 
 
@@ -224,5 +236,7 @@ def _draw_logo(img):
 
 async def generate_branded_card_async(text: str, output_path: str | Path) -> Path:
     """Async wrapper — runs PIL work in a thread executor."""
+    import contextvars
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, generate_branded_card, text, output_path)
+    ctx = contextvars.copy_context()
+    return await loop.run_in_executor(None, ctx.run, generate_branded_card, text, output_path)

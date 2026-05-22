@@ -1,0 +1,196 @@
+{
+  "id": "m6",
+  "title": "The Planner Pattern",
+  "subtitle": "Add a quality gate that filters off-topic content before expensive creative agents run.",
+  "durationMin": 75,
+  "pipelineVersion": "v5",
+  "difficulty": "intermediate",
+  "tags": ["planner", "quality-gate", "prompt-engineering", "filtering", "content-briefs"],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Why a Quality Gate?",
+      "durationMin": 20,
+      "concept": [
+        {
+          "heading": "Without a filter, garbage in — garbage out",
+          "body": "The trend researcher finds 15 trending topics. Not all of them are housing-relevant. 'Coldplay concert sells out Mumbai' is viral. It is not real estate.\n\nWithout a planner, the creative agent receives every trend and tries to force a housing angle on each one. The result is exactly the Module 1 garbage: 'Buy a flat near BKC — just like the Coldplay venue!'",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "The planner's value is subtraction",
+              "body": "A planner that passes everything through equals no planner. Its value is what it OMITS — filtering out topics that would produce off-brand, low-quality content."
+            },
+            {
+              "type": "mistake",
+              "title": "A common mistake: label instead of filter",
+              "body": "Beginners often prompt the planner to label off-topic content as 'low_relevance' and pass it through anyway. This pushes the filtering work downstream to the creative agent, which is worse at it and more expensive."
+            }
+          ]
+        },
+        {
+          "heading": "ContentBrief as information hiding",
+          "body": "The planner does more than filter — it creates a **ContentBrief** for each valid topic. This brief is a structured handoff document.\n\nThe creative agent never sees raw research articles or raw trend data. It only sees the brief. This is deliberate information hiding: the creative agent gets exactly what it needs, nothing more.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Briefs improve creative quality",
+              "body": "When the creative agent reads a brief with a pre-selected angle, tone, and platform list, it produces focused content. When it reads raw data, it has to make all these decisions itself — and often makes them worse."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "The planner receives 'Coldplay Mumbai concert sells out' as a trend. The correct action is:",
+          "options": [
+            "Rate it low_relevance but include it",
+            "Mark it draft_type='entertainment' and pass it through",
+            "OMIT it — don't generate a brief at all",
+            "Ask the user whether to include it"
+          ],
+          "correctIndex": 2,
+          "explanation": "OMIT entirely. The planner's job is to generate zero briefs for off-topic content. A brief that reaches the creative agent will produce a forced, off-brand post."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: A planner that generates a brief for every trend it receives is doing its job well.",
+          "answer": false,
+          "explanation": "False — a planner that never filters equals no planner. Its core value is the content it rejects. Passing everything through wastes creative agent budget on low-quality output."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "The OMIT Instruction",
+      "durationMin": 35,
+      "concept": [
+        {
+          "heading": "Why the prompt needs an explicit OMIT rule",
+          "body": "LLMs default to being helpful. Given a list of trends and told to 'classify each worthy topic', the model will try to find a housing angle for everything — including Coldplay concerts.\n\nThe OMIT instruction overrides this default: if no genuine housing angle exists, generate no brief. This is a deliberate constraint that fights the model's default helpfulness.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Be explicit about what NOT to do",
+              "body": "LLM prompts often focus on what to do. For filter agents, what NOT to do is equally critical. Without an explicit OMIT rule, the model finds a way to include everything."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "PLANNER_SYSTEM = \"\"\"\nYou are a content strategist for Housing.com.\nGiven research articles and trending topics, create content briefs.\n\nClassify each worthy topic:\n- draft_type: \"social\" or \"news\"\n- target_platforms based on topic type\n- tone: \"hinglish_viral\", \"formal_seo\", or \"educational\"\n\n# ⚠ TODO: What critical filter instruction is missing?\n# Without this, the planner passes EVERY trend through — including\n# \"Coldplay concert\" and \"Bollywood gossip\".\n# The planner's value is FILTERING, not just labelling.\n# What rule tells it to skip topics with no genuine housing angle?\n???\n\nOutput JSON: list of ContentBrief. Maximum 5 social + 3 news.\n\"\"\"",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "CRITICAL: OMIT topics with no genuine RE angle",
+            "whyItMatters": "Without the OMIT instruction, the LLM finds a housing angle for every trend — Coldplay becomes 'buy a flat near BKC'. The filter only works if the model knows it's allowed to produce zero output for off-topic content.",
+            "correctCode": "CRITICAL: OMIT any topic with no genuine housing/real-estate angle.\nEntertainment, sports, politics with no property connection → generate NO brief.\nA topic about a concert venue is ONLY valid if it discusses the locality's RE market.",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "For 'Coldplay concert sells out Mumbai' trend, the planner should:",
+          "options": [
+            "Rate it low quality but include it with draft_type='entertainment'",
+            "Include it with a forced housing angle like 'flats near BKC'",
+            "OMIT it entirely — no brief generated",
+            "Ask the creative agent to decide"
+          ],
+          "correctIndex": 2,
+          "explanation": "OMIT. No brief = no creative call = no cost. The OMIT instruction tells the model it's acceptable to produce zero output. Without it, models default to finding a way to include everything."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v5 (planner excerpt)",
+        "code": "PLANNER_SYSTEM = \"\"\"\nYou are a content strategist for Housing.com.\nGiven research articles and trending topics, create content briefs.\n\nCRITICAL: OMIT any topic with no genuine housing/real-estate angle.\nEntertainment, sports, politics with no property connection → generate NO brief.\nA concert or cricket match is only valid if it's about the locality's RE market.\n\nClassify each worthy topic:\n- draft_type: \"social\" or \"news\"\n- target_platforms: list from [twitter, instagram, youtube, housing_news, linkedin]\n- tone: \"hinglish_viral\", \"formal_seo\", or \"educational\"\n- urgency: \"breaking\", \"trending\", \"evergreen\"\n\nOutput JSON array of ContentBrief objects. Maximum 5 social + 3 news.\n\"\"\"\n\ndef planner_node(state: PipelineState) -> dict:\n    prompt = f\"\"\"Research: {json.dumps(state['research'][:3])}\nTrends: {json.dumps(state['trends'][:5])}\nTopic hint: {state['topic']}\nCreate content briefs. OMIT anything not housing-related.\"\"\"\n    \n    resp = client.messages.create(\n        model=\"claude-haiku-4-5-20251001\",  # fast-tier: classification not creation\n        max_tokens=2048,\n        system=PLANNER_SYSTEM,\n        messages=[{\"role\": \"user\", \"content\": prompt}]\n    )\n    try:\n        briefs = json.loads(resp.content[0].text)\n        if not isinstance(briefs, list):\n            briefs = []\n    except json.JSONDecodeError:\n        briefs = [{\"topic\": state[\"topic\"], \"draft_type\": \"social\",\n                   \"tone\": \"hinglish_viral\"}]\n    return {\"content_briefs\": briefs}"
+      },
+      "productionRef": {
+        "file": "agents/planner.py",
+        "startLine": 1,
+        "endLine": 40,
+        "excerpt": "PLANNER_SYSTEM = \"\"\"\nYou are a senior content strategist for Housing.com India.\n\nYour job: given real estate research + trending topics, decide what content to create.\n\nCRITICAL FILTER — OMIT topics with no genuine RE angle:\n  - Celebrity gossip → OMIT\n  - Sports results (unless venue locality is trending in RE) → OMIT\n  - Political party news → OMIT (government POLICY like RERA, PMAY → KEEP)\n  - Entertainment events → OMIT unless the venue/city is a RE hotspot story\n\nFor each VALID topic, output a ContentBrief with:\n  topic, angle, draft_type, target_platforms, tone, urgency,\n  source_summary, city_hint, seo_keywords\n\nMaximum output: 5 social briefs + 3 news briefs per run.\nIf nothing qualifies, output an empty list [].\n\"\"\"",
+        "annotations": [
+          { "line": 6, "text": "The OMIT rule is the planner's core value — without it, it's a labeller, not a filter" },
+          { "line": 7, "text": "Government POLICY (RERA, PMAY) is explicitly kept — distinguishes policy from politics" }
+        ]
+      },
+      "pyodideCode": "# Simulate the planner's filter logic\nimport json\n\n# Mock trends — some housing-relevant, some not\ntrends = [\n    {\"hashtag\": \"#MumbaiRealEstate\", \"context\": \"stamp duty cut announced\"},\n    {\"hashtag\": \"#Coldplay\", \"context\": \"Mumbai concert sells out in 3 minutes\"},\n    {\"hashtag\": \"#PMAY2025\", \"context\": \"PM Awas Yojana new beneficiary list released\"},\n    {\"hashtag\": \"#IPL2025\", \"context\": \"cricket finals, massive viewership\"},\n    {\"hashtag\": \"#BengaluruMetro\", \"context\": \"Phase 3 route announced, affects Whitefield corridor\"},\n]\n\ndef planner_filter(trends):\n    \"\"\"Simulate the OMIT rule — only topics with genuine RE angle.\"\"\"\n    housing_keywords = ['real estate', 'property', 'flat', 'home', 'housing',\n                        'pmay', 'rera', 'stamp duty', 'metro', 'locality',\n                        'corridor', 'awas', 'mortgage', 'loan']\n    briefs = []\n    for trend in trends:\n        ctx = trend['context'].lower()\n        hashtag = trend['hashtag'].lower()\n        has_re_angle = any(kw in ctx or kw in hashtag for kw in housing_keywords)\n        if has_re_angle:\n            briefs.append({\"hashtag\": trend['hashtag'],\n                            \"draft_type\": \"social\",\n                            \"angle\": trend['context']})\n            print(f\"  ✓ INCLUDE: {trend['hashtag']} — {trend['context'][:50]}\")\n        else:\n            print(f\"  ✗ OMIT:    {trend['hashtag']} — no housing angle\")\n    return briefs\n\nprint(\"Planner filtering trends:\")\nbriefs = planner_filter(trends)\nprint(f\"\\n{len(trends)} trends → {len(briefs)} briefs ({len(trends)-len(briefs)} omitted)\")",
+      "pyodideExpected": "briefs",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Why does the planner run on claude-haiku (fast model) instead of Opus 4.7?",
+          "options": [
+            "Haiku is better at classification tasks",
+            "Classification and filtering don't require the creative quality that Opus provides — fast model saves ~90% cost here",
+            "Opus can't output JSON",
+            "Haiku has a larger context window"
+          ],
+          "correctIndex": 1,
+          "explanation": "Deciding 'is this topic housing-relevant?' is classification. It doesn't require the creative quality needed for Hinglish social copy. Haiku at $0.25/MTok vs Opus at $15/MTok = ~60× cheaper for the same classification accuracy."
+        },
+        {
+          "type": "mcq",
+          "stem": "The planner returns 0 briefs. What should creative agents do?",
+          "options": [
+            "Crash with an error",
+            "Generate content from raw research directly",
+            "Skip execution — empty briefs means nothing to create",
+            "Ask the user for a topic"
+          ],
+          "correctIndex": 2,
+          "explanation": "Zero briefs is a valid output — it means no topic passed the quality gate this run. Creative agents should receive an empty list and produce no output. This is correct behaviour, not an error."
+        },
+        {
+          "type": "fillin",
+          "stem": "A ContentBrief contains a 'source_summary' field. Why does the creative agent need this instead of raw research?",
+          "answer": "information hiding",
+          "hint": "The creative agent should only know what it needs",
+          "explanation": "Information hiding — the creative agent gets a pre-digested summary, not 8 raw articles. This focuses its output and prevents it from being distracted by irrelevant research details."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Cost: Fast Model for Fast Tasks",
+      "durationMin": 20,
+      "concept": [
+        {
+          "heading": "Model routing rationale",
+          "body": "The planner does classification — is this topic housing-relevant? This is a binary decision with clear criteria. It does not require creativity or nuanced language generation.\n\nUsing Opus 4.7 for classification is like hiring a Michelin-starred chef to sort mail. The task does not require that capability.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Rule of thumb: match model to task complexity",
+              "body": "Binary classification or structured extraction → fast model (Haiku/Gemini Flash). Balanced writing with judgment → Sonnet. Original creative writing requiring wit and cultural nuance → Opus."
+            }
+          ],
+          "codeExample": {
+            "language": "python",
+            "filename": "cost_comparison.py",
+            "code": "# Per run cost comparison for planner node:\n# Input: ~2000 tokens (research + trends)\n# Output: ~500 tokens (briefs)\n\n# Opus 4.7:   (2000/1M * $15) + (500/1M * $75)  = $0.0675/run\n# Sonnet 4.6: (2000/1M * $3)  + (500/1M * $15)  = $0.0135/run\n# Haiku:      (2000/1M * $0.25) + (500/1M * $1.25) = $0.0011/run\n\n# 2 runs/day × 30 days:\n# Opus:   $4.05/month for planner alone\n# Haiku:  $0.07/month — same classification quality\n# Savings: $3.98/month from ONE routing decision"
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Which model tier is appropriate for the social_creative node (Hinglish viral copy)?",
+          "options": [
+            "Fast (Haiku) — it's just writing",
+            "Balanced (Sonnet) — good enough",
+            "Creative (Opus 4.7) — cultural nuance and wit require the best model",
+            "Any model — the prompt does the work"
+          ],
+          "correctIndex": 2,
+          "explanation": "Hinglish wit, trend-jacking, and housing punchlines require creative capability that scales with model quality. Opus produces measurably better social copy. The cost is justified because creative quality directly impacts engagement."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "id": "m3",
+  "title": "State: The Agent's Memory",
+  "subtitle": "Add TypedDict state so agents can share information without silent key mismatches.",
+  "durationMin": 60,
+  "pipelineVersion": "v2",
+  "difficulty": "beginner",
+  "tags": ["typeddict", "state", "type-safety", "multi-agent"],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Why Agents Need Shared State",
+      "durationMin": 20,
+      "concept": [
+        {
+          "heading": "The silent bug",
+          "body": "Imagine researcher writes results to `state['research_results']` and creative reads from `state['research']`. Both compile. Both run. The creative agent gets an empty list and generates garbage. No error. No warning.\n\nThis is the most common multi-agent bug: key mismatch between producer and consumer.",
+          "callouts": [
+            {
+              "type": "mistake",
+              "title": "Plain dicts are silent landmines",
+              "body": "state['research_results'] vs state['research'] — one is a typo. A plain dict accepts both. TypedDict rejects the wrong one at type-check time, before you ever run the code."
+            }
+          ]
+        },
+        {
+          "heading": "TypedDict: a shared API contract",
+          "body": "A TypedDict is a dict subclass with type annotations. Every agent that reads or writes state must match this contract.\n\nThis is exactly how a strongly-typed API works: you define the schema once, and every consumer is checked against it.",
+          "codeExample": {
+            "language": "python",
+            "filename": "Without TypedDict (broken)",
+            "code": "# Agent A writes:\nstate['research_results'] = articles   # typo!\n\n# Agent B reads:\nfor article in state['research']:      # KeyError at runtime\n    ..."
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "The primary advantage of TypedDict over a plain dict for agent state is:",
+          "options": [
+            "It's faster at runtime",
+            "Key mismatches between agents are caught at type-check time, not silently at runtime",
+            "It uses less memory",
+            "It supports async operations"
+          ],
+          "correctIndex": 1,
+          "explanation": "TypedDict's value is the contract it enforces — all agents must agree on field names and types. Plain dicts accept any key silently."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: Every agent must read and write every field in PipelineState.",
+          "answer": false,
+          "explanation": "Each agent only writes back the fields it modifies. LangGraph merges partial updates. The planner doesn't need to touch platform_posts — that's the publisher's job."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Building PipelineState",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "From v1 to v2",
+          "body": "In v1, `researcher_agent` took a plain `topic` string and returned a list. In v2, every agent takes `state: PipelineState` and returns a partial dict.\n\nThis makes the data contract explicit and the agents composable.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Return partial, not full state",
+              "body": "In LangGraph, each node returns only the fields it changed. The framework merges updates. This prevents agents from accidentally overwriting each other's output."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "from typing import TypedDict\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: ???     # ⚠ TODO: What type?\n    # Hint: researcher_agent returns a list of dicts with keys:\n    #       \"title\", \"content\", \"url\"\n    # A future creative agent will do: state[\"research\"][0][\"title\"]\n    # What type annotation makes this contract explicit?\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: list[dict]\n    platform_posts: list[dict]",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "list[dict] — researcher returns list of article dicts",
+            "whyItMatters": "Without a type annotation, mypy/pyright can't check that creative agents read the right structure. list[dict] makes the contract explicit: a list where each item has title, content, url keys.",
+            "correctCode": "list[dict]",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "fillin",
+          "stem": "researcher_agent returns [{\"title\": str, \"content\": str, \"url\": str}]. What TypedDict type annotation fits this?",
+          "answer": "list[dict]",
+          "hint": "A collection of dicts",
+          "explanation": "list[dict] captures the structure. In production we'd use list[ResearchItem] with a typed dataclass — but list[dict] is the minimal correct answer."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v2",
+        "code": "# pipeline.py — v2: TypedDict state\nimport anthropic, json\nfrom typing import TypedDict\n\nclient = anthropic.Anthropic()\nTOOLS = [{\"name\": \"web_search\", \"description\": \"Search for RE news\",\n           \"input_schema\": {\"type\": \"object\",\n                            \"properties\": {\"query\": {\"type\": \"string\"}},\n                            \"required\": [\"query\"]}}]\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: list[dict]    # [{\"title\": str, \"content\": str, \"url\": str}]\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: list[dict]\n    platform_posts: list[dict]\n\ndef mock_web_search(query):\n    return [{\"title\": f\"Result: {query}\", \"content\": \"Mumbai prices up 8% YoY\", \"url\": \"https://example.com\"}]\n\ndef researcher_node(state: PipelineState) -> dict:\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {state['topic']}\"}]\n    while True:\n        resp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                      tools=TOOLS, messages=messages)\n        if resp.stop_reason == \"end_turn\":\n            results = json.loads(resp.content[-1].text)\n            return {\"research\": results}   # partial state update\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [{\"role\": \"assistant\", \"content\": resp.content},\n                     {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                      \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}]\n\ndef planner_node(state: PipelineState) -> dict:\n    return {\"content_briefs\": [{\"topic\": state[\"topic\"], \"draft_type\": \"social\"}]}\n\nif __name__ == \"__main__\":\n    state: PipelineState = {\"topic\": \"Mumbai real estate 2025\", \"research\": [],\n                             \"trends\": [], \"content_briefs\": [],\n                             \"creative_drafts\": [], \"platform_posts\": []}\n    state.update(researcher_node(state))\n    state.update(planner_node(state))\n    print(state[\"content_briefs\"])"
+      },
+      "productionRef": {
+        "file": "models/state.py",
+        "startLine": 1,
+        "endLine": 35,
+        "excerpt": "from typing import Annotated, TypedDict\nimport operator\n\n\nclass ResearchItem(TypedDict):\n    headline: str\n    source: str\n    url: str\n    summary: str\n    relevance: str\n\n\nclass TrendItem(TypedDict):\n    hashtag: str\n    platform: str\n    volume: str\n    context: str\n    creative_hook: str\n    city_hint: str\n    tags: list[str]\n\n\nclass ContentBrief(TypedDict):\n    topic: str\n    angle: str\n    draft_type: str\n    target_platforms: list[str]\n    tone: str\n    urgency: str\n    source_summary: str\n    city_hint: str\n    seo_keywords: list[str]\n\n\nclass AgentState(TypedDict):\n    topic: str\n    research: list[ResearchItem]\n    trends: list[TrendItem]\n    content_briefs: list[ContentBrief]\n    creative_drafts: Annotated[list[CreativeDraft], operator.add]\n    platform_posts: Annotated[list[PlatformPost], operator.add]",
+        "annotations": [
+          { "line": 4, "text": "Production uses typed dataclasses (ResearchItem) not plain dict — stricter contract" },
+          { "line": 34, "text": "Annotated + operator.add for parallel-safe writes — you'll add this in Module 5" }
+        ]
+      },
+      "pyodideCode": "# pipeline.py v2 — TypedDict state in action\n# Watch how partial state updates compose\n\nfrom typing import TypedDict\nimport json\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: list[dict]\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: list[dict]\n    platform_posts: list[dict]\n\n# Each node takes full state, returns ONLY what it changed\ndef researcher_node(state: PipelineState) -> dict:\n    print(f\"researcher: researching '{state['topic']}'\")\n    results = web_search(state['topic'])\n    return {\"research\": results}   # partial update — doesn't touch other fields\n\ndef planner_node(state: PipelineState) -> dict:\n    print(f\"planner: {len(state['research'])} articles → briefs\")\n    briefs = [{\"topic\": state['topic'], \"draft_type\": \"social\",\n                \"source_count\": len(state['research'])}]\n    return {\"content_briefs\": briefs}   # partial update\n\n# Manual composition (before LangGraph)\nstate: PipelineState = {\n    \"topic\": \"Mumbai real estate 2025\",\n    \"research\": [], \"trends\": [],\n    \"content_briefs\": [], \"creative_drafts\": [],\n    \"platform_posts\": []\n}\n\nstate.update(researcher_node(state))\nstate.update(planner_node(state))\n\nprint(f\"\\nFinal state keys with data: {[k for k,v in state.items() if v]}\")\nprint(f\"content_briefs: {json.dumps(state['content_briefs'], indent=2)}\")",
+      "pyodideExpected": "content_briefs",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Why does researcher_node return {'research': results} instead of the full PipelineState?",
+          "options": [
+            "It's faster to return a small dict",
+            "LangGraph merges partial updates — returning only changed fields prevents overwriting other agents' output",
+            "TypedDict requires partial returns",
+            "Python can't return a full TypedDict"
+          ],
+          "correctIndex": 1,
+          "explanation": "LangGraph merges each node's return dict into the state. Returning only changed fields is the contract — each agent owns its output fields."
+        },
+        {
+          "type": "fillin",
+          "stem": "Spot the bug: planner reads state['researched_articles'] but researcher writes state['research']. This is a ___ mismatch.",
+          "answer": "key",
+          "hint": "It's about dictionary key names",
+          "explanation": "Key mismatch — the TypedDict would have caught this at type-check time since 'researched_articles' is not a defined field."
+        },
+        {
+          "type": "mcq",
+          "stem": "In production (models/state.py), research is typed as list[ResearchItem] not list[dict]. Why?",
+          "options": [
+            "Performance — typed dicts are faster",
+            "list[ResearchItem] makes the exact fields (headline, source, url, summary) explicit and checked",
+            "Python requires typed items in TypedDict",
+            "list[dict] doesn't work in LangGraph"
+          ],
+          "correctIndex": 1,
+          "explanation": "list[ResearchItem] documents the exact contract. If researcher returns {headlin: ...} (typo), mypy catches it. list[dict] accepts any keys silently."
+        }
+      ]
+    }
+  ]
+}

@@ -25,11 +25,13 @@ RULES:
 - No emoji overload — max 2 emojis
 - Threads only when the topic genuinely needs it (rare). Most posts = single tweet.
 
-HANDLE TAGGING:
-- For well-known accounts (Microsoft, Google, TCS, Zomato, RCB, etc.) use their @handle directly
-- For any entity you want to tag but aren't certain of their exact handle, write [LOOKUP: EntityName]
-  The pipeline will resolve it to the correct @handle before publishing
-- Avoid tagging individual politicians or named executives
+HANDLE TAGGING (MANDATORY):
+- Every company, brand, startup, sports team, or public figure mentioned in the tweet MUST be tagged.
+- For well-known accounts (Zomato, Swiggy, HDFC, RCB, Virat Kohli, etc.) use their @handle directly.
+- For any entity you are not 100% sure of the handle, write [LOOKUP: EntityName] — the pipeline resolves it.
+- DO NOT skip tagging because you are unsure — always write [LOOKUP: Name] as a fallback.
+- DO NOT tag: sitting politicians, government ministers, bureaucrats, judges, or individual billionaires
+  (e.g., Mukesh Ambani, Gautam Adani as individuals). Their companies are fine to tag.
 
 Return JSON:
 {
@@ -41,7 +43,14 @@ Return JSON:
   "hook_type": "wit|stat|question|hot_take|nostalgia"
 }
 
-Return ONLY the JSON."""
+Return ONLY the JSON.
+
+CREATIVE ANGLE INTEGRITY:
+The draft's `angle` field is the creative director's instruction. Your role is to
+EXPRESS that angle in platform-appropriate format — not replace or dilute it.
+If the angle says "Hyderabad metro expansion makes 3 localities the new hotspots",
+every line of output should reinforce that framing. Never drift into generic
+real estate copy unrelated to the angle."""
 
 
 async def run_twitter_agent(draft: CreativeDraft, settings) -> PlatformPost:
@@ -97,11 +106,16 @@ Produce the tweet now. Keep it ≤280 chars."""
     thread = [tw.replace("{{HOUSING_LINK}}", primary_link) for tw in data.get("thread", [])]
 
     # Resolve any [LOOKUP: EntityName] placeholders the LLM left in the tweet
-    from tools.handle_resolver import resolve_handles_in_text
+    from tools.handle_resolver import resolve_handles_in_text, inject_known_mentions
     main_tweet, resolved = resolve_handles_in_text(main_tweet, platform="twitter")
     thread = [resolve_handles_in_text(tw, "twitter")[0] for tw in thread]
     if resolved:
         logger.info("Twitter agent: resolved handles %s", resolved)
+
+    # Proactively inject @mentions for any brands the LLM mentioned but didn't tag
+    main_tweet, injected = inject_known_mentions(main_tweet, "twitter", max_new=2)
+    if injected:
+        logger.info("Twitter agent: injected mentions %s", injected)
 
     content = main_tweet
     if thread:
@@ -113,12 +127,13 @@ Produce the tweet now. Keep it ≤280 chars."""
     if include_image:
         try:
             from tools.branded_image_generator import generate_branded_card
-            import tempfile, asyncio
+            import tempfile, asyncio, contextvars
             from pathlib import Path
             card_text = zomato_hook or main_tweet
             tmp = Path(tempfile.mkdtemp()) / "twitter_card.png"
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, generate_branded_card, card_text, tmp)
+            _ctx = contextvars.copy_context()
+            await loop.run_in_executor(None, _ctx.run, generate_branded_card, card_text, tmp)
             media_urls = [str(tmp)]
         except Exception as exc:
             logger.warning("Twitter card generation failed: %s", exc)

@@ -15,18 +15,35 @@ router = APIRouter(prefix="/api/prompts", tags=["prompts"])
 HOOKS_PATH = Path(__file__).parent.parent.parent / "prompts" / "hooks_bank.json"
 
 
-def _read_hooks() -> list:
+def _read_bank() -> dict:
+    """Read hooks_bank.json; always returns dict with 'examples' and 'negative_examples' keys."""
     if not HOOKS_PATH.exists():
-        return []
+        return {"examples": [], "negative_examples": []}
     try:
-        return json.loads(HOOKS_PATH.read_text(encoding="utf-8"))
+        raw = json.loads(HOOKS_PATH.read_text(encoding="utf-8"))
+        if isinstance(raw, list):
+            return {"examples": raw, "negative_examples": []}
+        return raw
     except Exception as exc:
         logger.error("Failed to read hooks_bank.json: %s", exc)
-        return []
+        return {"examples": [], "negative_examples": []}
 
 
-def _write_hooks(hooks: list) -> None:
-    HOOKS_PATH.write_text(json.dumps(hooks, indent=2, ensure_ascii=False), encoding="utf-8")
+def _read_hooks() -> list:
+    return _read_bank().get("examples", [])
+
+
+def _write_hooks(examples: list) -> None:
+    """Write examples list while preserving negative_examples in the file."""
+    bank = _read_bank()
+    bank["examples"] = examples
+    HOOKS_PATH.write_text(json.dumps(bank, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Invalidate the example retriever LRU cache so new prompts take effect immediately
+    try:
+        from tools.example_retriever import _load_bank
+        _load_bank.cache_clear()
+    except Exception:
+        pass
 
 
 @router.get("/")
@@ -40,6 +57,7 @@ class PromptBody(BaseModel):
     tags: list[str]
     card: str
     caption: Optional[str] = None
+    hashtags: Optional[list[str]] = None
     city_hint: Optional[str] = None
     media_format: Optional[str] = None
     meme_concept: Optional[str] = None
@@ -61,6 +79,7 @@ class PromptUpdateBody(BaseModel):
     tags: Optional[list[str]] = None
     card: Optional[str] = None
     caption: Optional[str] = None
+    hashtags: Optional[list[str]] = None
     city_hint: Optional[str] = None
     media_format: Optional[str] = None
     meme_concept: Optional[str] = None

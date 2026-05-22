@@ -23,8 +23,6 @@ scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 # ─── Content run ─────────────────────────────────────────────────────────────
 
 async def content_run_job(topic_hint: str | None = None):
-    from workflow.graph import graph
-
     settings = get_settings()
     run_id = str(uuid.uuid4())[:8]
     logger.info("Scheduled content run starting: %s", run_id)
@@ -38,6 +36,7 @@ async def content_run_job(topic_hint: str | None = None):
         "target_platforms": settings.platform_list,
         "research": [],
         "trends": [],
+        "content_briefs": [],
         "creative_drafts": [],
         "platform_posts": [],
         "qa_results": [],
@@ -49,7 +48,9 @@ async def content_run_job(topic_hint: str | None = None):
     }
 
     try:
-        await graph.ainvoke(initial_state)
+        from workflow.graph import get_graph
+        g = await get_graph()
+        await g.ainvoke(initial_state, config={"configurable": {"thread_id": run_id}})
         logger.info("Scheduled run %s complete", run_id)
     except Exception as exc:
         logger.error("Scheduled run %s failed: %s", run_id, exc, exc_info=True)

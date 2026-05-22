@@ -1,0 +1,237 @@
+{
+  "id": "m5",
+  "title": "Parallel Agents",
+  "subtitle": "Run researcher and trend_researcher simultaneously. Add operator.add to safely merge parallel writes.",
+  "durationMin": 75,
+  "pipelineVersion": "v4",
+  "difficulty": "intermediate",
+  "tags": [
+    "parallel",
+    "operator.add",
+    "fan-out",
+    "fan-in",
+    "asyncio",
+    "annotated"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "The Reducer Problem",
+      "durationMin": 25,
+      "concept": [
+        {
+          "heading": "When two agents write to the same field",
+          "body": "In v4 we have two creative agents: `social_creative` and `news_creative`. Both write to `creative_drafts`. They run in parallel.\n\nWithout a reducer, the second write silently overwrites the first. You lose all social drafts if news_creative finishes last. No error. Just missing content.",
+          "callouts": [
+            {
+              "type": "mistake",
+              "title": "Silent overwrite — the hardest bug to find",
+              "body": "social_creative returns {'creative_drafts': [A, B]}. news_creative returns {'creative_drafts': [C]}. LangGraph's default merge is last-write-wins. The planner sees only [C]."
+            },
+            {
+              "type": "insight",
+              "title": "The fix: operator.add as a reducer",
+              "body": "Annotated[list[dict], operator.add] tells LangGraph: when two nodes both return this field, ADD the lists together instead of replacing. Result: [A, B, C]."
+            }
+          ]
+        },
+        {
+          "heading": "Annotated: attaching reducers to types",
+          "body": "Python's `Annotated[T, metadata]` attaches extra information to a type annotation. LangGraph uses this pattern to attach reducer functions.\n\n`Annotated[list[dict], operator.add]` means: this field is a list[dict], AND when merging concurrent writes, use operator.add (list concatenation).",
+          "codeExample": {
+            "language": "python",
+            "filename": "reducer_demo.py",
+            "code": "from typing import Annotated, TypedDict\nimport operator\n\n# Without reducer — last write wins\nclass StateA(TypedDict):\n    drafts: list[dict]    # overwritten by last writer\n\n# With reducer — lists are merged\nclass StateB(TypedDict):\n    drafts: Annotated[list[dict], operator.add]  # concatenated\n\n# social_creative returns: {'drafts': ['social1', 'social2']}\n# news_creative returns:   {'drafts': ['news1']}\n# StateA result: ['news1']                          # lost 2 items!\n# StateB result: ['social1', 'social2', 'news1']    # all 3 preserved"
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Two nodes run in parallel: A returns {'posts': ['tweet1']}, B returns {'posts': ['article1']}. Without operator.add, the merged state has:",
+          "options": [
+            "['tweet1', 'article1']",
+            "Either ['tweet1'] OR ['article1'] — whichever finishes last overwrites",
+            "An error — duplicate field write is not allowed",
+            "{'posts_a': ['tweet1'], 'posts_b': ['article1']}"
+          ],
+          "correctIndex": 1,
+          "explanation": "LangGraph's default merge is last-write-wins for non-annotated fields. Whichever parallel branch finishes last overwrites the other — silently, with no error."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: Annotated[list[dict], operator.add] only works with lists.",
+          "answer": false,
+          "explanation": "operator.add works on any addable type. For integers it sums, for lists it concatenates. You can also pass custom reducer functions for other merge strategies."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Parallel Fan-Out with START",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "Two edges from START = parallel execution",
+          "body": "Adding `add_edge(START, 'researcher')` AND `add_edge(START, 'trend_researcher')` tells LangGraph to launch both simultaneously.\n\nLangGraph then automatically waits for BOTH to complete before running planner — this is **fan-in**. You get the synchronization for free.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Timing: sequential vs parallel",
+              "body": "researcher takes ~15s. trend_researcher takes ~15s. Sequential = 30s. Parallel = 15s (max of both). At 2 runs/day for 30 days that is 15 minutes saved just on the research phase."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "from typing import TypedDict, Annotated\nimport operator\nfrom langgraph.graph import StateGraph, START, END\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: list[dict]\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: ???   # ⚠ TODO 1:\n    # Hint: social_creative AND news_creative BOTH write to this list.\n    # They run simultaneously. Without a reducer, one silently overwrites the other.\n    # What annotation makes two parallel writes MERGE instead of replace?\n    platform_posts: list[dict]\n\nbuilder = StateGraph(PipelineState)\nbuilder.add_node(\"researcher\",       researcher_node)\nbuilder.add_node(\"trend_researcher\", trend_researcher_node)\nbuilder.add_node(\"planner\",          planner_node)\n\nbuilder.add_edge(START, \"researcher\")\n???  # ⚠ TODO 2:\n# Hint: trend_researcher is added as a node but nothing triggers it.\n# researcher and trend_researcher should run at the SAME TIME.\n# One line launches trend_researcher in parallel with researcher.\nbuilder.add_edge(\"researcher\",       \"planner\")\nbuilder.add_edge(\"trend_researcher\", \"planner\")\nbuilder.add_edge(\"planner\", END)\ngraph = builder.compile()",
+        "todos": [
+          {
+            "marker": "???   # ⚠ TODO 1:\n    # Hint: social_creative AND news_creative BOTH write to this list.\n    # They run simultaneously. Without a reducer, one silently overwrites the other.\n    # What annotation makes two parallel writes MERGE instead of replace?\n    platform_posts: list[dict]",
+            "lineHint": "Annotated[list[dict], operator.add]",
+            "whyItMatters": "Without this, social_creative's drafts get silently overwritten by news_creative's (or vice versa). One parallel writer always wins and the other's work is lost. Annotated + operator.add makes LangGraph concatenate both lists.",
+            "correctCode": "Annotated[list[dict], operator.add]   # parallel-safe: lists get merged\n    platform_posts: Annotated[list[dict], operator.add]",
+            "quizIndex": 0
+          },
+          {
+            "marker": "???  # ⚠ TODO 2:\n# Hint: trend_researcher is added as a node but nothing triggers it.\n# researcher and trend_researcher should run at the SAME TIME.\n# One line launches trend_researcher in parallel with researcher.\nbuilder.add_edge(\"researcher\",       \"planner\")",
+            "lineHint": "builder.add_edge(START, \"trend_researcher\")",
+            "whyItMatters": "Without this edge, trend_researcher is registered but never runs. The planner gets articles but zero trend data — no hashtags, no viral hooks, no Hinglish creative angle.",
+            "correctCode": "builder.add_edge(START, \"trend_researcher\")",
+            "quizIndex": 1
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Which annotation makes parallel writes to creative_drafts safe?",
+          "options": [
+            "list[dict]",
+            "Annotated[list[dict], operator.add]",
+            "Parallel[list[dict]]",
+            "list[dict, merge=True]"
+          ],
+          "correctIndex": 1,
+          "explanation": "Annotated[T, reducer] is LangGraph's pattern. operator.add concatenates lists from concurrent writers instead of letting one overwrite the other."
+        },
+        {
+          "type": "fillin",
+          "stem": "To launch trend_researcher in parallel with researcher: builder.add_edge(___, 'trend_researcher')",
+          "answer": "START",
+          "hint": "Same entry point as researcher",
+          "explanation": "Two add_edge(START, ...) calls create parallel fan-out. LangGraph launches both simultaneously and waits for both before running planner (fan-in)."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v4",
+        "code": "# pipeline.py — v4: Parallel agents + operator.add\nimport anthropic, json, asyncio\nfrom typing import TypedDict, Annotated\nimport operator\nfrom langgraph.graph import StateGraph, START, END\n\nclient = anthropic.Anthropic()\nTOOLS = [{\"name\": \"web_search\", \"description\": \"Search for RE news\",\n           \"input_schema\": {\"type\": \"object\",\n                            \"properties\": {\"query\": {\"type\": \"string\"}},\n                            \"required\": [\"query\"]}}]\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: list[dict]\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: Annotated[list[dict], operator.add]   # parallel-safe\n    platform_posts:  Annotated[list[dict], operator.add]   # parallel-safe\n\ndef mock_web_search(query):\n    return [{\"title\": f\"Result: {query}\", \"content\": \"Mumbai prices up 8% YoY\"}]\n\ndef researcher_node(state: PipelineState) -> dict:\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {state['topic']}\"}]\n    while True:\n        resp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                      tools=TOOLS, messages=messages)\n        if resp.stop_reason == \"end_turn\":\n            return {\"research\": json.loads(resp.content[-1].text)}\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [{\"role\": \"assistant\", \"content\": resp.content},\n                     {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                      \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}]\n\ndef trend_researcher_node(state: PipelineState) -> dict:\n    return {\"trends\": [{\"hashtag\": \"#MumbaiRealEstate\", \"platform\": \"twitter\",\n                        \"volume\": \"15K\", \"context\": \"stamp duty cut discussion\"}]}\n\ndef planner_node(state: PipelineState) -> dict:\n    return {\"content_briefs\": [{\"topic\": state[\"topic\"], \"draft_type\": \"social\",\n                                 \"source\": f\"{len(state['research'])} articles, {len(state['trends'])} trends\"}]}\n\n# Parallel fan-out: both start simultaneously\nbuilder = StateGraph(PipelineState)\nbuilder.add_node(\"researcher\",       researcher_node)\nbuilder.add_node(\"trend_researcher\", trend_researcher_node)\nbuilder.add_node(\"planner\",          planner_node)\nbuilder.add_edge(START, \"researcher\")\nbuilder.add_edge(START, \"trend_researcher\")    # ← parallel fan-out\nbuilder.add_edge(\"researcher\",       \"planner\") # ← fan-in: planner waits for BOTH\nbuilder.add_edge(\"trend_researcher\", \"planner\")\nbuilder.add_edge(\"planner\", END)\ngraph = builder.compile()\n\nif __name__ == \"__main__\":\n    result = asyncio.run(graph.ainvoke(\n        {\"topic\": \"Mumbai real estate 2025\", \"research\": [], \"trends\": [],\n         \"content_briefs\": [], \"creative_drafts\": [], \"platform_posts\": []}\n    ))\n    print(result[\"content_briefs\"])"
+      },
+      "productionRef": {
+        "file": "workflow/graph.py",
+        "startLine": 60,
+        "endLine": 70,
+        "excerpt": "    # Research phase — both run simultaneously\n    builder.add_edge(START, \"researcher\")\n    builder.add_edge(START, \"trend_researcher\")\n    builder.add_edge(\"researcher\",       \"planner\")  # fan-in\n    builder.add_edge(\"trend_researcher\", \"planner\")  # fan-in\n\n    # Creative phase — both run simultaneously\n    builder.add_edge(\"planner\",          \"social_creative\")\n    builder.add_edge(\"planner\",          \"news_creative\")\n    builder.add_edge(\"social_creative\",  \"internal_retriever\")\n    builder.add_edge(\"news_creative\",    \"internal_retriever\")",
+        "annotations": [
+          {
+            "line": 62,
+            "text": "Both fan in to planner — LangGraph waits for both automatically"
+          },
+          {
+            "line": 67,
+            "text": "Second parallel group: creative phase also fans out and converges"
+          }
+        ]
+      },
+      "pyodideCode": "# Demonstrate the operator.add reducer effect\nfrom typing import TypedDict, Annotated\nimport operator\n\n# Simulate what LangGraph does when merging parallel writes\ndef merge_without_reducer(updates: list[dict]) -> dict:\n    result = {}\n    for update in updates:\n        result.update(update)   # last write wins!\n    return result\n\ndef merge_with_add_reducer(base: list, updates: list[dict]) -> list:\n    result = list(base)\n    for update in updates:\n        result = result + update   # operator.add = concatenate\n    return result\n\n# Two parallel agents both write creative_drafts\nsocial_output = [{\"type\": \"social\", \"content\": \"IPL fever hits Mumbai homes 🏏\"}]\nnews_output   = [{\"type\": \"news\",   \"content\": \"Mumbai RE market: Q2 2025 outlook\"}]\n\nprint(\"=== Without operator.add (last-write-wins) ===\")\nresult_no_reducer = merge_without_reducer([\n    {\"creative_drafts\": social_output},\n    {\"creative_drafts\": news_output},   # overwrites social!\n])\nprint(f\"creative_drafts: {result_no_reducer['creative_drafts']}\")\nprint(f\"Count: {len(result_no_reducer['creative_drafts'])} — LOST the social draft!\")\n\nprint(\"\\n=== With operator.add reducer ===\")\nresult_with_reducer = merge_with_add_reducer(\n    [],\n    [social_output, news_output]\n)\nprint(f\"creative_drafts: {result_with_reducer}\")\nprint(f\"Count: {len(result_with_reducer)} — both drafts preserved!\")",
+      "pyodideExpected": "both drafts preserved",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "researcher takes 20s, trend_researcher takes 8s, both run in parallel. Total wall-clock time?",
+          "options": [
+            "28s (sequential sum)",
+            "8s (minimum)",
+            "20s (maximum — parallel waits for slowest)",
+            "14s (average)"
+          ],
+          "correctIndex": 2,
+          "explanation": "Parallel execution takes as long as the slowest branch. researcher at 20s is the bottleneck. trend_researcher finishes at 8s and waits. Total = max(20, 8) = 20s."
+        },
+        {
+          "type": "mcq",
+          "stem": "LangGraph sees two edges pointing TO planner (from researcher and trend_researcher). What does it do?",
+          "options": [
+            "Runs planner twice — once per incoming edge",
+            "Waits for ALL upstream nodes to complete before running planner (fan-in)",
+            "Runs planner after whichever finishes first",
+            "Raises an error — only one incoming edge allowed"
+          ],
+          "correctIndex": 1,
+          "explanation": "Multiple incoming edges create automatic fan-in. LangGraph waits for all upstream nodes before running the downstream node. No extra code needed."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: asyncio.gather runs Python code on multiple CPU cores simultaneously.",
+          "answer": false,
+          "explanation": "asyncio is concurrent I/O, not parallel CPU execution. Both agents make network requests that can be 'in-flight' simultaneously — asyncio interleaves the waiting efficiently within one thread."
+        },
+        {
+          "type": "mcq",
+          "stem": "When should you NOT run two agents in parallel?",
+          "options": [
+            "When both agents make API calls",
+            "When agent B needs agent A's output to do its work",
+            "When both agents take more than 10 seconds",
+            "When running in production"
+          ],
+          "correctIndex": 1,
+          "explanation": "Parallel only works when agents are independent. If planner needs researcher's output, it must run AFTER researcher. Data dependencies dictate sequencing."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Async Execution",
+      "durationMin": 20,
+      "concept": [
+        {
+          "heading": "Why ainvoke for parallel graphs",
+          "body": "LLM API calls are I/O-bound — your Python code spends most of its time waiting for the network. `asyncio` lets multiple I/O operations be in-flight simultaneously without threads.\n\nWhen researcher makes a Tavily API call and trend_researcher makes a Google Trends call, asyncio lets both be pending at the same time. Neither blocks the other.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Switch to ainvoke when adding parallel nodes",
+              "body": "graph.invoke() is fine for sequential graphs. The moment you add parallel fan-out (two edges from START), switch to await graph.ainvoke(). LangGraph handles the event loop internally."
+            },
+            {
+              "type": "insight",
+              "title": "For Java/Go engineers: asyncio is NIO, not goroutines",
+              "body": "asyncio uses cooperative multitasking on a single thread — equivalent to Java's NIO with a Selector event loop, not Java threads or Go goroutines. Multiple I/O operations (LLM API calls) are in-flight simultaneously, and the event loop switches between them when one is waiting for a network response.\n\nThis means: asyncio.gather([researcher_call, trend_researcher_call]) submits both HTTP requests to the network, then yields the thread to process whichever response arrives first. Total wall time ≈ max(individual times), not sum.\n\nImportant constraint: CPU-bound work (parsing large JSON, image processing) won't benefit from asyncio — it blocks the event loop. For CPU-heavy nodes, use asyncio.to_thread() to run in a thread pool."
+            }
+          ],
+          "codeExample": {
+            "language": "python",
+            "filename": "invoke_vs_ainvoke.py",
+            "code": "# Sequential graph — invoke() is fine\nresult = graph.invoke(initial_state)\n\n# Parallel graph — use ainvoke()\nimport asyncio\nresult = asyncio.run(graph.ainvoke(initial_state))\n\n# Or inside an async function:\nasync def run():\n    result = await graph.ainvoke(initial_state)"
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Your graph has two parallel branches (researcher + trend_researcher). You call graph.invoke(). What happens?",
+          "options": [
+            "Both run in parallel as expected",
+            "Only the first branch runs",
+            "They run sequentially instead of in parallel — no error, just slower",
+            "LangGraph raises a RuntimeError"
+          ],
+          "correctIndex": 2,
+          "explanation": "invoke() is synchronous — it can't truly parallelize I/O. The nodes will still both run but sequentially, eliminating the time benefit. Use ainvoke() to get real concurrency."
+        }
+      ]
+    }
+  ]
+}

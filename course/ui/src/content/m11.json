@@ -1,0 +1,256 @@
+{
+  "id": "m11",
+  "title": "Observability & Feedback Loops",
+  "subtitle": "Close the loop: log every LLM call, track real engagement, inject performance history into the next run.",
+  "durationMin": 105,
+  "pipelineVersion": "v10",
+  "difficulty": "advanced",
+  "tags": [
+    "observability",
+    "feedback-loop",
+    "performance-history",
+    "engagement-tracking",
+    "cost-logging",
+    "incident-response",
+    "monitoring",
+    "rollback"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "The Flywheel",
+      "durationMin": 60,
+      "concept": [
+        {
+          "heading": "Without observability, run #100 = run #1",
+          "body": "The pipeline generates content, publishes it, and forgets it. Without logging, you don't know which posts performed. Without that knowledge, every run starts from scratch — same creative direction, same mistakes.\n\nObservability has two parts:\n1. **Cost logging** — every LLM call logs `input_tokens`, `output_tokens`, `cost_usd`. Visible in logs and `summary.json`.\n2. **Engagement tracking** — scheduler jobs at 6h, 24h, 7d fetch actual metrics from platform APIs and store them in `housing_content.db`.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "What you learn from 30 days of data",
+              "body": "Cricket + Bengaluru posts get 3× more engagement than market analysis. Hinglish outperforms English 2:1. Posts published at 6 PM IST outperform 9 AM. These patterns can't be pre-programmed — they emerge from data."
+            },
+            {
+              "type": "mistake",
+              "title": "Logging LLM calls after the fact",
+              "body": "Adding observability to a live system means you have a gap in your cost data. Log from day one — retroactively filling cost data is painful and inaccurate."
+            }
+          ]
+        },
+        {
+          "heading": "Injecting performance history into creative prompts",
+          "body": "The feedback loop closes when the creative agent reads its own past performance. `get_performance_history()` queries `housing_content.db` for the top 5 and bottom 5 posts by engagement rate, formats them as examples, and injects them into the social_creative system prompt.\n\nThis is the same few-shot pattern from Module 7 — but instead of hand-curated examples, they're discovered from real data.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Call inside the node, not at compile time",
+              "body": "`performance_context = get_performance_history()` must be called inside `social_creative_node()`, not at module import time. The graph is compiled once but run many times — you need fresh data each run."
+            }
+          ]
+        },
+        {
+          "heading": "Why the feedback loop takes weeks, not days",
+          "body": "Engagement data doesn't arrive immediately. The scheduler tracks three windows:\n- **6 hours**: initial likes and shares (early signal, noisy — bots and first-wave)\n- **24 hours**: clicks, saves, profile visits (more stable, real audience signal)\n- **7 days**: follower gain, amplification, downstream reach (definitive)\n\nThe pipeline runs daily, but the quality signal for today's posts won't be complete for 7 days. `get_performance_history()` always reads data that is at minimum 24 hours stale — by design.\n\nPractical implication: a viral cricket tweet published Monday has its 7-day data arrive the following Monday. The creative agent starts learning from it on Tuesday of the following week. Expect 2–4 weeks before the flywheel has enough signal to make a measurable difference, and 30–50 runs before improvements plateau.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Survivorship bias in the feedback signal",
+              "body": "Only PUBLISHED posts have engagement data. Posts rejected by qa_safety or qa_quality are invisible to get_performance_history(). If your safety gate is over-aggressive, you may be filtering out high-potential content — and the feedback loop would never surface this problem. Monitor your QA rejection rate separately."
+            },
+            {
+              "type": "insight",
+              "title": "Realistic improvement numbers",
+              "body": "Housing.com pipeline (first 90 days): engagement rate improved ~22% over the first 50 runs as the system learned cricket+Bengaluru angles outperform market analysis. Beyond 50 runs, improvement plateaus — the easy signal has been harvested. Do not expect linear improvement indefinitely. Expect a learning curve that flattens."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "async def social_creative_node(state: PipelineState) -> dict:\n    # ⚠ TODO: The creative agent generates the same style every run with no\n    # knowledge of what actually performed well.\n    # Hint: The DB stores actual engagement metrics from past posts.\n    #       get_performance_history() reads top/bottom performers.\n    #       This string must be injected into the creative prompt.\n    # Without this, the system never improves from its own history.\n    performance_context = ???\n\n    prompt = f\"\"\"\n    {SOCIAL_CREATIVE_SYSTEM}\n    {get_examples(brief[\"tags\"])}\n    {performance_context}\n\n    Brief: {json.dumps(brief)}\n    \"\"\"\n\n    resp = await asyncio.to_thread(\n        client.messages.create,\n        model=llm_router(\"creative\"), max_tokens=1024,\n        messages=[{\"role\": \"user\", \"content\": prompt}]\n    )\n    return {\"creative_drafts\": [json.loads(resp.content[0].text)]}",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "get_performance_history() — must be fresh per run",
+            "whyItMatters": "Without this, run #100 is identical to run #1. The model never learns that cricket+bengaluru posts get 3× more engagement than market analysis, or that 6 PM posts outperform 9 AM posts. get_performance_history() makes the system self-improving.",
+            "correctCode": "get_performance_history()  # fresh query each run — reads top/bottom performers from DB",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Why must `get_performance_history()` be called inside the node, not at module import time?",
+          "options": [
+            "It's too slow to call at import time",
+            "The graph is compiled once but run many times — you need fresh engagement data each run, not data from when the code was loaded",
+            "Python doesn't support calling functions at import time",
+            "It would cause a circular import"
+          ],
+          "correctIndex": 1,
+          "explanation": "The graph is compiled once but executed many times. Calling get_performance_history() at import time would capture a snapshot of the DB at startup. Inside the node, it queries fresh data every run, so the creative agent always sees the latest top and bottom performers."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py",
+        "code": "# pipeline.py — v10: Observability + feedback loop\nimport sqlite3, time, json, asyncio\nfrom datetime import datetime\n\ndef get_performance_history(limit: int = 5) -> str:\n    \"\"\"Read top and bottom performers from housing_content.db.\"\"\"\n    try:\n        conn = sqlite3.connect(\"housing_content.db\")\n        top = conn.execute(\n            \"SELECT content, platform, actual_engagement_7d FROM posts \"\n            \"WHERE actual_engagement_7d IS NOT NULL \"\n            \"ORDER BY actual_engagement_7d DESC LIMIT ?\", (limit,)\n        ).fetchall()\n        bottom = conn.execute(\n            \"SELECT content, platform, actual_engagement_7d FROM posts \"\n            \"WHERE actual_engagement_7d IS NOT NULL \"\n            \"ORDER BY actual_engagement_7d ASC LIMIT ?\", (limit,)\n        ).fetchall()\n        conn.close()\n        if not top:\n            return \"\"\n        lines = [\"PAST PERFORMANCE (use to guide style):\", \"TOP PERFORMERS:\"]\n        for row in top:\n            lines.append(f\"  [{row[1]}] ER={row[2]:.3f}: {row[0][:100]}\")\n        lines.append(\"AVOID THESE STYLES:\")\n        for row in bottom:\n            lines.append(f\"  [{row[1]}] ER={row[2]:.3f}: {row[0][:100]}\")\n        return \"\\n\".join(lines)\n    except Exception:\n        return \"\"  # no history yet — first few runs\n\ndef log_llm_call(node: str, model: str, input_tokens: int, output_tokens: int):\n    \"\"\"Log cost for every LLM call.\"\"\"\n    COSTS = {\"opus_4_7\": (0.015, 0.075), \"sonnet_4_6\": (0.003, 0.015),\n             \"haiku_4_5\": (0.0008, 0.004), \"gemini_flash\": (0.00015, 0.0006)}\n    in_cost, out_cost = COSTS.get(model, (0.003, 0.015))\n    cost = input_tokens * in_cost / 1000 + output_tokens * out_cost / 1000\n    print(f\"  [{node}] {model}: {input_tokens}in / {output_tokens}out = ${cost:.4f}\")\n    return cost\n\nasync def social_creative_node(state: PipelineState) -> dict:\n    performance_context = get_performance_history()  # fresh query per run\n    drafts = []\n    for brief in state[\"content_briefs\"]:\n        if brief[\"draft_type\"] != \"social\":\n            continue\n        prompt = (f\"{SOCIAL_CREATIVE_SYSTEM}\\n{get_examples(brief['tags'])}\\n\"\n                  f\"{performance_context}\\n\\nBrief: {json.dumps(brief)}\")\n        resp = await asyncio.to_thread(\n            client.messages.create,\n            model=\"claude-opus-4-7\", max_tokens=1024,\n            messages=[{\"role\": \"user\", \"content\": prompt}]\n        )\n        log_llm_call(\"social_creative\", \"opus_4_7\",\n                     resp.usage.input_tokens, resp.usage.output_tokens)\n        drafts.append(json.loads(resp.content[0].text))\n    return {\"creative_drafts\": drafts}"
+      },
+      "productionRef": {
+        "file": "tools/creative_utils.py",
+        "startLine": 1,
+        "endLine": 35,
+        "excerpt": "get_performance_history() implementation with DB query and format.",
+        "annotations": [
+          {
+            "line": 5,
+            "text": "Called fresh inside the node — not at graph compile time"
+          },
+          {
+            "line": 20,
+            "text": "Returns empty string when no history yet (first 10 runs) — graceful degradation"
+          }
+        ]
+      },
+      "pyodideCode": "# The feedback flywheel — realistic cold-start simulation\n# Models: cold start period, gradual learning, diminishing returns plateau\n\nimport random\n\ndef engagement_rate(run_num, history_size, seed_offset=0):\n    random.seed(run_num * 7 + seed_offset)\n    base = random.gauss(0.025, 0.006)\n    if history_size < 5:\n        return max(0.005, base)  # cold start: no useful signal\n    # Diminishing returns: plateau at ~25% above baseline\n    max_gain = 0.006\n    gain = max_gain * (1 - 1 / (1 + history_size / 20))\n    return max(0.005, base + gain)\n\nprint(f\"{'Run':<5} {'History':<10} {'Avg ER':<10} {'vs Run 1':<12} Status\")\nprint(\"─\" * 55)\n\nrun1_er = None\n\nfor run in range(1, 21):\n    # 7-day delay: history only usable after a lag\n    history_size = max(0, run - 3) * 2\n    ers = [engagement_rate(run, history_size, i) for i in range(5)]\n    avg_er = sum(ers) / len(ers)\n    if run == 1:\n        run1_er = avg_er\n    delta = (avg_er - run1_er) / run1_er * 100\n    status = \"cold start\" if history_size < 5 else \"learning\" if history_size < 30 else \"plateau\"\n    print(f\"{run:<5} {history_size:<10} {avg_er:.4f}    {delta:+.1f}%       {status}\")\n\nfinal = (avg_er - run1_er) / run1_er * 100\nprint(f\"\\nEngagement rate improved ~{final:.0f}% over 20 runs\")\nprint(\"Realistic range: 20–30% improvement before plateau. Not a linear gain.\")",
+      "pyodideExpected": "improved",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "What does log_llm_call() need in addition to the model name to compute cost_usd accurately?",
+          "options": [
+            "Request duration in milliseconds",
+            "Number of API calls made",
+            "Input token count AND output token count (they have different per-token rates)",
+            "Model name is sufficient — all tokens cost the same"
+          ],
+          "correctIndex": 2,
+          "explanation": "LLM pricing splits input and output tokens at different rates (e.g., Opus: $0.015/1k input, $0.075/1k output). A call with 2000 input tokens and 100 output tokens costs very differently from 100 input / 2000 output. log_llm_call() needs both counts to compute cost_usd accurately."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: High prediction accuracy guarantees that the engagement predictor is well-calibrated.",
+          "answer": false,
+          "explanation": "False — accuracy and calibration are different properties. A model predicting 'high engagement' for 80% of posts would be 80% accurate if 80% of posts happen to engage well, regardless of whether its confidence scores match actual probabilities. Calibration means: when the model says '70% chance of high engagement', it is correct ~70% of the time at that confidence level — not just correct in aggregate. Check calibration curves, not just accuracy."
+        },
+        {
+          "type": "mcq",
+          "stem": "What happens to prediction accuracy in the first 10 runs?",
+          "options": [
+            "Overfitting — the model memorises the small dataset and scores everything highly",
+            "Underfitting — not enough data to distinguish patterns; predictions are effectively random within a range",
+            "Perfect calibration — the model uses priors from training data",
+            "Nothing — prediction accuracy is constant regardless of dataset size"
+          ],
+          "correctIndex": 1,
+          "explanation": "With fewer than 10 posts, the engagement predictor lacks the data to distinguish signal from noise. Predictions are plausible but effectively random within a range. Accuracy only becomes meaningful after 30–50 posts."
+        },
+        {
+          "type": "fillin",
+          "stem": "log_llm_call() tracks three things: model name, token counts, and ___.",
+          "answer": "cost_usd",
+          "hint": "visible in summary.json and logs",
+          "explanation": "log_llm_call() computes cost from token counts and the per-model price table, then prints and returns the cost in USD. This is what populates the cost_usd field in summary.json."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Incident Response",
+      "durationMin": 45,
+      "concept": [
+        {
+          "heading": "Three pipeline metrics to monitor",
+          "body": "Observability without alerts is just logging. Three metrics that indicate pipeline health:\n\n**Cost per run** — baseline ~$0.85. Alert threshold: >$2.00/run (2.4× baseline).\nA cost spike means a node is consuming more tokens than expected — usually a prompt injection in input data, a runaway QA revision loop, or a model API change.\n\n**QA approval rate** — baseline 70–80%. Alert threshold: <40%.\nA sudden drop means creative output quality changed (new model version, prompt edit, degraded input data) or QA thresholds are mis-calibrated.\n\n**Engagement rate vs 30-day moving average** — alert if >30% below MA for 3+ consecutive runs.\nA gradual decline is normal seasonality. A sudden 30% drop suggests hooks bank staleness, topic distribution shift, or upstream data degradation.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Three numbers that tell you if a run was normal",
+              "body": "Log `cost_usd_total`, `qa_approval_rate`, and `posts_published` to summary.json on every run. These three numbers are readable in 30 seconds. Everything else is in the DB for deeper investigation."
+            }
+          ]
+        },
+        {
+          "heading": "Rollback strategies",
+          "body": "When a pipeline metric crosses an alert threshold, the first response is containment, not investigation.\n\n**Prompt rollback** — if degradation correlates with a recent prompt change, `git revert` the prompt file and redeploy. Most quality incidents in LLM pipelines are prompt changes, not model changes.\n\n**Model tier downgrade as safety net** — temporarily downgrade `social_creative` from Opus to Sonnet. You lose some creative quality but the pipeline keeps running without a 3 AM page.\n\n**Kill switch on publisher** — if QA approval rate is <40%, pause publisher_node. Queue posts for manual review. Missing a publishing cycle is safer than publishing 10 posts that fail brand safety.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Contain before investigating",
+              "body": "When QA approval drops to 30%, stop publishing first, investigate second. Every run that publishes during an incident compounds the problem. The cost of missing one post cycle is far lower than the cost of a brand safety incident."
+            }
+          ]
+        },
+        {
+          "heading": "Post-mortem: three root causes",
+          "body": "After containment, diagnose which of three root causes triggered the incident:\n\n**Prompt rot** — a recent prompt edit changed behavior in a non-obvious way. Most common cause (63% of incidents in the Housing.com pipeline over 18 months). Check: `git log --oneline prompts/` — when was the last change?\n\n**Data drift** — input topics changed distribution. IPL season ends. The trend-jacking angle that worked for cricket doesn't work for budget announcements. Check: did the topic mix shift? Is the hooks bank older than 3 months?\n\n**Model drift** — the model API was updated in-place without announcement. `claude-sonnet-4-6` today may behave differently from 6 months ago. Check: did the incident start near a provider release announcement?",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Check prompts first",
+              "body": "Housing.com pipeline over 18 months: 63% of quality incidents caused by prompt edits, 24% by hooks bank staleness, 13% by model updates. Check `git log prompts/` first — it's the fastest hypothesis to test."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "def should_alert(run_summary: dict, baseline: dict) -> list[str]:\n    alerts = []\n\n    # ⚠ TODO: Add alert condition for cost spike + approval rate drop combined.\n    # Hint: A cost spike alone could be a legitimately large input run.\n    # An approval rate drop alone could be a noisy day.\n    # Cost spike + approval rate drop TOGETHER = pipeline malfunction.\n    # (QA revision loops burn tokens; low approval rate = many revision loops)\n    if ???:\n        alerts.append(\"CRITICAL: cost spike + low approval rate — pipeline likely malfunctioning\")\n\n    if run_summary[\"cost_usd_total\"] > baseline[\"cost_usd_p95\"] * 3:\n        alerts.append(\"WARNING: extreme cost spike — check for prompt injection or infinite retry\")\n\n    return alerts",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "cost > 2x baseline AND approval_rate < 0.4",
+            "whyItMatters": "A cost spike alone may be a large input run. An approval rate drop alone may be seasonality. Together — high cost AND low approval — they indicate a systemic failure: the pipeline is burning tokens on content that QA rejects and revision-loops.",
+            "correctCode": "run_summary[\"cost_usd_total\"] > baseline[\"cost_usd_median\"] * 2 and\n        run_summary[\"qa_approval_rate\"] < 0.4",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "The QA approval rate drops from 75% to 28% suddenly. What should the immediate first response be?",
+          "options": [
+            "Investigate root cause immediately by reviewing recent git commits",
+            "Pause publisher_node to stop publishing degraded content, then investigate",
+            "Increase QA scoring thresholds to approve more posts",
+            "Roll back to the previous model version"
+          ],
+          "correctIndex": 1,
+          "explanation": "Containment before investigation. Pause publisher_node — queue posts for manual review. Then investigate root cause: recent prompt changes? Model API update? Stale hooks bank? Never widen QA thresholds to 'fix' an approval rate drop — that masks the underlying problem and risks publishing brand-unsafe content."
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "cost_usd_total spikes to 3× baseline on the same run that qa_approval_rate drops to 30%. Most likely root cause?",
+          "options": [
+            "The Postgres checkpoint database is running slowly",
+            "A prompt change or model update caused lower-quality creative output, triggering more QA revision loops which consumed more tokens",
+            "The platform APIs (Twitter, Instagram) are rate-limiting requests",
+            "The topic input file was empty this run"
+          ],
+          "correctIndex": 1,
+          "explanation": "QA revision loops are token-expensive. When QA rejects and requests revision, the platform agent re-runs — doubling tokens for that node. Combined with low approval rate, this pattern points to creative quality degradation (prompt change or model update) that QA is correctly catching, but the revision loop is burning tokens trying to fix. Contain by pausing publisher, then check git log for recent prompt changes."
+        },
+        {
+          "type": "mcq",
+          "stem": "According to Housing.com pipeline incident data, what is the most common root cause of sudden quality drops?",
+          "options": [
+            "Model API updates by providers",
+            "Hooks bank staleness",
+            "Prompt edits",
+            "Input data distribution shift"
+          ],
+          "correctIndex": 2,
+          "explanation": "63% of quality incidents in the Housing.com pipeline over 18 months were caused by prompt edits — adding a constraint that conflicted with existing style, removing an example that anchored the tone, or changing the planner filter criteria without updating the creative briefing template. Check `git log prompts/` first."
+        },
+        {
+          "type": "tf",
+          "stem": "If the QA approval rate drops suddenly, the correct response is to lower the QA scoring threshold to pass more posts.",
+          "answer": false,
+          "explanation": "False — lowering the QA threshold masks the problem instead of fixing it. If creative quality dropped, approving low-quality posts harms brand safety and long-term engagement. The correct response: pause publishing, identify the root cause (prompt change, model drift, stale examples), fix the root cause, and restore QA thresholds."
+        }
+      ]
+    }
+  ]
+}

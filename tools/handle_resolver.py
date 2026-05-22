@@ -83,6 +83,34 @@ _KNOWN: dict[str, dict[str, str]] = {
     "lodha":           {"linkedin": "@Lodha-Group",       "twitter": "@LodhaGroup",       "instagram": "@lodhagroup"},
     "dlf":             {"linkedin": "@DLF",               "twitter": "@DLFLimited",       "instagram": "@dlfofficial"},
     "godrej properties": {"linkedin": "@Godrej-Properties", "twitter": "@GodrejProp",   "instagram": "@godrejproperties"},
+    # Banks & fintech
+    "hdfc":            {"linkedin": "@HDFC-Bank",             "twitter": "@HDFC_Bank",        "instagram": "@hdfcbank"},
+    "hdfc bank":       {"linkedin": "@HDFC-Bank",             "twitter": "@HDFC_Bank",        "instagram": "@hdfcbank"},
+    "sbi":             {"linkedin": "@State-Bank-of-India",   "twitter": "@TheOfficialSBI",   "instagram": "@sbi_india"},
+    "state bank":      {"linkedin": "@State-Bank-of-India",   "twitter": "@TheOfficialSBI",   "instagram": "@sbi_india"},
+    "icici":           {"linkedin": "@ICICI-Bank",            "twitter": "@ICICIBank",        "instagram": "@icicibankofficial"},
+    "icici bank":      {"linkedin": "@ICICI-Bank",            "twitter": "@ICICIBank",        "instagram": "@icicibankofficial"},
+    "axis bank":       {"linkedin": "@Axis-Bank",             "twitter": "@AxisBank",         "instagram": "@axisbank"},
+    "kotak":           {"linkedin": "@Kotak-Mahindra-Bank",   "twitter": "@KotakBankLtd",     "instagram": "@kotakmahindrabank"},
+    "bajaj finance":   {"linkedin": "@Bajaj-Finance",         "twitter": "@BajajFinance",     "instagram": "@bajajfinance"},
+    # Telecom
+    "jio":             {"linkedin": "@Reliance-Jio",          "twitter": "@reliancejio",      "instagram": "@reliancejio"},
+    "airtel":          {"linkedin": "@Bharti-Airtel",         "twitter": "@airtelindia",      "instagram": "@airtelindia"},
+    "bsnl":            {"linkedin": "@BSNL",                  "twitter": "@BSNLCorporate",    "instagram": "@bsnl_official"},
+    # Gig / delivery platforms
+    "dunzo":           {"linkedin": "@Dunzo",                 "twitter": "@dunzo_daily",      "instagram": "@dunzo_daily"},
+    "blinkit":         {"linkedin": "@Blinkit",               "twitter": "@letsblinkit",      "instagram": "@blinkit"},
+    "zepto":           {"linkedin": "@Zepto",                 "twitter": "@ZeptoNow",         "instagram": "@zepto"},
+    "rapido":          {"linkedin": "@Rapido-Bike-Taxi",      "twitter": "@rapidobiketaxi",   "instagram": "@rapidobiketaxi"},
+    "porter":          {"linkedin": "@Porter",                "twitter": "@porter_india",     "instagram": "@porter_india"},
+    # Jobs / recruitment
+    "naukri":          {"linkedin": "@Naukri.com",            "twitter": "@NaukriHQ",         "instagram": "@naukri"},
+    "indeed":          {"linkedin": "@Indeed",                "twitter": "@Indeed",           "instagram": "@indeed"},
+    "instahyre":       {"linkedin": "@InstaHyre",             "twitter": "@InstaHyre",        "instagram": "@instahyre"},
+    # Auto
+    "maruti":          {"linkedin": "@Maruti-Suzuki-India",   "twitter": "@Maruti_Corp",      "instagram": "@marutisuzukiindia"},
+    "hyundai":         {"linkedin": "@Hyundai-India",         "twitter": "@HyundaiIndia",     "instagram": "@hyundaiindia"},
+    "tata motors":     {"linkedin": "@Tata-Motors",           "twitter": "@TataMotors",       "instagram": "@tatamotors"},
     # Govt / Regulatory
     "rbi":             {"linkedin": "@Reserve-Bank-of-India", "twitter": "@RBI",          "instagram": "@rbi_india"},
     "sebi":            {"linkedin": "@SEBI",              "twitter": "@SEBI_India",       "instagram": "@sebi_india"},
@@ -192,6 +220,60 @@ def _search_handle(entity: str, platform: str) -> Optional[str]:
 
     logger.debug("Handle resolver: no handle found for '%s' on %s", entity, platform)
     return None
+
+
+def inject_known_mentions(
+    content: str, platform: str, max_new: int = 3
+) -> tuple[str, list[str]]:
+    """
+    Proactively scan content for known company/brand names and replace the first
+    occurrence of each with the platform @handle inline.
+
+    This catches cases where the LLM mentioned a brand without tagging it (i.e.,
+    did not emit a [LOOKUP:] placeholder). Caps at max_new new @mentions per post.
+
+    Blocked by design: politicians, bureaucrats, judiciary, big individual billionaires
+    are NOT in _KNOWN, so they will never be injected.
+
+    Returns: (updated_content, list_of_injected_handles)
+    """
+    # Handles already present in the content
+    already: set[str] = {m.lower() for m in re.findall(r"@(\w+)", content)}
+    injected: list[str] = []
+
+    # Longest names first so "tech mahindra" matches before "mahindra"
+    sorted_keys = sorted(_KNOWN.keys(), key=len, reverse=True)
+
+    for key in sorted_keys:
+        if len(injected) >= max_new:
+            break
+        if len(key) < 3:
+            continue
+
+        handles = _KNOWN[key]
+        handle = handles.get(platform)
+        if not handle:
+            continue
+
+        handle_slug = handle.lstrip("@").lower()
+        if handle_slug in already:
+            continue  # already @mentioned
+
+        pattern = r"\b" + re.escape(key) + r"\b"
+        new_content, n = re.subn(
+            pattern,
+            handle,
+            content,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if n:
+            content = new_content
+            already.add(handle_slug)
+            injected.append(handle)
+            logger.info("Mention injector: '%s' → %s on %s", key, handle, platform)
+
+    return content, injected
 
 
 def resolve_handles_in_text(text: str, platform: str = "linkedin") -> tuple[str, list[str]]:

@@ -1,0 +1,146 @@
+{
+  "id": "m12",
+  "title": "Capstone Project",
+  "subtitle": "Build your own multi-agent pipeline from scratch — food delivery, edtech, or fintech. Apply everything from Modules 2–11.",
+  "durationMin": 90,
+  "difficulty": "advanced",
+  "tags": ["capstone", "project", "multi-agent", "langgraph", "full-pipeline"],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Build Your Own Pipeline",
+      "durationMin": 90,
+      "concept": [
+        {
+          "heading": "What you'll build",
+          "body": "Choose your domain and build a complete multi-agent pipeline. Every concept from the course must appear:\n\n**Swiggy/Zomato food delivery** — content pipeline for a restaurant brand: research dish trends → plan campaign → generate social posts + food blog articles → QA → publish\n\n**Edtech startup** — content pipeline for an online learning brand: research skill demand → plan content → generate social posts + course landing page copy → QA → publish\n\n**Fintech / neo-bank** — content pipeline for a financial product: research savings trends → plan content → generate social posts + blog articles → QA → publish\n\nAll three follow the same pipeline architecture you built for Housing.com.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Start with the state",
+              "body": "Define your TypedDict first. What flows between agents? Research results, content briefs, creative drafts, platform posts, approved posts. Name your fields clearly — they're your agent API contract."
+            },
+            {
+              "type": "insight",
+              "title": "The OMIT instruction transfers directly",
+              "body": "Whatever domain you pick, your planner needs an OMIT instruction for off-topic content. For food delivery: OMIT celebrity gossip with no restaurant angle. The pattern is identical."
+            }
+          ]
+        },
+        {
+          "heading": "Capstone checklist",
+          "body": "Your pipeline must include all of the following:\n\n- [ ] `WorkflowState` TypedDict with ≥ 6 typed fields\n- [ ] Researcher agent with tool use (mock web_search is fine)\n- [ ] Planner with OMIT instruction for off-topic content\n- [ ] At least one platform agent producing structured JSON output\n- [ ] 2-pass QA: safety gate (binary) + quality scoring (dimensional)\n- [ ] RetryPolicy on ≥ 2 nodes (NOT the publisher)\n- [ ] Cost estimate printed in output (even if estimated)\n- [ ] asyncio.gather with return_exceptions=True in the platform orchestrator",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Don't skip the OMIT instruction",
+              "body": "The most common capstone mistake is a planner that generates a brief for every trend, including off-topic ones. Add the filter before the creative agent. Without it, the creative agent writes forced content and QA rejects everything."
+            }
+          ]
+        }
+      ],
+      "pyodideCode": "# CAPSTONE STARTER TEMPLATE\n# Choose your domain: food_delivery | edtech | fintech\n# Fill in the TODOs and run your pipeline\n\nimport json, asyncio\nfrom typing import TypedDict, Annotated\nimport operator\n\n# ── 1. DOMAIN CHOICE ──────────────────────────────────────────────────\nDOMAIN = \"food_delivery\"  # change this\n\nDOMAIN_CONFIG = {\n    \"food_delivery\": {\n        \"brand\": \"Spice & Swipe\",\n        \"platforms\": [\"twitter\", \"instagram\"],\n        \"off_topic_examples\": \"cricket scores with no restaurant angle, political news\",\n        \"quality_angle\": \"makes someone hungry or inspires a food order\",\n    },\n    \"edtech\": {\n        \"brand\": \"SkillSpark\",\n        \"platforms\": [\"twitter\", \"linkedin\"],\n        \"off_topic_examples\": \"entertainment gossip, sports scores without career relevance\",\n        \"quality_angle\": \"makes someone want to learn a new skill or enroll\",\n    },\n    \"fintech\": {\n        \"brand\": \"NeoVault\",\n        \"platforms\": [\"twitter\", \"linkedin\"],\n        \"off_topic_examples\": \"celebrity news, sports scores without investment angle\",\n        \"quality_angle\": \"makes someone think about saving, investing, or financial health\",\n    },\n}\n\ncfg = DOMAIN_CONFIG[DOMAIN]\n\n# ── 2. STATE DEFINITION ─────────────────────────────────────────────────\nclass WorkflowState(TypedDict):\n    topic: str\n    research: list[dict]           # TODO: add more fields\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: Annotated[list[dict], operator.add]\n    platform_posts: Annotated[list[dict], operator.add]\n    approved_posts: list[dict]\n\n# ── 3. MOCK TOOLS ──────────────────────────────────────────────────────\ndef mock_search(query: str) -> list[dict]:\n    return [\n        {\"title\": f\"Trend: {query}\", \"content\": f\"Growing interest in {query}\", \"url\": \"https://example.com\"},\n        {\"title\": f\"Analysis: {query} market\", \"content\": f\"{query} market growing 15% YoY\", \"url\": \"https://example.com/2\"},\n    ]\n\n# ── 4. AGENTS (TODO: implement each) ─────────────────────────────────────────\ndef researcher_agent(state: WorkflowState) -> dict:\n    # TODO: Call mock_search, return {\"research\": [...]}\n    results = mock_search(state[\"topic\"])\n    return {\"research\": results}\n\ndef planner_agent(state: WorkflowState) -> dict:\n    # TODO: Filter research → produce content_briefs\n    # MUST include OMIT instruction for off-topic content\n    print(f\"  Planner: filtering {len(state['research'])} items...\")\n    briefs = [\n        {\n            \"topic\": state[\"topic\"],\n            \"angle\": f\"How {state['topic']} affects {cfg['brand']} customers\",\n            \"draft_type\": \"social\",\n            \"target_platforms\": cfg[\"platforms\"],\n            \"tone\": \"engaging\",\n        }\n    ]\n    return {\"content_briefs\": briefs}\n\ndef creative_agent(state: WorkflowState) -> dict:\n    # TODO: Produce creative drafts from content_briefs\n    drafts = []\n    for brief in state[\"content_briefs\"]:\n        drafts.append({\n            \"brief_topic\": brief[\"topic\"],\n            \"target_platforms\": brief[\"target_platforms\"],\n            \"hook\": f\"Trending: {brief['topic']} — here's what it means for you\",\n            \"hashtags\": [\"#Trending\", f\"#{cfg['brand'].replace(' ', '')}\"],\n        })\n    return {\"creative_drafts\": drafts}\n\nasync def platform_agent(draft: dict) -> dict:\n    await asyncio.sleep(0)\n    return {\n        \"platform\": \"twitter\",\n        \"content\": f\"{draft['hook']} {' '.join(draft['hashtags'])}\",\n        \"draft_topic\": draft[\"brief_topic\"],\n    }\n\nasync def platform_orchestrator(state: WorkflowState) -> dict:\n    tasks = [platform_agent(d) for d in state[\"creative_drafts\"]]\n    results = await asyncio.gather(*tasks, return_exceptions=True)\n    posts = [r for r in results if not isinstance(r, Exception)]\n    return {\"platform_posts\": posts}\n\ndef qa_agent(state: WorkflowState) -> dict:\n    # TODO: 2-pass QA: safety gate + quality scoring\n    approved = []\n    for post in state[\"platform_posts\"]:\n        content = post.get(\"content\", \"\")\n        off_topic = cfg[\"off_topic_examples\"].split(\",\")[0].strip()\n        if off_topic.lower() in content.lower():\n            print(f\"  QA BLOCKED: off-topic content\")\n            continue\n        quality_ok = cfg[\"quality_angle\"].split(\" \")[0].lower() in content.lower() or len(content) > 20\n        if quality_ok:\n            post[\"qa_decision\"] = \"publish\"\n            approved.append(post)\n        else:\n            print(f\"  QA REVISE: quality below threshold\")\n    return {\"approved_posts\": approved}\n\n# ── 5. PIPELINE ─────────────────────────────────────────────────────────────\nasync def run_pipeline(topic: str):\n    state: WorkflowState = {\n        \"topic\": topic,\n        \"research\": [],\n        \"trends\": [],\n        \"content_briefs\": [],\n        \"creative_drafts\": [],\n        \"platform_posts\": [],\n        \"approved_posts\": [],\n    }\n    \n    print(f\"Running {cfg['brand']} pipeline for: {topic}\\n\")\n    \n    state.update(researcher_agent(state))\n    print(f\"  Research: {len(state['research'])} items\")\n    \n    state.update(planner_agent(state))\n    print(f\"  Briefs: {len(state['content_briefs'])}\")\n    \n    state.update(creative_agent(state))\n    print(f\"  Drafts: {len(state['creative_drafts'])}\")\n    \n    state.update(await platform_orchestrator(state))\n    print(f\"  Posts: {len(state['platform_posts'])}\")\n    \n    state.update(qa_agent(state))\n    print(f\"  Approved: {len(state['approved_posts'])}\")\n    \n    print(f\"\\n\\u2713 Pipeline complete: {len(state['approved_posts'])} post(s) ready to publish\")\n    for post in state[\"approved_posts\"]:\n        print(f\"  [{post['platform']}] {post['content'][:80]}\")\n\nasyncio.run(run_pipeline(\"sustainable food trends 2025\"))",
+      "pyodideExpected": "Pipeline complete",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "What is the purpose of `operator.add` on `creative_drafts` in the WorkflowState TypedDict?",
+          "options": [
+            "It adds a default value of an empty list to the field",
+            "Allow parallel agents to append to the same list without overwrites",
+            "It marks the field as required rather than optional",
+            "It tells LangGraph to sum numeric values across agent outputs"
+          ],
+          "correctIndex": 1,
+          "explanation": "Annotated[list[dict], operator.add] tells LangGraph to merge updates from multiple nodes by concatenating lists rather than overwriting. Without this, the last parallel agent to write creative_drafts would overwrite all earlier results."
+        },
+        {
+          "type": "fillin",
+          "stem": "The safety gate should run on a ___ model to minimize cost.",
+          "answer": "fast",
+          "hint": "binary pass/fail — cheapest model is fine",
+          "explanation": "Safety is a binary classification (safe/unsafe). It doesn't require a powerful model — a fast, cheap model like Haiku or Gemini Flash is sufficient. Running the safety gate first on the cheapest model saves the cost of quality scoring and engagement prediction for posts that would be blocked anyway."
+        },
+        {
+          "type": "mcq",
+          "stem": "Your planner generates 0 briefs. What should `creative_agent` do?",
+          "options": [
+            "Raise an exception to alert the operator",
+            "Generate placeholder drafts so the pipeline doesn't stall",
+            "Return an empty list — no briefs = no drafts",
+            "Query the DB for last run's briefs as a fallback"
+          ],
+          "correctIndex": 2,
+          "explanation": "If the planner produces 0 briefs (all trends filtered by OMIT), the creative agent should return an empty list. An empty pipeline run is correct behaviour — it means the planner found nothing worth publishing. Generating placeholder drafts bypasses the filter and wastes downstream compute."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: `asyncio.gather()` without `return_exceptions=True` is fine if all agents are reliable.",
+          "answer": false,
+          "explanation": "False — any unhandled exception in any task cancels the entire gather and raises immediately, discarding results from all other tasks. With return_exceptions=True, exceptions are captured as values so successful results are preserved. Network failures and rate limits are always possible, so return_exceptions=True is non-negotiable."
+        },
+        {
+          "type": "mcq",
+          "stem": "What makes `publisher_node` different from all other nodes with respect to RetryPolicy?",
+          "options": [
+            "It runs synchronously, so RetryPolicy doesn't apply",
+            "It's not idempotent — a retry after partial success duplicates the live post",
+            "It has no external dependencies, so failures are impossible",
+            "LangGraph prohibits RetryPolicy on terminal nodes"
+          ],
+          "correctIndex": 1,
+          "explanation": "Publisher_node calls external platform APIs (Twitter, Instagram). If the post succeeds but the acknowledgement is lost, a retry would publish the same content twice. All other nodes are idempotent — running them twice produces the same result. Publisher is not."
+        },
+        {
+          "type": "fillin",
+          "stem": "thread_id for checkpointing should be ___ so crashed runs can resume.",
+          "answer": "run_id",
+          "hint": "A unique identifier per pipeline execution",
+          "explanation": "Using a stable run_id as thread_id means LangGraph's checkpointer can find the exact in-progress run and resume from the last successful node. Using a static string would cause all runs to share the same checkpoint, making resume unreliable."
+        },
+        {
+          "type": "mcq",
+          "stem": "The creative agent uses few-shot examples from a hooks bank. What type of examples improve output MOST?",
+          "options": [
+            "Only positive examples — show the model what good looks like",
+            "Only negative examples — show the model what to avoid",
+            "A mix of positive examples (write like these) AND negative examples (avoid these — with reasons)",
+            "Random examples from the DB regardless of performance"
+          ],
+          "correctIndex": 2,
+          "explanation": "Research on few-shot prompting shows that including both positive and negative examples with explicit reasons outperforms positive-only or negative-only. The model learns the boundaries — what makes a post work AND what makes it fail — giving it richer signal for generation."
+        },
+        {
+          "type": "mcq",
+          "stem": "The planner's OMIT instruction is critical because without it:",
+          "options": [
+            "The researcher agent fetches too many results",
+            "Creative agents receive off-topic briefs and write forced content that fails QA",
+            "The state TypedDict grows too large for LangGraph",
+            "asyncio.gather raises a ValueError on empty task lists"
+          ],
+          "correctIndex": 1,
+          "explanation": "Without an OMIT instruction, the planner passes all trends to the creative agent — including irrelevant ones. The creative agent writes forced, off-brand content for these. QA rejects it, resulting in 0 approved posts and wasted LLM spend. The OMIT instruction is the pipeline's relevance filter."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: `get_performance_history()` should be called at graph compile time for efficiency.",
+          "answer": false,
+          "explanation": "False — the graph is compiled once but run many times (daily, on a schedule). Calling get_performance_history() at compile time captures a snapshot of the DB at startup and never updates. It must be called fresh inside the node each run so the creative agent always sees the latest engagement data."
+        },
+        {
+          "type": "mcq",
+          "stem": "After 30 days and 60 runs, what metric tells you the feedback loop is working?",
+          "options": [
+            "LLM cost per run decreasing over time",
+            "Number of posts approved by QA increasing",
+            "Engagement rate (actual) trending upward run-over-run, with prediction accuracy approaching 80%+",
+            "Pipeline execution time decreasing"
+          ],
+          "correctIndex": 2,
+          "explanation": "The feedback loop's purpose is to improve content quality over time. The signal that it's working is actual engagement rate trending upward (the creative agent is learning from history) combined with prediction accuracy approaching 80%+ (the engagement predictor has enough data to distinguish patterns). Cost and QA pass rate are secondary signals."
+        }
+      ]
+    }
+  ]
+}

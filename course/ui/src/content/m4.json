@@ -1,0 +1,296 @@
+{
+  "id": "m4",
+  "title": "Graphs: Wiring Agents Together",
+  "subtitle": "Replace manual state.update() calls with a LangGraph StateGraph. Nodes, edges, START, END.",
+  "durationMin": 90,
+  "pipelineVersion": "v3",
+  "difficulty": "beginner",
+  "tags": [
+    "langgraph",
+    "stategraph",
+    "nodes",
+    "edges",
+    "graph"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Why Graphs?",
+      "durationMin": 25,
+      "concept": [
+        {
+          "heading": "The problem with manual orchestration",
+          "body": "In v2 we called nodes manually:\n\n```python\nstate.update(researcher_node(state))\nstate.update(planner_node(state))\n```\n\nThis works for 2 nodes. At 10 nodes with conditionals, retries, and parallel branches, it becomes unmaintainable. You need a framework that handles the orchestration.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Graphs separate concerns",
+              "body": "With LangGraph, node functions only contain business logic. The graph handles execution order, state passing, retries, checkpointing, and parallelism. Clean separation."
+            }
+          ]
+        },
+        {
+          "heading": "StateGraph in 4 lines",
+          "body": "A LangGraph graph has three concepts:\n\n**Nodes** — functions that take state and return partial updates\n\n**Edges** — directed connections between nodes (who runs after who)\n\n**Compile** — turns the builder into a runnable graph\n\nThen you just call `graph.invoke(initial_state)` and LangGraph handles everything.",
+          "codeExample": {
+            "language": "python",
+            "filename": "graph_minimal.py",
+            "code": "from langgraph.graph import StateGraph, START, END\n\nbuilder = StateGraph(PipelineState)\nbuilder.add_node(\"researcher\", researcher_node)\nbuilder.add_node(\"planner\",    planner_node)\nbuilder.add_edge(START, \"researcher\")\nbuilder.add_edge(\"researcher\", \"planner\")\nbuilder.add_edge(\"planner\", END)\ngraph = builder.compile()\n\nresult = graph.invoke({\"topic\": \"Mumbai RE 2025\", ...})"
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "You have a StateGraph with 3 nodes but call builder.compile() without any add_edge() calls. What happens?",
+          "options": [
+            "LangGraph infers order from the add_node call sequence",
+            "compile() raises an error — no entry point",
+            "All nodes run in parallel",
+            "The first node added becomes the entry point automatically"
+          ],
+          "correctIndex": 1,
+          "explanation": "LangGraph requires explicit edges including the START entry point. Without add_edge(START, 'node'), the graph has no entry and compile (or invoke) will error."
+        },
+        {
+          "type": "mcq",
+          "stem": "What does builder.compile() return?",
+          "options": [
+            "A StateGraph object",
+            "A Python dict of node functions",
+            "A CompiledGraph (runnable object with invoke/ainvoke methods)",
+            "A list of edges"
+          ],
+          "correctIndex": 2,
+          "explanation": "compile() validates the graph structure and returns a runnable CompiledGraph. This is the object you call .invoke() or .ainvoke() on."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Building the Graph",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "Two things every graph needs",
+          "body": "After registering nodes, LangGraph needs two types of edges:\n\n1. **Content edges** — `add_edge('researcher', 'planner')` — connects nodes\n2. **Entry/exit points** — `add_edge(START, 'first_node')` and `add_edge('last_node', END)`\n\nWithout both, the graph either can't start or never terminates.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "START and END are sentinels",
+              "body": "START and END are not nodes — they're special markers from langgraph.graph. You import them and use them in add_edge() calls to define where execution begins and ends."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "from langgraph.graph import StateGraph, START, END\n\nbuilder = StateGraph(PipelineState)\nbuilder.add_node(\"researcher\", researcher_node)\nbuilder.add_node(\"planner\",    planner_node)\n\n# ⚠ TODO 1: Connect the nodes.\n# Nodes are just registered functions. LangGraph doesn't know the order\n# without edges. What function adds a directed connection?\n???\n\n# ⚠ TODO 2: Where does execution start and end?\n# Without entry/exit points, the graph compiles but invoke() doesn't know\n# which node to run first.\n???",
+        "todos": [
+          {
+            "marker": "# ⚠ TODO 1: Connect the nodes.\n# Nodes are just registered functions. LangGraph doesn't know the order\n# without edges. What function adds a directed connection?\n???",
+            "lineHint": "builder.add_edge(\"researcher\", \"planner\")",
+            "whyItMatters": "Nodes are isolated functions — LangGraph doesn't infer order from add_node call sequence. Explicit edges are the contract: after researcher finishes, run planner.",
+            "correctCode": "builder.add_edge(\"researcher\", \"planner\")",
+            "quizIndex": 0
+          },
+          {
+            "marker": "# ⚠ TODO 2: Where does execution start and end?\n# Without entry/exit points, the graph compiles but invoke() doesn't know\n# which node to run first.\n???",
+            "lineHint": "add_edge(START, ...) and add_edge(..., END)",
+            "whyItMatters": "Without START, invoke() has no entry point and raises an error. Without END, the graph loops forever or errors on completion. These are required structural elements.",
+            "correctCode": "builder.add_edge(START, \"researcher\")\nbuilder.add_edge(\"planner\", END)",
+            "quizIndex": 1
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "What function connects two nodes so planner runs after researcher?",
+          "options": [
+            "builder.add_connection('researcher', 'planner')",
+            "builder.add_edge('researcher', 'planner')",
+            "builder.link('researcher', 'planner')",
+            "builder.sequence(['researcher', 'planner'])"
+          ],
+          "correctIndex": 1,
+          "explanation": "add_edge(from, to) creates a directed connection. The first argument runs first, the second runs after."
+        },
+        {
+          "type": "mcq",
+          "stem": "Which two edges are always required in a LangGraph graph?",
+          "options": [
+            "add_edge(START, first_node) and add_edge(last_node, END)",
+            "add_edge(BEGIN, first_node) and add_edge(last_node, FINISH)",
+            "add_entry(first_node) and add_exit(last_node)",
+            "They're optional — LangGraph infers them"
+          ],
+          "correctIndex": 0,
+          "explanation": "START and END are LangGraph sentinels. The START edge defines the entry point, the END edge signals completion. Both are mandatory."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v3",
+        "code": "# pipeline.py — v3: LangGraph StateGraph\nimport anthropic, json\nfrom typing import TypedDict\nfrom langgraph.graph import StateGraph, START, END\n\nclient = anthropic.Anthropic()\nTOOLS = [{\"name\": \"web_search\", \"description\": \"Search for RE news\",\n           \"input_schema\": {\"type\": \"object\",\n                            \"properties\": {\"query\": {\"type\": \"string\"}},\n                            \"required\": [\"query\"]}}]\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: list[dict]\n    trends: list[dict]\n    content_briefs: list[dict]\n    creative_drafts: list[dict]\n    platform_posts: list[dict]\n\ndef mock_web_search(query):\n    return [{\"title\": f\"Result: {query}\", \"content\": \"Mumbai prices up 8% YoY\", \"url\": \"https://example.com\"}]\n\ndef researcher_node(state: PipelineState) -> dict:\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {state['topic']}\"}]\n    while True:\n        resp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                      tools=TOOLS, messages=messages)\n        if resp.stop_reason == \"end_turn\":\n            return {\"research\": json.loads(resp.content[-1].text)}\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [{\"role\": \"assistant\", \"content\": resp.content},\n                     {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                      \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}]\n\ndef planner_node(state: PipelineState) -> dict:\n    return {\"content_briefs\": [{\"topic\": state[\"topic\"], \"draft_type\": \"social\"}]}\n\n# Build and compile the graph\nbuilder = StateGraph(PipelineState)\nbuilder.add_node(\"researcher\", researcher_node)\nbuilder.add_node(\"planner\",    planner_node)\nbuilder.add_edge(START, \"researcher\")\nbuilder.add_edge(\"researcher\", \"planner\")\nbuilder.add_edge(\"planner\", END)\ngraph = builder.compile()\n\nif __name__ == \"__main__\":\n    result = graph.invoke({\"topic\": \"Mumbai real estate 2025\", \"research\": [],\n                           \"trends\": [], \"content_briefs\": [],\n                           \"creative_drafts\": [], \"platform_posts\": []})\n    print(result[\"content_briefs\"])"
+      },
+      "productionRef": {
+        "file": "workflow/graph.py",
+        "startLine": 40,
+        "endLine": 75,
+        "excerpt": "def get_graph() -> CompiledGraph:\n    builder = StateGraph(AgentState)\n\n    # Research phase (parallel)\n    builder.add_node(\"researcher\",       researcher_node)\n    builder.add_node(\"trend_researcher\", trend_researcher_node)\n\n    # Planning\n    builder.add_node(\"planner\",          planner_node)\n\n    # Creative (parallel)\n    builder.add_node(\"social_creative\",  social_creative_node)\n    builder.add_node(\"news_creative\",    news_creative_node)\n\n    # Distribution\n    builder.add_node(\"internal_retriever\", internal_retriever_node)\n    builder.add_node(\"platform_orchestrator\", platform_orchestrator_node)\n    builder.add_node(\"qa\",               qa_node)\n    builder.add_node(\"publisher\",        publisher_node)\n    builder.add_node(\"notifier\",         notifier_node)\n\n    # Edges — research phase fans out then converges at planner\n    builder.add_edge(START, \"researcher\")\n    builder.add_edge(START, \"trend_researcher\")\n    builder.add_edge(\"researcher\",       \"planner\")\n    builder.add_edge(\"trend_researcher\", \"planner\")\n\n    # Creative phase fans out\n    builder.add_edge(\"planner\",          \"social_creative\")\n    builder.add_edge(\"planner\",          \"news_creative\")\n\n    # ... merge at internal_retriever, then linear to END\n    return builder.compile(checkpointer=get_checkpointer())",
+        "annotations": [
+          {
+            "line": 62,
+            "text": "Two edges FROM START → researcher AND trend_researcher run simultaneously (Module 5)"
+          },
+          {
+            "line": 63,
+            "text": "Both feed INTO planner — LangGraph waits for both before running planner (fan-in)"
+          }
+        ]
+      },
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "A graph has nodes A, B, C with edges A→B and B→C but no START edge. What happens on graph.invoke()?",
+          "options": [
+            "A runs first since it was added first",
+            "LangGraph raises an error — no entry point defined",
+            "All three nodes run in parallel",
+            "C runs first (reversed order)"
+          ],
+          "correctIndex": 1,
+          "explanation": "LangGraph requires an explicit START edge. Without add_edge(START, 'A'), the graph has no entry point and raises a validation or runtime error."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: In LangGraph, adding two edges from the same node (A→B and A→C) means both B and C run in parallel after A.",
+          "answer": true,
+          "explanation": "Yes — multiple outgoing edges from one node create parallel fan-out. Both B and C will be scheduled simultaneously. This is how the production pipeline parallelises researcher and trend_researcher."
+        },
+        {
+          "type": "mcq",
+          "stem": "Why is there no add_edge('publisher', 'researcher') loop-back in the production pipeline?",
+          "options": [
+            "LangGraph doesn't support loops",
+            "Published content should not re-enter the pipeline — it would create duplicate posts",
+            "The publisher node returns END automatically",
+            "Loops require a special LoopEdge type"
+          ],
+          "correctIndex": 1,
+          "explanation": "Idempotency matters. A loop-back would re-research, re-create, and re-publish content that's already live. LangGraph DOES support loops (conditional edges), but this pipeline deliberately avoids them post-publish."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Running the Graph",
+      "durationMin": 25,
+      "concept": [
+        {
+          "heading": "invoke vs ainvoke",
+          "body": "LangGraph supports both sync and async execution:\n\n`graph.invoke(state)` — synchronous, blocks until complete\n\n`await graph.ainvoke(state)` — async, needed for parallel nodes (Module 5)\n\nFor now with sequential nodes, invoke is fine. When we add parallel branches in Module 5, we'll switch to ainvoke.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Thread IDs and checkpointing",
+              "body": "invoke() accepts a config dict: graph.invoke(state, config={'configurable': {'thread_id': 'run-001'}}). This enables checkpointing — the graph can resume from any node if it crashes. You'll add this in Module 10."
+            }
+          ]
+        }
+      ],
+      "pyodideCode": "# Simulating a LangGraph StateGraph execution\n# (langgraph not available in Pyodide — we simulate the invoke behavior)\n\nfrom typing import TypedDict\nimport json\n\nclass PipelineState(TypedDict):\n    topic: str\n    research: list[dict]\n    content_briefs: list[dict]\n\ndef researcher_node(state):\n    print(f\"[researcher] Processing: {state['topic']}\")\n    results = web_search(state['topic'])\n    print(f\"[researcher] Found {len(results)} articles\")\n    return {\"research\": results}\n\ndef planner_node(state):\n    print(f\"[planner] Creating briefs from {len(state['research'])} articles\")\n    briefs = [{\"topic\": state['topic'], \"draft_type\": \"social\",\n                \"source_count\": len(state['research'])}]\n    return {\"content_briefs\": briefs}\n\n# Simulated graph.invoke() — LangGraph does this internally\ndef simulated_invoke(initial_state, nodes):\n    state = dict(initial_state)\n    for node_fn in nodes:\n        partial = node_fn(state)\n        state.update(partial)  # merge partial update\n    return state\n\ninitial = {\"topic\": \"Mumbai stamp duty cut 2025\",\n           \"research\": [], \"content_briefs\": []}\n\nresult = simulated_invoke(initial, [researcher_node, planner_node])\nprint(f\"\\nFinal: {json.dumps(result['content_briefs'], indent=2)}\")",
+      "pyodideExpected": "Final:",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "When should you use graph.ainvoke() instead of graph.invoke()?",
+          "options": [
+            "Always — async is always better",
+            "When the graph has parallel branches (multiple edges from START or other fan-out)",
+            "When nodes are very slow",
+            "Only in production, not development"
+          ],
+          "correctIndex": 1,
+          "explanation": "ainvoke() is required for true parallelism. With sequential nodes only, invoke() works fine. In Module 5 when researcher and trend_researcher run simultaneously, we'll need ainvoke."
+        }
+      ]
+    },
+    {
+      "id": "l4",
+      "title": "Testing Multi-Agent Pipelines",
+      "durationMin": 35,
+      "concept": [
+        {
+          "heading": "Why agent pipelines are hard to test",
+          "body": "Standard unit testing breaks down for LLM-backed nodes in three ways:\n\n**1. Non-determinism.** The same input can produce different outputs on each call. A test that asserts exact string equality will be flaky. You need behavioral tests, not output equality tests.\n\n**2. Cost.** Running the full pipeline in CI costs real money. A 10-node pipeline at $0.85/run × 100 CI runs = $85 in API costs to merge a PR. You need mocking strategies.\n\n**3. State mutation complexity.** LangGraph nodes receive the full state and return a partial update. A bug where node B reads `state['researched_articles']` but node A writes `state['research']` won't surface until integration time.\n\nThe solution: test at three levels — node unit tests (mocked LLM), graph integration tests (real LLM, limited scope), and end-to-end smoke tests (once per deploy).",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "What you're actually testing",
+              "body": "You're not testing whether the LLM produces good output — that's non-deterministic and model-dependent. You're testing whether your node correctly: (1) reads the right state fields, (2) calls the LLM with the right arguments, (3) parses the LLM response correctly, (4) returns the right state shape. The LLM call itself is an integration point, not the thing under test."
+            },
+            {
+              "type": "tip",
+              "title": "Separate LLM call from node logic",
+              "body": "If your node is `def researcher_node(state) -> dict: resp = client.messages.create(...); return parse(resp)` — mock `client.messages.create` in unit tests. You're testing the parse logic and state contract, not the model."
+            }
+          ]
+        },
+        {
+          "heading": "Three test levels in practice",
+          "body": "**Level 1 — Node unit tests (mock the LLM):**\n```python\nfrom unittest.mock import patch, MagicMock\n\ndef make_mock_response(text):\n    msg = MagicMock()\n    msg.content = [MagicMock()]\n    msg.content[0].text = text\n    msg.usage.input_tokens = 100\n    msg.usage.output_tokens = 50\n    return msg\n\n@patch('agents.researcher.client')\ndef test_researcher_node_returns_list(mock_client):\n    mock_client.messages.create.return_value = make_mock_response(\n        '[{\"title\": \"Test\", \"content\": \"Mumbai prices up\", \"url\": \"https://ex.com\"}]'\n    )\n    result = researcher_node({'topic': 'Mumbai real estate', 'research': []})\n    assert isinstance(result['research'], list)\n    assert result['research'][0]['title'] == 'Test'\n```\n\n**Level 2 — Graph integration tests (real LLM, limited scope):**\n```python\nasync def test_researcher_to_planner_handoff():\n    # Run just two nodes with real LLM calls\n    # Test the STATE CONTRACT, not the output quality\n    result = await graph.ainvoke({'topic': 'Mumbai real estate', 'research': [], 'trends': []})\n    assert 'content_briefs' in result\n    assert isinstance(result['content_briefs'], list)\n    # Don't assert len > 0 — the planner may legitimately OMIT everything\n```\n\n**Level 3 — Regression snapshot tests:**\n```python\ndef test_state_schema_unchanged():\n    # If PipelineState fields change, this test catches it\n    # before agents break at runtime\n    required_fields = {'topic', 'research', 'trends', 'content_briefs', \n                       'creative_drafts', 'platform_posts', 'approved_posts'}\n    actual_fields = set(PipelineState.__annotations__.keys())\n    assert required_fields.issubset(actual_fields), \\\n        f'State schema regression: missing {required_fields - actual_fields}'\n```",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Don't test LLM quality in CI",
+              "body": "A test that asserts 'the tweet must contain a housing-related word' will fail when the model changes its output format, trigger false alarms, and train you to ignore test failures. Test structure (right fields, right types, right state contract) — not content."
+            },
+            {
+              "type": "insight",
+              "title": "Test the QA agent with fixtures",
+              "body": "The QA safety gate is the hardest to test because it makes judgment calls. Use a golden dataset: 10 posts that must pass safety + 10 that must fail, stored as fixtures. Run the safety gate against all 20 on every deploy. A score drop from 95% to 80% signals prompt drift — investigate before deploying."
+            }
+          ],
+          "codeExample": {
+            "language": "python",
+            "filename": "tests/test_qa_calibration.py",
+            "code": "# QA calibration test — golden dataset approach\nimport pytest\nfrom agents.qa_agent import safety_gate\n\nMUST_PASS = [\n    {\"main_tweet\": \"PMAY applications open — check subsidy eligibility #PMAY\"},\n    {\"main_tweet\": \"RBI holds repo rate — EMIs stable for home loan buyers\"},\n    {\"main_tweet\": \"Metro Phase 3 boosts Whitefield property demand #Bengaluru\"},\n]\n\nMUST_FAIL = [\n    {\"main_tweet\": \"BJP housing scheme guarantees 40% returns — vote for homes\"},\n    {\"main_tweet\": \"All Hindus should buy homes in this locality — community living\"},\n    {\"main_tweet\": \"Property prices WILL rise 100% by 2026 — guaranteed investment\"},\n]\n\n@pytest.mark.parametrize(\"post\", MUST_PASS)\ndef test_safety_allows_valid_housing_content(post):\n    result = safety_gate(post)\n    assert result[\"passed\"], f\"Safety gate wrongly blocked: {post['main_tweet'][:60]}\"\n\n@pytest.mark.parametrize(\"post\", MUST_FAIL)  \ndef test_safety_blocks_violations(post):\n    result = safety_gate(post)\n    assert not result[\"passed\"], f\"Safety gate missed violation: {post['main_tweet'][:60]}\""
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "You change the OMIT instruction wording in the planner system prompt. How do you know it didn't break downstream nodes?",
+          "options": [
+            "Run the full pipeline and manually review outputs",
+            "Run level-2 graph integration tests that validate state contracts (content_briefs is a list, each brief has required fields) — content quality is non-deterministic but structure is not",
+            "The TypedDict will catch it at runtime",
+            "Check git diff — if the prompt looks right, it's fine"
+          ],
+          "correctIndex": 1,
+          "explanation": "State contract tests verify structure, not content. If content_briefs still returns a list of dicts with the required fields, the planner is functioning. Whether the OMIT instruction improved or degraded filtering quality is a separate A/B test, not a CI gate."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: Mocking the LLM client in node unit tests means you're testing the same code that runs in production.",
+          "answer": true,
+          "explanation": "True — you're testing the node's logic: state reads, LLM call arguments, response parsing, state writes. The LLM call is the integration point. Mocking it isolates the node's own code, which is the same code that runs in production. The only thing not tested is the model's output, which you can't deterministically test anyway."
+        },
+        {
+          "type": "mcq",
+          "stem": "The QA agent's safety gate passes a post that contains a subtle policy violation (RERA mentioned alongside a political party name). This is caught by:",
+          "options": [
+            "TypedDict validation",
+            "The golden dataset calibration test, assuming it includes this pattern in MUST_FAIL",
+            "The quality scoring pass (it catches what safety misses)",
+            "Nothing — LLM judgment calls can't be tested systematically"
+          ],
+          "correctIndex": 1,
+          "explanation": "Systematic testing of LLM judgment requires golden datasets. The calibration test runs safety_gate against known violating examples on every deploy. If a prompt change causes a previously-caught violation to slip through, the test fails before it reaches production."
+        }
+      ]
+    }
+  ]
+}

@@ -39,6 +39,7 @@ def extract_json(text: str):
       - Markdown-fenced JSON (```json ... ```)
       - JSON preceded or followed by prose
       - Literal newlines/tabs inside JSON string values (LLM formatting quirk)
+      - Truncated / malformed JSON (via json_repair fallback)
     Returns parsed Python object or None on failure.
     """
     if not text:
@@ -57,7 +58,8 @@ def extract_json(text: str):
         pass
 
     # 2. Extract content from a markdown code fence if present
-    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    # Use greedy match to get the LAST closing fence (handles backticks inside body text)
+    fence = re.search(r"```(?:json)?\s*([\s\S]+)```", text)
     if fence:
         candidate = fence.group(1).strip()
         try:
@@ -68,9 +70,22 @@ def extract_json(text: str):
             return json.loads(_fix_literal_newlines(candidate))
         except json.JSONDecodeError:
             pass
+        # 2c. json_repair handles truncated output and unescaped chars
+        try:
+            import json_repair
+            result = json_repair.loads(candidate)
+            if result is not None:
+                return result
+        except Exception:
+            pass
 
-    # 3. Find the first `[` or `{` and match to its closing bracket
-    for open_char, close_char in [("[", "]"), ("{", "}")]:
+    # 3. Find the first `[` or `{` and match to its closing bracket.
+    # Important: only try the bracket type that matches the outermost container.
+    # If the first bracket is `[` (JSON array), don't fall through to `{` matching
+    # on failure — that would return the first complete nested object as a dict.
+    first_open = next((c for c in text if c in ("[", "{")), None)
+    pairs = [("[", "]"), ("{", "}")] if first_open == "{" else [("[", "]")]
+    for open_char, close_char in pairs:
         start = text.find(open_char)
         if start == -1:
             continue
@@ -89,5 +104,14 @@ def extract_json(text: str):
                             return json.loads(_fix_literal_newlines(candidate))
                         except json.JSONDecodeError:
                             break  # malformed — try next open_char
+
+    # 4. Last resort: json_repair on the full text (handles truncated/malformed JSON)
+    try:
+        import json_repair
+        result = json_repair.loads(text)
+        if result is not None and result != "" and result != [] and result != {}:
+            return result
+    except Exception:
+        pass
 
     return None

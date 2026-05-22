@@ -43,7 +43,14 @@ Return JSON:
   "primary_keyword": "...",
   "secondary_keywords": ["...", "..."],
   "schema_type": "NewsArticle|HowTo|FAQ"
-}"""
+}
+
+CREATIVE ANGLE INTEGRITY:
+The draft's `angle` field is the creative director's instruction. Your role is to
+EXPRESS that angle in platform-appropriate format — not replace or dilute it.
+If the angle says "Hyderabad metro expansion makes 3 localities the new hotspots",
+every line of output should reinforce that framing. Never drift into generic
+real estate copy unrelated to the angle."""
 
 
 async def run_housing_news_agent(draft: CreativeDraft, settings) -> PlatformPost:
@@ -56,19 +63,27 @@ async def run_housing_news_agent(draft: CreativeDraft, settings) -> PlatformPost
         for l in links
     )
 
+    pull_quote_hint = draft.get("pull_quote", "")
+    meta_hint = draft.get("meta_description", "")
+    slug_hint = draft.get("slug", "")
+
     user_message = f"""
 Angle: {draft['angle']}
 Headline: {draft['headline']}
 Hook: {draft['hook']}
-Full body: {draft['body']}
+Full body draft: {draft['body']}
 Meme / data callout: {draft.get('meme_concept', '')}
 SEO keywords: {', '.join(draft.get('seo_keywords', []))}
 Urgency context: {draft.get('urgency_hook', '')}
+{f'Suggested pull quote: {pull_quote_hint}' if pull_quote_hint else ''}
+{f'Suggested meta description: {meta_hint}' if meta_hint else ''}
+{f'Suggested slug: {slug_hint}' if slug_hint else ''}
 
 INTERNAL LINKS TO WEAVE IN (mandatory):
 {links_text if links_text else '  - https://housing.com (general CTA)'}
 
-Write the full housing.com/news article now."""
+Expand the body to 700-1000 words if needed, weave in the internal links naturally,
+and produce the final JSON with all fields."""
 
     logger.info("Housing News agent: draft='%s' | internal_links=%d",
                 draft.get("headline", "")[:60], len(links))
@@ -77,7 +92,7 @@ Write the full housing.com/news article now."""
     with Timer() as t:
         resp = await acall_message(
             client, settings.model_balanced, SYSTEM,
-            [{"role": "user", "content": user_message}], 2200,
+            [{"role": "user", "content": user_message}], 3500,
         )
     raw_response = resp.content[0].text
     log_llm_call(
@@ -97,6 +112,10 @@ Write the full housing.com/news article now."""
 
     data = _parse(raw_response)
     article_body = data.get("article_body", draft["body"])
+
+    # Embed city name hyperlinks in the article body (housing.com/news renders markdown)
+    from tools.link_embedder import embed_city_links
+    article_body = embed_city_links(article_body, "housing_news", links)
 
     post = {
         "id": str(uuid.uuid4()),

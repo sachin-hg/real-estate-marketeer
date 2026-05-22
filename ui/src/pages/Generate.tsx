@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
-import { triggerDirectRun, getRunStatus } from '../lib/api'
-import type { RunStatus, Post } from '../lib/types'
+import { useSearchParams, Link } from 'react-router-dom'
+import { triggerRun, triggerDirectRun, getRunStatus } from '../lib/api'
+import type { RunStatus } from '../lib/types'
 
-const ALL_PLATFORMS = ['twitter', 'instagram', 'housing_news', 'youtube']
+const ALL_PLATFORMS = ['twitter', 'instagram', 'housing_news', 'youtube', 'linkedin']
 
 const PLATFORM_BADGE: Record<string, string> = {
   twitter: 'bg-sky-100 text-sky-700',
   instagram: 'bg-pink-100 text-pink-700',
   housing_news: 'bg-emerald-100 text-emerald-700',
   youtube: 'bg-red-100 text-red-700',
+  linkedin: 'bg-blue-100 text-blue-700',
 }
 
 const EXAMPLE_TOPICS = [
@@ -35,30 +36,26 @@ export default function Generate() {
   const [dryRun, setDryRun] = useState(true)
   const [runId, setRunId] = useState<string | null>(null)
 
+  // If topic is provided: direct run (enriches the specific topic).
+  // If topic is empty: full scheduled run (auto-researches trending topics).
   const triggerMut = useMutation({
     mutationFn: () =>
-      triggerDirectRun(topic, {
-        dry_run: dryRun,
-        target_platforms: platforms,
-      }),
-    onSuccess: (data) => {
-      setRunId(data.run_id)
-    },
+      topic.trim()
+        ? triggerDirectRun(topic.trim(), { dry_run: dryRun, target_platforms: platforms })
+        : triggerRun({ dry_run: dryRun, target_platforms: platforms }),
+    onSuccess: (data) => setRunId(data.run_id),
   })
 
-  const { data: runStatus, refetch: refetchStatus } = useQuery<RunStatus>({
+  const { data: runStatus } = useQuery<RunStatus>({
     queryKey: ['run-status', runId],
     queryFn: () => getRunStatus(runId!),
     enabled: !!runId,
-    refetchInterval: runId ? 2000 : false,
+    refetchInterval: (query) => {
+      const status = (query.state.data as RunStatus | undefined)?.status
+      if (!runId || status === 'completed' || status === 'failed') return false
+      return 2000
+    },
   })
-
-  // Stop polling when done
-  useEffect(() => {
-    if (runStatus?.status === 'completed' || runStatus?.status === 'failed') {
-      void refetchStatus()
-    }
-  }, [runStatus?.status, refetchStatus])
 
   const togglePlatform = (p: string) => {
     setPlatforms((prev) =>
@@ -68,7 +65,7 @@ export default function Generate() {
 
   const isRunning = runStatus?.status === 'running'
   const isDone = runStatus?.status === 'completed' || runStatus?.status === 'failed'
-  const publishedPosts: Post[] = Array.isArray(runStatus?.published) ? (runStatus.published as Post[]) : []
+  const publishedPosts = runStatus?.published ?? []
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -81,12 +78,13 @@ export default function Generate() {
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">
               Topic / URL / Trend
+              <span className="ml-1 font-normal text-slate-400">(optional — leave empty to auto-research trends)</span>
             </label>
             <textarea
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               rows={4}
-              placeholder="e.g. IPL final tonight, or paste a URL..."
+              placeholder="e.g. IPL final tonight, or paste a URL... or leave empty to auto-research"
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-brand"
             />
           </div>
@@ -134,10 +132,12 @@ export default function Generate() {
 
           <button
             onClick={() => triggerMut.mutate()}
-            disabled={!topic.trim() || platforms.length === 0 || isRunning || triggerMut.isPending}
+            disabled={platforms.length === 0 || isRunning || triggerMut.isPending}
             className="w-full bg-brand text-white font-medium text-sm rounded-lg px-4 py-2.5 hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
-            {triggerMut.isPending || isRunning ? 'Generating...' : 'Generate'}
+            {triggerMut.isPending || isRunning
+              ? 'Generating...'
+              : topic.trim() ? 'Generate from Topic' : 'Auto-Research & Generate'}
           </button>
 
           {triggerMut.isError && (
@@ -167,9 +167,9 @@ export default function Generate() {
         ) : (
           /* Progress + results */
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-slate-800">
-                Run {runId}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-slate-800 font-mono text-sm">
+                {runId}
               </h3>
               {runStatus && (
                 <span
@@ -183,6 +183,14 @@ export default function Generate() {
                 >
                   {runStatus.status}
                 </span>
+              )}
+              {runId && (
+                <Link
+                  to={`/runs/${runId}`}
+                  className="ml-auto text-xs text-brand hover:underline flex-shrink-0"
+                >
+                  View full run →
+                </Link>
               )}
             </div>
 
@@ -237,15 +245,16 @@ export default function Generate() {
                 <h4 className="text-sm font-semibold text-slate-700">
                   {publishedPosts.length} Post{publishedPosts.length !== 1 ? 's' : ''} Generated
                 </h4>
-                {publishedPosts.map((post: Post, i: number) => (
-                  <div
+                {publishedPosts.map((post, i) => (
+                  <Link
                     key={post.post_id ?? i}
-                    className="bg-slate-50 rounded-lg p-3 space-y-2"
+                    to={post.post_id ? `/posts/${post.post_id}` : '#'}
+                    className="block bg-slate-50 hover:bg-slate-100 rounded-lg p-3 space-y-2 transition-colors group"
                   >
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          PLATFORM_BADGE[post.platform] ?? 'bg-slate-100 text-slate-600'
+                          PLATFORM_BADGE[post.platform ?? ''] ?? 'bg-slate-100 text-slate-600'
                         }`}
                       >
                         {post.platform}
@@ -255,17 +264,28 @@ export default function Generate() {
                           QA {post.qa_overall.toFixed(1)}
                         </span>
                       )}
+                      <span className="ml-auto text-xs text-brand opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
                     </div>
                     <p className="text-sm text-slate-700 line-clamp-3">{post.content}</p>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
 
             {isDone && publishedPosts.length === 0 && !runStatus?.error && (
-              <p className="text-sm text-slate-400">
-                No posts were approved for this run.
-              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 space-y-1">
+                <p className="font-medium">No posts published for this run.</p>
+                {(runStatus?.platform_posts_count ?? 0) > 0 && (
+                  <p className="text-xs text-amber-700">
+                    {runStatus!.platform_posts_count} platform post{runStatus!.platform_posts_count !== 1 ? 's' : ''} were generated but rejected by QA.
+                  </p>
+                )}
+                {runId && (
+                  <Link to={`/runs/${runId}`} className="text-xs text-brand hover:underline block">
+                    View QA details in run log →
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPosts, rejectPost } from '../lib/api'
 import type { Post } from '../lib/types'
@@ -10,23 +10,32 @@ const PLATFORM_BADGE: Record<string, string> = {
   youtube: 'bg-red-100 text-red-700',
 }
 
+// 9 AM IST = 03:30 UTC, 6 PM IST = 12:30 UTC
+const RUN_TIMES_UTC = [{ h: 3, m: 30 }, { h: 12, m: 30 }]
+const MS_PER_DAY = 86_400_000
+
 function nextRunCountdown(): string {
-  const now = new Date()
-  // IST offset = UTC+5:30
-  const istOffset = 5.5 * 60 * 60 * 1000
-  const istNow = new Date(now.getTime() + istOffset)
-
-  const candidates = [9, 18].map((hour) => {
-    const target = new Date(istNow)
-    target.setUTCHours(hour, 0, 0, 0)
-    if (target <= istNow) target.setUTCDate(target.getUTCDate() + 1)
-    return target.getTime() - istNow.getTime()
+  const nowMs = Date.now()
+  const candidates = RUN_TIMES_UTC.map(({ h, m }) => {
+    const target = new Date()
+    target.setUTCHours(h, m, 0, 0)
+    let diff = target.getTime() - nowMs
+    if (diff <= 0) diff += MS_PER_DAY
+    return diff
   })
-
   const ms = Math.min(...candidates)
   const hrs = Math.floor(ms / 3_600_000)
   const mins = Math.floor((ms % 3_600_000) / 60_000)
   return `${hrs}h ${mins}m`
+}
+
+function useCountdown(): string {
+  const [countdown, setCountdown] = useState(nextRunCountdown)
+  useEffect(() => {
+    const id = setInterval(() => setCountdown(nextRunCountdown()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  return countdown
 }
 
 function LivePostCard({ post }: { post: Post }) {
@@ -129,13 +138,13 @@ export default function LiveFeed() {
   const [platform, setPlatform] = useState('')
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['live-posts', platform],
-    queryFn: () => getPosts({ platform: platform || undefined, limit: 50 }),
+    queryKey: ['live-posts', platform, 'published'],
+    queryFn: () => getPosts({ platform: platform || undefined, limit: 50, post_status: 'published' }),
     refetchInterval: 30_000,
   })
 
   const posts = data?.items ?? []
-  const countdown = nextRunCountdown()
+  const countdown = useCountdown()
 
   return (
     <div className="space-y-5">

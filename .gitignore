@@ -1,14 +1,47 @@
+# ── Secrets ───────────────────────────────────────────────────────────────────
 .env
+.env.*
+!.env.example
+
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.pyw
+*.egg-info/
+.eggs/
+dist/
+build/
 .venv/
 venv/
-output/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+ui/dist/
+course/ui/dist/
+
+# ── Databases ─────────────────────────────────────────────────────────────────
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+
+# ── Generated output ──────────────────────────────────────────────────────────
+output/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
-*.egg-info/
-dist/
-build/
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo

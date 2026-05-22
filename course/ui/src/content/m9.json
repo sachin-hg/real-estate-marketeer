@@ -1,0 +1,251 @@
+{
+  "id": "m9",
+  "title": "QA: Agents Evaluating Agents",
+  "subtitle": "3-pass quality assurance: safety gate → quality scoring → engagement prediction. Plus the revision loop.",
+  "durationMin": 120,
+  "pipelineVersion": "v8",
+  "difficulty": "advanced",
+  "tags": [
+    "qa",
+    "safety",
+    "quality-scoring",
+    "engagement-prediction",
+    "revision-loop",
+    "3-pass"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Why 3 Passes?",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "Single judge bias",
+          "body": "Research on LLM-as-judge shows that a single judge exhibits positional bias — the same content scored twice may get different scores based on where it appears in the prompt. A single pass scoring both safety and quality produces inconsistent results.\n\nThree independent passes eliminate this:\n1. **Safety gate** (binary, fast model) — is this safe to publish?\n2. **Quality scoring** (per-dimension, Sonnet) — is this good enough?\n3. **Engagement prediction** (quantitative, Opus) — will this perform?",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Fast-fail ordering matters",
+              "body": "Safety runs first on the cheapest model. A post that fails safety never reaches quality scoring (costs ~10× more) or engagement prediction (costs ~50× more). The ordering is a cost optimization, not just a logical one."
+            },
+            {
+              "type": "mistake",
+              "title": "One judge for everything",
+              "body": "A single 'rate this post 1-10' prompt scores safety, quality, and engagement simultaneously. Research shows this produces correlated errors — a model that rates safety highly also tends to rate quality highly, regardless of actual content."
+            }
+          ]
+        },
+        {
+          "heading": "Three independent judges",
+          "body": "Each pass uses a separate system prompt with no knowledge of the other passes' results. This prevents anchoring — where the first score influences the second.\n\nThe engagement predictor only sees the post and historical performance data, not the safety or quality scores.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Revise vs reject",
+              "body": "Only the quality pass can issue a 'revise' decision. Safety violations are always 'reject' (can't fix hate speech by rewriting). Engagement below threshold triggers 'revise' with specific improvement instructions."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Why does the safety gate run on Gemini Flash / Haiku instead of Opus?",
+          "options": [
+            "Safety decisions are too simple for Opus",
+            "Fast fail: safety is binary (pass/fail), runs first — if it fails, you save the cost of quality + engagement scoring",
+            "Opus is bad at safety classification",
+            "Haiku has better safety training"
+          ],
+          "correctIndex": 1,
+          "explanation": "Safety is a binary classification on clear criteria. Fast fail on the cheapest model saves quality scoring (~10×) and engagement prediction (~50×) costs for posts that would be blocked anyway."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: A 'revise' decision from the QA agent means the post is rejected.",
+          "answer": false,
+          "explanation": "False — 'revise' means 'send back to the platform agent with fix instructions'. The post gets another chance. 'Reject' means permanent discard. 'Publish' means forward to publisher."
+        },
+        {
+          "type": "mcq",
+          "stem": "What is the difference between 'revise' and 'reject' in the QA decision?",
+          "options": [
+            "Revise = minor issues fixable by re-running platform agent; Reject = unfixable (safety violation, no RE angle)",
+            "Revise = human reviews it; Reject = automatic discard",
+            "Revise = try a different model; Reject = try same model again",
+            "They mean the same thing"
+          ],
+          "correctIndex": 0,
+          "explanation": "Revise = fixable with specific instructions (char count, hashtag count, tone). Reject = structurally broken (religious content, no RE angle, brand voice totally wrong). Max 2 revision attempts."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "The Safety Gate",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "Hard blocks and the PMAY exception",
+          "body": "The safety gate has hard blocks: religious content, political party names, forward-looking price guarantees, named politicians.\n\nBut Housing.com actively covers government housing policy — PMAY, RERA, PM Awas Yojana. Without an explicit exception, the safety gate blocks legitimate content about government schemes because they mention 'PM' or 'pradhan mantri'.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Government policy ≠ political campaigning",
+              "body": "'PMAY beneficiaries can apply online' is factual reporting on a housing scheme. 'BJP's housing scheme is great' is political promotion. The safety gate must distinguish between them — without an explicit carve-out, it blocks both."
+            }
+          ]
+        },
+        {
+          "heading": "Adversarial and ambiguous inputs",
+          "body": "The safety gate's PMAY exception creates an attack surface. A post that mentions 'PMAY' alongside a political party name is ambiguous — is it reporting on government policy or associating the party with the scheme?\n\nThree real patterns that fool safety gates:\n\n**1. Exception laundering.** 'BJP's PMAY scheme will help all Indians find homes — vote for development!' — uses the allowed PMAY keyword to smuggle political content past the hard block.\n\n**2. Numeric guarantee in disguise.** 'RERA-registered projects in this corridor have historically risen 40% YoY — timing is everything' — avoids the word 'will' but still implies a forward-looking guarantee.\n\n**3. Coded language.** 'Properties in this area are popular with the [community] community' — avoids explicit religious/caste terms but encodes the message.\n\nMitigation strategy: the safety gate's system prompt should include COUNTER-EXAMPLES — posts that use allowed keywords but still violate the policy. These aren't in the current implementation and represent a hardening opportunity.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Testing adversarial robustness",
+              "body": "Add 5-10 adversarial examples to the golden dataset (Module 4 testing lesson): posts that look safe but aren't. Run them against safety_gate() in CI. If any return passed=True, the safety prompt needs strengthening. This is how you catch exception laundering before it ships."
+            },
+            {
+              "type": "tip",
+              "title": "The counter-example pattern",
+              "body": "Add a THESE STILL VIOLATE section to the safety gate prompt: 'BJP's RERA implementation is strong — vote accordingly' → political. 'PMAY projects will guarantee 35% appreciation' → price guarantee. Counter-examples are the adversarial equivalent of negative examples in the hooks bank."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "SAFETY_SYSTEM = \"\"\"\nReview this post for Housing.com brand safety violations.\n\nHARD BLOCKS (reject immediately):\n- Religious/caste/communal content\n- Political PARTY names or election campaigning\n- Forward-looking price guarantees with numbers\n- Named politicians as individuals\n\n# ⚠ TODO: What critical carve-out is missing?\n# Without this, the safety gate wrongly REJECTS posts about:\n# PMAY, RERA, PM Awas Yojana, Swachh Bharat — government housing schemes\n# that Housing.com actively covers.\n# What exception rule keeps government POLICY content unblocked?\n???\n\nOutput ONLY: {\"passed\": bool, \"violations\": [], \"categories\": []}\n\"\"\"",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "EXCEPTION: government housing POLICY is allowed",
+            "whyItMatters": "Without this carve-out, the safety gate blocks content about PMAY, RERA, RBI rate changes — all of which Housing.com legitimately covers. The PMAY exception is what separates 'government housing policy coverage' from 'political party promotion'.",
+            "correctCode": "EXCEPTION — these are ALLOWED (government housing policy, not party politics):\n- PMAY, PM Awas Yojana, Pradhan Mantri Awas Yojana\n- RERA, Real Estate Regulatory Authority\n- Swachh Bharat, Smart Cities Mission\n- RBI rate decisions, repo rate changes\n- Any government SCHEME or REGULATION (not party)",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Which post should the safety gate ALLOW?",
+          "options": [
+            "'BJP's housing scheme is great for homebuyers'",
+            "'PMAY beneficiaries can now apply online — check if you qualify'",
+            "'Property prices WILL rise 40% by 2026, guaranteed!'",
+            "'Home prices may rise — experts predict moderate growth'"
+          ],
+          "correctIndex": 1,
+          "explanation": "PMAY is a government housing scheme — factual reporting on it is the EXCEPTION. Option A names a political party (block). Option C is a forward-looking price guarantee with numbers (block). Option D is allowed but for a different reason (hedged language, no specific claim)."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v8 (QA safety gate)",
+        "code": "SAFETY_SYSTEM = \"\"\"\nReview this post for Housing.com brand safety violations.\n\nHARD BLOCKS (reject immediately):\n- Religious/caste/communal content\n- Political PARTY names or election campaigning\n- Forward-looking price guarantees with numbers\n- Named politicians as individuals\n\nEXCEPTION — these are ALLOWED (government housing policy, not politics):\n- PMAY, PM Awas Yojana, Pradhan Mantri Awas Yojana\n- RERA, Real Estate Regulatory Authority\n- Swachh Bharat, Smart Cities Mission\n- RBI rate decisions, repo rate changes\n- Any government SCHEME or REGULATION (not party)\n\nOutput ONLY JSON: {\"passed\": bool, \"violations\": [], \"categories\": []}\n\"\"\"\n\nQUALITY_SYSTEM = \"\"\"\nScore this social post for Housing.com quality (0.0-1.0 each dimension):\n- re_relevance: genuine real estate angle (not just keyword mention)\n- brand_voice: Hinglish wit, trend-jacked, Housing.com personality\n- platform_fit: format correct (char count, hashtag count)\n- engagement_potential: would a Mumbai millennial stop scrolling?\n\nDecision:\n- All dims >= 0.7 AND no platform violations → \"publish\"\n- Any fixable issue (char count, hashtag count) → \"revise\" with specific instructions\n- re_relevance < 0.5 OR brand_voice < 0.4 → \"reject\"\n\nOutput: {\"scores\": {}, \"overall\": float, \"decision\": str,\n          \"revision_instructions\": str, \"locked_elements\": []}\n\"\"\"\n\nasync def qa_node(state: PipelineState) -> dict:\n    approved = []\n    for post in state[\"platform_posts\"]:\n        # Pass 1: Safety (binary, fast model)\n        safety_resp = client.messages.create(\n            model=\"claude-haiku-4-5-20251001\", max_tokens=256,\n            system=SAFETY_SYSTEM,\n            messages=[{\"role\": \"user\", \"content\": json.dumps(post)}]\n        )\n        safety = json.loads(safety_resp.content[0].text)\n        if not safety[\"passed\"]:\n            continue  # hard reject — no further passes\n        \n        # Pass 2: Quality (Sonnet — nuanced scoring)\n        quality_resp = client.messages.create(\n            model=\"claude-sonnet-4-6\", max_tokens=512,\n            system=QUALITY_SYSTEM,\n            messages=[{\"role\": \"user\", \"content\": json.dumps(post)}]\n        )\n        quality = json.loads(quality_resp.content[0].text)\n        \n        if quality[\"decision\"] == \"publish\":\n            post[\"qa_overall\"] = quality[\"overall\"]\n            approved.append(post)\n        elif quality[\"decision\"] == \"revise\" and post.get(\"qa_attempt\", 0) < 2:\n            # Re-queue with revision instructions\n            revised = dict(post)\n            revised[\"revision_instructions\"] = quality[\"revision_instructions\"]\n            revised[\"locked_elements\"] = quality.get(\"locked_elements\", [])\n            revised[\"qa_attempt\"] = post.get(\"qa_attempt\", 0) + 1\n            state[\"platform_posts\"].append(revised)\n    \n    return {\"approved_posts\": approved}"
+      },
+      "productionRef": {
+        "file": "agents/qa_agent.py",
+        "startLine": 1,
+        "endLine": 40,
+        "excerpt": "SAFETY_SYSTEM = \"\"\"\nYou are a brand safety reviewer for Housing.com India.\n\nHARD BLOCKS — reject any post containing:\n1. Religious, caste, or communal references (any religion/caste)\n2. Political PARTY names or campaign slogans\n3. Specific forward-looking price predictions ('will rise X%')\n4. Named individual politicians\n\nEXCEPT these government housing initiatives (ALLOWED):\n- PMAY / Pradhan Mantri Awas Yojana / PM Awas\n- RERA / MahaRERA / any state RERA\n- Smart Cities Mission, AMRUT\n- RBI monetary policy (repo rate, home loan rates)\n- Swachh Bharat Abhiyan\nReason: These are government POLICY not party POLITICS.\n\nOutput JSON only: {\"passed\": bool, \"violations\": [str], \"categories\": [str]}\n\"\"\"",
+        "annotations": [
+          {
+            "line": 9,
+            "text": "The EXCEPT block is the critical carve-out — without it, PMAY posts get blocked"
+          },
+          {
+            "line": 15,
+            "text": "Explicit reason given in prompt — the model knows WHY this exception exists"
+          }
+        ]
+      },
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Post scores: re_relevance=0.9, brand_voice=0.8, platform_fit=0.6 (tweet is 295 chars), engagement=0.7. Decision?",
+          "options": [
+            "publish — overall average is above 0.7",
+            "revise — platform_fit below threshold with a fixable issue (cut 15 chars)",
+            "reject — any score below threshold = reject",
+            "publish — only re_relevance matters"
+          ],
+          "correctIndex": 1,
+          "explanation": "platform_fit=0.6 is below threshold and it's fixable (cut 15 chars). The quality judge issues 'revise' with instructions: 'main_tweet is 295 chars, cut 15 chars without losing the trend hook'. The post goes back to the Twitter agent."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Quality Scoring & Revision Loop",
+      "durationMin": 50,
+      "concept": [
+        {
+          "heading": "The revision loop",
+          "body": "When QA issues 'revise', it provides two things:\n\n**locked_elements** — what must NOT change (the trend hook, the brand voice, the Hinglish phrasing)\n\n**revision_instructions** — what specifically to fix (cut 15 chars, reduce to 4 hashtags, make the RE angle clearer)\n\nThe platform agent re-runs with both. It knows what to preserve and what to change.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Why not just re-run from scratch?",
+              "body": "Rejecting a fixable post wastes all the research, planning, and creative work upstream. A post that's 295 chars instead of 280 doesn't need a new creative direction — it needs a targeted cut. locked_elements preserves the value; revision_instructions makes the fix precise.\n\nImportant caveat: the revision loop assumes convergence — that applying specific instructions will improve the post monotonically. This breaks when: (a) revision instructions are contradictory ('cut to 280 chars AND add more context'), (b) the creative direction itself is wrong and targeted fixes can't fix a fundamentally off-brand angle, (c) the platform agent repeats the same mistake despite different instructions. Max 2 attempts is a pragmatic budget, not a guarantee of improvement. High-stakes content (verified accounts, paid placements) should route failed revisions to human review, not silent rejection."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "if quality[\"decision\"] == \"revise\":\n    # ⚠ TODO: What happens here?\n    # Hint: QA says \"tweet is 312 chars — cut 32 without losing the punchline\"\n    # We have specific, actionable instructions.\n    # Should we throw the post away? Or use these instructions?\n    # The platform agent already knows how to write this post.\n    # Where does the revised post come from?\n    ???",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "Re-queue post with revision_instructions for platform agent",
+            "whyItMatters": "Discarding a fixable post wastes all upstream work (research + planner + creative = 80% of run cost). The QA agent has already identified exactly what to fix. Re-calling the platform agent with those instructions costs only the platform agent call.",
+            "correctCode": "if post.get(\"qa_attempt\", 0) < 2:\n        revised = dict(post)\n        revised[\"revision_instructions\"] = quality[\"revision_instructions\"]\n        revised[\"locked_elements\"] = quality.get(\"locked_elements\", [])\n        revised[\"qa_attempt\"] = post.get(\"qa_attempt\", 0) + 1\n        state[\"platform_posts\"].append(revised)\n        # Platform agent will re-run with these instructions on next QA pass",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "QA says 'revise — tweet is 295 chars, cut 15 without losing the trend hook'. Max revision attempts = 2. This is attempt 1. What happens?",
+          "options": [
+            "The post is rejected permanently",
+            "The post goes back to the Twitter platform agent with the cut instructions and locked_elements",
+            "A human is asked to review it",
+            "QA tries a different scoring approach"
+          ],
+          "correctIndex": 1,
+          "explanation": "Attempt 1 of max 2 — re-queue with revision_instructions. The Twitter agent gets 'cut 15 chars, keep the trend hook [IPL ka season hai...]'. It produces a revised version that goes back through QA."
+        }
+      ],
+      "pyodideCode": "# Simulate the 3-pass QA system\nimport json\n\n# Mock posts to evaluate\nposts = [\n    {\"platform\": \"twitter\",\n     \"main_tweet\": \"IPL ka season hai, ghar dekhne ka bhi 🏏 Andheri East mein 2BHK starting ₹85L #IPL2025 #MumbaiHomes\",\n     \"char_count\": 98, \"hashtags\": [\"#IPL2025\", \"#MumbaiHomes\"],\n     \"qa_attempt\": 0},\n    {\"platform\": \"twitter\",\n     \"main_tweet\": \"BJP's housing scheme will make property prices rise 40% guaranteed! All Indians should buy now!\",\n     \"char_count\": 94, \"hashtags\": [\"#Housing\"],\n     \"qa_attempt\": 0},\n    {\"platform\": \"twitter\",\n     \"main_tweet\": \"Real estate market shows promising trends. Property investment is beneficial.\",\n     \"char_count\": 75, \"hashtags\": [\"#RealEstate\"],\n     \"qa_attempt\": 0},\n]\n\ndef safety_check(post):\n    \"\"\"Pass 1: Binary safety gate\"\"\"\n    text = post[\"main_tweet\"].lower()\n    blocks = [\"bjp\", \"congress\", \"aap\", \"guaranteed\", \"will rise\", \"100%\"]\n    violations = [b for b in blocks if b in text]\n    return {\"passed\": len(violations) == 0, \"violations\": violations}\n\ndef quality_check(post):\n    \"\"\"Pass 2: Quality scoring\"\"\"\n    text = post[\"main_tweet\"]\n    re_relevance = 0.9 if any(w in text.lower() for w in [\"flat\", \"bhk\", \"home\", \"ghar\", \"property\"]) else 0.3\n    brand_voice = 0.8 if \"ka\" in text or \"bhi\" in text or \"mein\" in text else 0.4\n    platform_fit = 0.9 if post[\"char_count\"] <= 280 else 0.5\n    overall = (re_relevance + brand_voice + platform_fit) / 3\n    if overall >= 0.7: decision = \"publish\"\n    elif re_relevance < 0.5: decision = \"reject\"\n    else: decision = \"revise\"\n    return {\"scores\": {\"re_relevance\": re_relevance, \"brand_voice\": brand_voice,\n                        \"platform_fit\": platform_fit},\n            \"overall\": round(overall, 2), \"decision\": decision,\n            \"revision_instructions\": \"Improve RE angle and Hinglish voice\" if decision == \"revise\" else \"\"}\n\nprint(\"Running 3-pass QA:\\n\")\napproved = []\nfor post in posts:\n    print(f\"Post: {post['main_tweet'][:60]}...\")\n    safety = safety_check(post)\n    if not safety[\"passed\"]:\n        print(f\"  Pass 1 FAIL: {safety['violations']}\\n\")\n        continue\n    print(f\"  Pass 1: SAFE\")\n    quality = quality_check(post)\n    print(f\"  Pass 2: {quality['decision'].upper()} (overall: {quality['overall']})\")\n    if quality[\"decision\"] == \"publish\":\n        approved.append(post)\n        print(f\"  → APPROVED\\n\")\n    else:\n        print(f\"  → {quality['decision'].upper()}\\n\")\n\nprint(f\"Result: {len(approved)}/{len(posts)} posts approved\")",
+      "pyodideExpected": "APPROVED",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Post scores 8.2/10 quality but predicted engagement rate is 0.3% (threshold: 0.5%). What's the decision?",
+          "options": [
+            "Publish — quality score is high",
+            "Revise — engagement below threshold with specific improvement suggestions",
+            "Reject — engagement too low",
+            "Ignore engagement — quality is what matters"
+          ],
+          "correctIndex": 1,
+          "explanation": "Engagement threshold is a separate gate from quality score. A well-written post that won't perform still needs revision. The engagement predictor suggests what would improve CTR — hook strength, city specificity, call to action."
+        },
+        {
+          "type": "mcq",
+          "stem": "Why is max revisions set to 2 (not unlimited)?",
+          "options": [
+            "LangGraph only supports 2 revision cycles",
+            "After 2 failed revisions, the content probably has a structural issue the platform agent can't fix — reject and move on",
+            "API rate limits prevent more than 2 calls",
+            "2 is a random number"
+          ],
+          "correctIndex": 1,
+          "explanation": "If a post fails QA twice with specific instructions, it likely has a structural issue (the creative direction itself is wrong) that targeted revision can't fix. Better to reject and let the next pipeline run try a different angle."
+        }
+      ]
+    }
+  ]
+}

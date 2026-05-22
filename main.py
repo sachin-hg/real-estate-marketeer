@@ -59,8 +59,10 @@ def run(dry_run, topic, platforms):
 
     # Set up per-run file logger BEFORE the graph starts
     from tools.run_logger import setup_run_logging
+    from tools.run_context import set_run_id as _set_run_id
     import logging as _logging
     log_path = setup_run_logging(run_id)
+    _set_run_id(run_id)   # propagate run_id to all tools via ContextVar
     _logging.getLogger(__name__).info(
         "Run %s started | dry_run=%s | platforms=%s | topic=%s | log=%s",
         run_id, effective_dry_run, platform_list, topic, log_path,
@@ -77,6 +79,7 @@ def run(dry_run, topic, platforms):
         "target_platforms": platform_list,
         "research": [],
         "trends": [],
+        "content_briefs": [],
         "creative_drafts": [],
         "platform_posts": [],
         "qa_results": [],
@@ -210,12 +213,14 @@ def history():
 # ─── Progress wrapper ─────────────────────────────────────────────────────────
 
 async def _run_with_progress(initial_state: dict) -> dict:
-    from workflow.graph import graph
+    from workflow.graph import get_graph
 
     steps = [
         ("researcher",          "Researching real estate news..."),
         ("trend_researcher",    "Scanning trending topics..."),
-        ("creative_marketeer",  "Generating content ideas..."),
+        ("planner",             "Planning content angles..."),
+        ("social_creative",     "Generating social content ideas..."),
+        ("news_creative",       "Generating news content briefs..."),
         ("internal_retriever",  "Finding housing.com internal links..."),
         ("platform_agents",     "Creating platform-specific posts..."),
         ("qa_agent",            "Running QA checks..."),
@@ -235,7 +240,13 @@ async def _run_with_progress(initial_state: dict) -> dict:
         # Stream graph execution step by step
         final_state = initial_state
         step_idx = 0
-        async for event in graph.astream(initial_state, stream_mode="updates"):
+        run_id = initial_state["run_id"]
+        g = await get_graph()
+        async for event in g.astream(
+            initial_state,
+            stream_mode="updates",
+            config={"configurable": {"thread_id": run_id}},
+        ):
             node_name = list(event.keys())[0] if event else ""
             label = next((lbl for nm, lbl in steps if nm == node_name), node_name)
             if label:

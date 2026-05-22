@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#TrendJacker — Housing.com · Multi Agent Content Machine</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/theme/black.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/plugin/highlight/monokai.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ── Housing.com 2025 actual design tokens ── */
+:root {
+  --purple: #5e23dc;        /* Housing primary violet */
+  --purple-dark: #3b1c8d;   /* dark violet */
+  --purple-mid: #461f91;
+  --purple-pale: #e3e8ff;   /* Housing light purple tint */
+  --pink: #e80067;          /* Housing hot pink (Premium/CTA) */
+  --pink-alt: #f22b68;
+  --grad-cta: linear-gradient(310deg, #fe792f, #ee569f);  /* Housing CTA gradient */
+  --grad-purple: linear-gradient(90deg, #5e0be0, #971af2);
+  --orange: #fe792f;        /* Housing orange */
+  --green: #1dd38f;         /* Housing verified green */
+  --red: #e02727;
+  --bg-dark: #0B0B0F;       /* near black */
+  --bg-dark2: #13131A;      /* card bg on dark */
+  --bg-light: #f2f3f8;      /* Housing standard light bg */
+  --text: #222222;
+  --text-muted: #767676;
+  --white: #FFFFFF;
+  --border-light: #e1e2e8;
+}
+
+.reveal {
+  font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 22px;
+}
+
+.reveal h1 {
+  font-size: 1.9em;
+  font-weight: 900;
+  text-transform: none;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  margin-bottom: 0.3em;
+}
+
+.reveal h2 {
+  font-size: 1.3em;
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: -0.3px;
+  margin-bottom: 0.5em;
+}
+
+.reveal h3 {
+  font-size: 0.9em;
+  font-weight: 700;
+  text-transform: none;
+  margin-bottom: 0.3em;
+}
+
+.reveal p, .reveal li {
+  font-size: 0.68em;
+  line-height: 1.5;
+}
+
+.reveal section {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Grid systems */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+
+/* ── Card styles (Housing.com: 8px radius, 0 3px 27px shadow) ── */
+.card-dark {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.card-light {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 16px 20px;
+  box-shadow: 0 3px 27px rgba(0,0,0,.10);
+}
+
+/* Stat card */
+.stat-card {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 20px 16px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+.stat-card .val {
+  font-size: 2.5em;
+  font-weight: 900;
+  color: var(--orange);
+  line-height: 1;
+  display: block;
+}
+.stat-card .lbl {
+  font-size: 0.58em;
+  color: rgba(255,255,255,0.55);
+  margin-top: 5px;
+  display: block;
+  font-weight: 400;
+}
+
+/* Chips — Housing.com pill style */
+.chip {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 24px;
+  font-size: 0.52em;
+  font-weight: 600;
+  margin: 3px;
+  background: rgba(94,35,220,0.25);
+  border: 1px solid rgba(94,35,220,0.5);
+  color: white;
+}
+.chip.orange { background: rgba(254,121,47,0.25); border-color: rgba(254,121,47,0.5); }
+.chip.green  { background: rgba(29,211,143,0.2);  border-color: rgba(29,211,143,0.5); color: #1dd38f; }
+.chip.pink   { background: rgba(232,0,103,0.25);  border-color: rgba(232,0,103,0.5); }
+.chip.white  { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); }
+.chip.cta    { background: var(--grad-cta); border: none; font-weight: 700; }
+
+/* Brand bar — Housing.com gradient */
+.brand-bar {
+  height: 3px;
+  background: var(--grad-cta);
+  border-radius: 2px;
+  margin-bottom: 16px;
+  animation: growBar 0.6s ease forwards;
+}
+@keyframes growBar { from { width: 0 } to { width: 100% } }
+
+/* Tweet card */
+.tweet-card {
+  background: #15202B;
+  border: 1px solid #253341;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 0.65em;
+  text-align: left;
+  color: white;
+}
+.tweet-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--grad-cta);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px; color: white;
+  vertical-align: middle; margin-right: 8px;
+}
+.tweet-name { font-weight: 700; color: white; font-size: 0.95em; }
+.tweet-handle { color: #8899A6; font-size: 0.85em; }
+.tweet-text { margin: 10px 0; line-height: 1.5; font-size: 0.95em; }
+.tweet-stats { color: #8899A6; font-size: 0.8em; }
+.tweet-stat { display: inline-block; margin-right: 16px; }
+
+/* IG card — use Housing.com purple → dark */
+.ig-card {
+  background: linear-gradient(145deg, #5e23dc 0%, #3b1c8d 100%);
+  border-radius: 8px;
+  padding: 20px;
+  width: 200px; min-height: 200px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  position: relative; overflow: hidden;
+  box-shadow: 0 22px 54px rgba(30,23,121,.6);
+}
+.ig-card::after {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(232,0,103,0.35);
+}
+.ig-card-text { font-size: 0.75em; font-weight: 800; color: white; line-height: 1.3; position: relative; z-index: 1; }
+.ig-card-tag { font-size: 0.6em; color: rgba(255,255,255,0.7); margin-top: 4px; }
+.ig-card-logo { font-size: 0.55em; font-weight: 900; color: white; opacity: 0.8; }
+
+/* IG Story Carousel */
+.ig-story-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; }
+.ig-story-frame { width:220px; height:392px; border-radius:20px; overflow:hidden; position:relative; box-shadow:0 16px 50px rgba(94,35,220,0.55), 0 0 0 2px rgba(255,255,255,0.1); flex-shrink:0; }
+.ig-story-card { position:absolute; inset:0; padding:52px 14px 16px; display:flex; flex-direction:column; justify-content:flex-end; opacity:0; transition:opacity 0.4s ease; pointer-events:none; }
+.ig-story-card.ig-active { opacity:1; pointer-events:auto; }
+.ig-prog-bar { position:absolute; top:10px; left:10px; right:10px; display:flex; gap:3px; z-index:10; }
+.ig-seg { flex:1; height:2.5px; border-radius:2px; background:rgba(255,255,255,0.3); overflow:hidden; }
+.ig-seg-fill { height:100%; background:white; width:0%; }
+.ig-story-hdr { position:absolute; top:20px; left:10px; right:10px; display:flex; align-items:center; gap:6px; z-index:9; }
+.ig-avi { width:26px; height:26px; border-radius:50%; background:var(--grad-cta); display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:900; color:white; border:2px solid white; flex-shrink:0; }
+.ig-story-dots { display:flex; gap:7px; justify-content:center; }
+.ig-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.28); transition:background 0.3s; cursor:pointer; }
+.ig-dot.ig-dot-active { background:white; }
+
+/* QA bars */
+.qa-bar-track { background: rgba(255,255,255,0.10); border-radius: 4px; height: 6px; overflow: hidden; margin: 4px 0; }
+.qa-bar-fill { height: 100%; border-radius: 4px; width: 0%; transition: width 1.4s cubic-bezier(0.16,1,0.3,1); background: var(--grad-cta); }
+.qa-bar-fill.green { background: linear-gradient(90deg, #1dd38f, #58ce65); }
+.qa-bar-fill.purple { background: var(--grad-purple); }
+.qa-label { font-size: 0.55em; display: flex; justify-content: space-between; color: rgba(255,255,255,0.65); margin-top: 2px; }
+
+/* Timeline */
+.timeline { position: relative; padding-left: 28px; }
+.timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:2px; background: linear-gradient(to bottom, #5e23dc, #ee569f); }
+.timeline-item { position:relative; margin-bottom:14px; font-size:0.6em; }
+.timeline-item::before { content:''; position:absolute; left:-24px; top:5px; width:10px; height:10px; border-radius:50%; background: var(--pink); border:2px solid #0B0B0F; }
+.timeline-time { color: var(--orange); font-weight:800; font-size:1.1em; font-family:'JetBrains Mono',monospace; }
+.timeline-node { color: #a78bfa; font-weight:700; }
+
+/* Code block */
+.code-block {
+  background: #0D1117;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55em;
+  color: #1dd38f;
+  text-align: left;
+  line-height: 1.4;
+}
+
+/* Pipeline node */
+.pipe-node {
+  background: rgba(94,35,220,0.35);
+  border: 1px solid rgba(94,35,220,0.7);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.55em;
+  font-weight: 700;
+  text-align: center;
+  color: white;
+  display: inline-block;
+}
+.pipe-node.orange { background: rgba(254,121,47,0.25); border-color: rgba(254,121,47,0.6); }
+.pipe-node.green  { background: rgba(29,211,143,0.2);  border-color: rgba(29,211,143,0.6); }
+.pipe-node.pink   { background: rgba(232,0,103,0.25);  border-color: rgba(232,0,103,0.6); }
+.pipe-arrow { font-size: 0.8em; color: rgba(255,255,255,0.4); margin: 0 6px; }
+.pipe-parallel {
+  background: rgba(29,211,143,0.08);
+  border: 1px dashed rgba(29,211,143,0.4);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex; gap: 8px;
+  align-items: center; justify-content: center;
+}
+.parallel-label { font-size: 0.45em; color: #1dd38f; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* Section label */
+.section-label {
+  font-size: 0.48em; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 8px; display: block;
+}
+
+/* Logo — "HOUSING" pink, ".com" white — matches their actual branding */
+.housing-logo { font-size: 0.75em; font-weight: 900; color: white; }
+.housing-logo .h { color: var(--pink); }
+
+/* Big stat block */
+.big-stat {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 8px;
+  padding: 20px 16px;
+  text-align: center;
+}
+.big-stat .num { font-size: 2.4em; font-weight: 900; color: var(--orange); line-height: 1; display: block; }
+.big-stat .sub { font-size: 0.55em; color: rgba(255,255,255,0.6); margin-top: 6px; display: block; line-height: 1.3; }
+.big-stat .note { font-size: 0.45em; color: rgba(255,255,255,0.35); margin-top: 4px; display: block; }
+
+/* Problem card — Housing.com card style */
+.problem-card {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: 0 3px 27px rgba(0,0,0,.08);
+  border-left: 4px solid var(--purple);
+}
+.problem-card .icon { font-size: 1.3em; margin-bottom: 6px; display: block; }
+.problem-card .title { font-size: 0.65em; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.problem-card .body { font-size: 0.55em; color: var(--text-muted); line-height: 1.4; }
+
+/* Roadmap card */
+.road-card { border-radius: 8px; padding: 18px 20px; height: 100%; box-sizing: border-box; }
+.road-card.now { background: white; border: 2px solid var(--green); box-shadow: 0 4px 20px rgba(29,211,143,0.15); }
+.road-card.mid { background: white; border: 1px solid rgba(94,35,220,0.2); box-shadow: 0 3px 27px rgba(0,0,0,.08); }
+.road-card.far { background: white; border: 1px solid rgba(254,121,47,0.25); box-shadow: 0 3px 27px rgba(0,0,0,.08); }
+.road-title { font-size: 0.65em; font-weight: 800; margin-bottom: 10px; }
+.road-item { font-size: 0.52em; color: var(--text-muted); margin-bottom: 6px; padding-left: 12px; position: relative; line-height: 1.3; }
+.road-item::before { content: '→'; position: absolute; left: 0; color: var(--purple); font-weight: 700; }
+
+/* Deployment card */
+.deploy-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-align: left;
+}
+.deploy-card .d-title { font-size: 0.6em; font-weight: 800; color: white; margin-bottom: 6px; }
+
+/* Tech stack card */
+.tech-card {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 16px 18px;
+  box-shadow: 0 3px 27px rgba(0,0,0,.06);
+}
+.tech-card .tc-title { font-size: 0.6em; font-weight: 800; color: var(--purple); margin-bottom: 10px; border-bottom: 2px solid var(--purple-pale); padding-bottom: 6px; }
+.tech-item { font-size: 0.5em; color: var(--text-muted); margin-bottom: 5px; line-height: 1.3; }
+.tech-item strong { color: var(--text); }
+
+/* Flywheel */
+.flywheel-container { position: relative; width: 320px; height: 320px; margin: 0 auto; }
+.flywheel-node {
+  position: absolute;
+  background: rgba(94,35,220,0.35);
+  border: 2px solid rgba(94,35,220,0.7);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.5em; font-weight: 700;
+  text-align: center; color: white; width: 90px;
+}
+.flywheel-node.orange { background: rgba(254,121,47,0.25); border-color: rgba(254,121,47,0.6); }
+.flywheel-node.green  { background: rgba(29,211,143,0.2);  border-color: rgba(29,211,143,0.6); }
+.flywheel-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center; font-size: 0.45em; font-weight: 700; color: white; width: 80px; line-height: 1.3;
+}
+.flywheel-ring {
+  position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px;
+  border: 2px dashed rgba(94,35,220,0.4);
+  border-radius: 50%;
+  animation: rotateSlow 12s linear infinite;
+}
+@keyframes rotateSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Highlight box — uses Housing.com CTA gradient */
+.highlight-box {
+  background: linear-gradient(135deg, rgba(254,121,47,0.15) 0%, rgba(94,35,220,0.15) 100%);
+  border: 1px solid rgba(238,86,159,0.4);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.6em; font-weight: 700; color: white; text-align: center;
+}
+
+/* Legend */
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+/* Table styles */
+.mini-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.54em; border-radius: 8px; overflow: hidden; }
+.mini-table thead tr { background: linear-gradient(90deg,rgba(94,35,220,0.5),rgba(94,35,220,0.2)); }
+.mini-table th { color: rgba(255,255,255,0.9); padding: 8px 10px; text-align: left; font-weight: 700; letter-spacing: 0.3px; border-bottom: 1px solid rgba(94,35,220,0.4); }
+.mini-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+.mini-table tbody tr:nth-child(odd) { background: rgba(255,255,255,0.03); }
+.mini-table tbody tr:last-child td { border-bottom: none; background: rgba(254,121,47,0.12); font-weight: 700; color: var(--orange); }
+.mini-table tbody tr:hover { background: rgba(94,35,220,0.12); }
+.mini-table-light { width: 100%; border-collapse: collapse; font-size: 0.5em; }
+.mini-table-light th { background: var(--purple-pale); color: var(--text); padding: 6px 8px; text-align: left; font-weight: 700; }
+.mini-table-light td { padding: 5px 8px; border-bottom: 1px solid rgba(94,35,220,0.08); color: var(--text-muted); }
+
+/* Quote */
+.big-quote {
+  font-size: 0.85em; font-weight: 700; font-style: italic; color: var(--orange);
+  border-left: 4px solid var(--orange); padding-left: 16px; margin: 12px 0; line-height: 1.4;
+}
+
+/* Check/cross */
+.check { color: var(--green); font-weight: 700; }
+.cross { color: var(--red); font-weight: 700; }
+
+/* SEO metadata */
+.seo-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(94,35,220,0.08); font-size: 0.52em; }
+.seo-key { color: var(--text-muted); }
+.seo-val { color: var(--text); font-weight: 600; }
+
+/* Bottom tagline */
+.bottom-tag {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  text-align: center; font-size: 0.48em; color: rgba(255,255,255,0.35); letter-spacing: 1px;
+}
+
+/* Canvas wrapper */
+.canvas-wrap { position: relative; }
+
+/* Annotation badge — Housing.com CTA gradient pill */
+.annotation-badge {
+  background: var(--grad-cta);
+  color: white; border-radius: 24px;
+  padding: 3px 12px; font-size: 0.5em; font-weight: 800; display: inline-block;
+}
+
+/* Pass card */
+.pass-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 8px; padding: 16px; text-align: left;
+}
+.pass-num { font-size: 2em; font-weight: 900; line-height: 1; display: block; margin-bottom: 4px; }
+.pass-title { font-size: 0.65em; font-weight: 800; margin-bottom: 6px; }
+.pass-sub { font-size: 0.52em; color: rgba(255,255,255,0.45); margin-bottom: 8px; }
+.pass-item { font-size: 0.52em; color: rgba(255,255,255,0.7); margin-bottom: 4px; padding-left: 12px; position: relative; line-height: 1.3; }
+.pass-item::before { content: '•'; position: absolute; left: 0; color: var(--orange); }
+
+/* Ask card — Housing.com Premium style card */
+.ask-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: 20px; text-align: center;
+}
+.ask-card .ask-icon { font-size: 1.6em; display: block; margin-bottom: 8px; }
+.ask-card .ask-title { font-size: 0.65em; font-weight: 800; margin-bottom: 6px; }
+.ask-card .ask-body { font-size: 0.52em; color: rgba(255,255,255,0.6); line-height: 1.4; }
+
+/* Reveal overrides */
+.reveal .slides section .fragment { opacity: 1; visibility: visible; }
+.reveal .slides section .fragment.fade-up { opacity: 0; transform: translateY(20px); transition: opacity 0.5s, transform 0.5s; }
+.reveal .slides section .fragment.fade-up.visible { opacity: 1; transform: translateY(0); }
+
+/* Scrollable content on tall slides */
+.slide-inner { overflow: hidden; }
+
+/* ── Slide 4: SVG Tree Architecture ── */
+/* arch-panel: specificity 0,4,0 > global override 0,3,1 → stays hidden until .visible */
+.reveal .slides .fragment.arch-panel { opacity: 0; pointer-events: none; }
+.reveal .slides .fragment.arch-panel.visible { opacity: 1; pointer-events: auto; }
+
+.tnc {
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 9px 13px;
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.left-tnc {
+  border-right: 3px solid;
+  text-align: right;
+  transform: translateX(-22px);
+  opacity: 0;
+}
+.right-tnc {
+  border-left: 3px solid;
+  transform: translateX(22px);
+  opacity: 0;
+}
+.reveal .fragment.arch-panel.visible .left-tnc,
+.reveal .fragment.arch-panel.visible .right-tnc {
+  transform: translateX(0);
+  opacity: 1;
+}
+.tnc-title { font-size: 0.58em; font-weight: 800; margin-bottom: 3px; }
+.tnc-body  { font-size: 0.47em; color: rgba(255,255,255,0.62); line-height: 1.45; }
+
+/* SVG trunk + branch animation */
+.arch-trunk  { transition: stroke-dashoffset 0.8s cubic-bezier(0.22,1,0.36,1); }
+.arch-branch { transition: stroke-dashoffset 0.5s cubic-bezier(0.22,1,0.36,1); }
+
+/* ── Output Wall ───────────────────────────────────────────── */
+@keyframes owCredits { 0%{transform:translateY(0)} 100%{transform:translateY(-50%)} }
+.ow-scroll-outer { height:728px; overflow:hidden; position:relative; }
+.ow-scroll-inner { display:flex; flex-direction:column; animation:owCredits 55s linear infinite; }
+.ow-scroll-inner:hover { animation-play-state:paused; }
+.ow-grid { display:flex; gap:8px; align-items:flex-start; }
+.ow-col  { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+/* Twitter card */
+.ow-tw { background:#15202B; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:13px 15px; }
+/* IG card */
+.ow-ig { border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+/* Headers */
+.ow-hdr { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+.ow-ig-top { background:rgba(0,0,0,.5); padding:8px 11px; display:flex; align-items:center; gap:8px; }
+/* Housing.com logo — actual logo image */
+.ow-logo { width:32px; height:32px; border-radius:7px; flex-shrink:0; background:url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/2wCEAAEBAQEBAQIBAQIDAgICAwQDAwMDBAUEBAQEBAUGBQUFBQUFBgYGBgYGBgYHBwcHBwcICAgICAkJCQkJCQkJCQkBAQEBAgICBAICBAkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCf/AABEIACsAKwMBIgACEQEDEQH/xACSAAABBAMBAQAAAAAAAAAAAAAGAAcICQEFCgMEEAABAgQEAggFBAMAAAAAAAABAgMABAURBgcIIRITCRQVIjFBU/BhcZKh0SNRkeEkMjMBAAEEAwEAAAAAAAAAAAAAAAcBBQYIAwQKCREAAgECBgECBQUAAAAAAAAAAQIDBBEABQYHEiExCEEJExUiURQjYZHw/9oADAMBAAIRAxEAPwDrFxRjqvYrqrlTn5hYClEobCjwoSTskfAQOdpzvrr+owLdaT7MLrSfZjjazjdevzCqkrq2pZ5JCWZixJJPknF/KfJookEUagAeBbBT2nO+uv6jC7TnfXX9RiI2c+sHT/p/xnhzAOa2IGaXU8TvcqVbVuGkG4D0wobMsqXZAcXYFR/YKKZHibQQFJNwdwQdiD+0SXUdJqfJ8soc5zammhpq1WenkdXVJlRijtExAVwrDi3Emx8+RjN9PT8YLW6vUGXA63MOJUk3BCj4iH0ouonEdLpbNPmmETS2hYuuKPErfa+3kNoi/wBaHsxnrYjb289S2ptKTyVOn69oWccWsbgi4PYYEXFuja47ANibtWa6Soq5QlVGGt4/3WNRzR7P9RA7XZruwNozwEHFBqqYxqrauyaTxePl1mYtuiXQfkXCOFPmUzhDhBvFAOojols1M79ZL2Pqjilc5grEDhnZ+fmnErqEklBA6iy3ayhbusKACEI/3F098+/DB2u2T1DuI1Vv3nIospoonqDEQ16xorH9MHW5XkLkqv7koHyorO4ZZgVGKjKDkjq010vY31Dy0pM4mmKYkzVQmnNjMObf4smi1lrbaupLKNktpAG6khVlXRg9JwvBy6fpp1IT57KumWolamVG8oq/CmUmlq35N+604r/me6ruWKegvLHLXBGTWBqbltlrT26XRqU2Gpdhr+VLWrxW4s95azcqUSSYpu6Qboons6MWoze01NSlPrdUmUprNNfWGJV4uKsqdbNrIWL3eQB+oO8kcdwr3WoPi27GepqqzTY7erKYsn049hlFUoVHoDEnCMykXjiLAXXgBCgJp5OcZ+YEt+cXu81Pw/mFzU+z/UMPp3ypqWReS2Hsp6rXZrEkxRJVLC5+cN1uEb8KfEhpu/A0lRKggAEmHo41Rya64yTL8vzqroMoqxVU0cjrHMEaMSorEJIEf7k5qA3FvuW9j2MKFGPmcLjLhadSpKkmxChYg/EGPPm/OH61c0mnYZxrLzFCZTLLnkKef4dwpZIuqxuBfztbffxiJPa9R9T7D8QQd59oKrRuqa3TFTKsjU78eS3swsCDYjo2IuPY3AJHZatO50mYUUdagsHF7H2we82Mc35wB9r1H1PsPxC7XqPqfYfiBh9Nf+MPPWD3mxsGadVZhoPMSzy0K8FJbUQfkQLQF4dnZmdr0nJzSuNt15tKhYC4KgCNgIu0w7h6iUGhy1JpMshmXZQAhAF7X3O5uSSSSSTcmLvejf0Ty7qy1sk1cKeGnCgkLzYs97dXUcbK1zyvewsRcgb7hbhLkYjAi5s9/ewAH99+PbH/2Q==") center/cover no-repeat; }
+.ow-logo-lg { width:42px; height:42px; border-radius:10px; flex-shrink:0; background:url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/2wCEAAEBAQEBAQIBAQIDAgICAwQDAwMDBAUEBAQEBAUGBQUFBQUFBgYGBgYGBgYHBwcHBwcICAgICAkJCQkJCQkJCQkBAQEBAgICBAICBAkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCf/AABEIACsAKwMBIgACEQEDEQH/xACSAAABBAMBAQAAAAAAAAAAAAAGAAcICQEFCgMEEAABAgQEAggFBAMAAAAAAAABAgMABAURBgcIIRITCRQVIjFBU/BhcZKh0SNRkeEkMjMBAAEEAwEAAAAAAAAAAAAAAAcBBQYIAwQKCREAAgECBgECBQUAAAAAAAAAAQIDBBEABQYHEiExCEEJExUiURQjYZHw/9oADAMBAAIRAxEAPwDrFxRjqvYrqrlTn5hYClEobCjwoSTskfAQOdpzvrr+owLdaT7MLrSfZjjazjdevzCqkrq2pZ5JCWZixJJPknF/KfJookEUagAeBbBT2nO+uv6jC7TnfXX9RiI2c+sHT/p/xnhzAOa2IGaXU8TvcqVbVuGkG4D0wobMsqXZAcXYFR/YKKZHibQQFJNwdwQdiD+0SXUdJqfJ8soc5zammhpq1WenkdXVJlRijtExAVwrDi3Emx8+RjN9PT8YLW6vUGXA63MOJUk3BCj4iH0ouonEdLpbNPmmETS2hYuuKPErfa+3kNoi/wBaHsxnrYjb289S2ptKTyVOn69oWccWsbgi4PYYEXFuja47ANibtWa6Soq5QlVGGt4/3WNRzR7P9RA7XZruwNozwEHFBqqYxqrauyaTxePl1mYtuiXQfkXCOFPmUzhDhBvFAOojols1M79ZL2Pqjilc5grEDhnZ+fmnErqEklBA6iy3ayhbusKACEI/3F098+/DB2u2T1DuI1Vv3nIospoonqDEQ16xorH9MHW5XkLkqv7koHyorO4ZZgVGKjKDkjq010vY31Dy0pM4mmKYkzVQmnNjMObf4smi1lrbaupLKNktpAG6khVlXRg9JwvBy6fpp1IT57KumWolamVG8oq/CmUmlq35N+604r/me6ruWKegvLHLXBGTWBqbltlrT26XRqU2Gpdhr+VLWrxW4s95azcqUSSYpu6Qboons6MWoze01NSlPrdUmUprNNfWGJV4uKsqdbNrIWL3eQB+oO8kcdwr3WoPi27GepqqzTY7erKYsn049hlFUoVHoDEnCMykXjiLAXXgBCgJp5OcZ+YEt+cXu81Pw/mFzU+z/UMPp3ypqWReS2Hsp6rXZrEkxRJVLC5+cN1uEb8KfEhpu/A0lRKggAEmHo41Rya64yTL8vzqroMoqxVU0cjrHMEaMSorEJIEf7k5qA3FvuW9j2MKFGPmcLjLhadSpKkmxChYg/EGPPm/OH61c0mnYZxrLzFCZTLLnkKef4dwpZIuqxuBfztbffxiJPa9R9T7D8QQd59oKrRuqa3TFTKsjU78eS3swsCDYjo2IuPY3AJHZatO50mYUUdagsHF7H2we82Mc35wB9r1H1PsPxC7XqPqfYfiBh9Nf+MPPWD3mxsGadVZhoPMSzy0K8FJbUQfkQLQF4dnZmdr0nJzSuNt15tKhYC4KgCNgIu0w7h6iUGhy1JpMshmXZQAhAF7X3O5uSSSSSTcmLvejf0Ty7qy1sk1cKeGnCgkLzYs97dXUcbK1zyvewsRcgb7hbhLkYjAi5s9/ewAH99+PbH/2Q==") center/cover no-repeat; position:relative; z-index:1; }
+/* Meta text */
+.ow-meta { flex:1; min-width:0; }
+.ow-name { font-size:.58em; font-weight:700; color:#fff; line-height:1.2; text-align:left; }
+.ow-han  { font-size:.46em; color:rgba(255,255,255,.45); text-align:left; }
+.ow-time { font-size:.43em; color:rgba(255,255,255,.35); white-space:nowrap; }
+/* Tweet body */
+.ow-body   { font-size:.58em; color:rgba(255,255,255,.92); line-height:1.6; margin-bottom:8px; text-align:left; }
+.ow-tags-t { font-size:.54em; color:#1d9bf0; line-height:1.5; margin-bottom:8px; text-align:left; }
+/* Shared footer */
+.ow-ft { display:flex; gap:8px; font-size:.46em; color:rgba(255,255,255,.38); padding-top:7px; border-top:1px solid rgba(255,255,255,.06); align-items:center; }
+.ow-bge { background:rgba(29,211,143,.12); color:#1dd38f; border:1px solid rgba(29,211,143,.3); border-radius:3px; padding:1px 6px; font-weight:700; }
+.ow-bgo { background:rgba(254,121,47,.12); color:#fe792f; border:1px solid rgba(254,121,47,.3); border-radius:3px; padding:1px 6px; font-weight:700; }
+.ow-pend { font-size:.9em; color:rgba(255,255,255,.22); }
+/* IG branded card visual */
+.ow-ig-card { position:relative; overflow:hidden; aspect-ratio:1/1; padding:20px 18px 16px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; text-align:center; gap:10px; }
+.ow-ig-blob { position:absolute; top:-22%; right:-18%; width:58%; height:58%; border-radius:50%; background:rgba(232,0,103,.26); pointer-events:none; z-index:0; }
+.ow-ig-card > *:not(.ow-ig-blob) { position:relative; z-index:1; }
+.ow-ig-hook { font-size:.72em; font-weight:600; color:#fff; line-height:1.35; text-shadow:0 1px 8px rgba(0,0,0,.6); }
+.ow-ig-btags { font-size:.52em; font-weight:400; color:rgba(255,255,255,.7); line-height:1.4; }
+.ow-ig-brand { font-size:.52em; font-weight:700; color:rgba(255,255,255,.9); letter-spacing:.3px; }
+/* IG body (caption + tags + stats below image) */
+.ow-ig-body { background:rgba(0,0,0,.48); }
+.ow-ig-cap  { padding:9px 13px 4px; font-size:.56em; color:rgba(255,255,255,.92); line-height:1.5; text-align:left; }
+.ow-ig-tags { padding:3px 13px 9px; font-size:.54em; color:#a78bfa; line-height:1.5; text-align:left; }
+.ow-ig-ft   { padding:5px 13px 8px; display:flex; gap:9px; font-size:.46em; color:rgba(255,255,255,.38); border-top:1px solid rgba(255,255,255,.06); align-items:center; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: TITLE -->
+<section id="slide-title" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding: 50px 40px 20px; text-align:center;">
+    <img src="https://c.housingcdn.com/demand/s/client/common/assets/housing.820bbe77.png" alt="housing.com" style="height:32px; opacity:0.92; display:block; margin:0 auto 10px;">
+    <div class="section-label" style="text-align:center;">Multi Agent Content Machine</div>
+    <h1 style="color:white; margin-bottom:0.1em;">#TrendJacker</h1>
+    <p style="font-size:0.75em; color:rgba(255,255,255,0.6); margin-bottom:28px; font-weight:500;">Every viral trend → 5-platform content in 2 minutes · <strong style='color:#fe792f;'>$0.52 per run</strong></p>
+    <div class="grid-4" style="max-width:900px; margin:0 auto 28px;">
+      <div class="stat-card"><span class="val" id="c1">0</span><span class="lbl">posts every month</span></div>
+      <div class="stat-card"><span class="val" id="c2">0</span><span class="lbl">viral trends covered, zero missed</span></div>
+      <div class="stat-card"><span class="val" id="c3">0</span><span class="lbl">platforms, native format each</span></div>
+      <div class="stat-card"><span class="val" id="c4">$0</span><span class="lbl">per 5-platform run</span></div>
+    </div>
+    <div style="margin-top:12px;">
+      <span class="chip orange">Claude Opus 4.7</span>
+      <span class="chip">LangGraph</span>
+      <span class="chip green">5 Platforms</span>
+      <span class="chip orange">3-Pass QA</span>
+      <span class="chip">Hinglish-First</span>
+    </div>
+  </div>
+  <div class="bottom-tag">#TrendJacker — Multi Agent Content Machine</div>
+</section>
+
+<!-- SLIDE 1.5: OUTPUT WALL — Live AI-Generated Posts -->
+<section id="slide-output-wall" data-background="linear-gradient(135deg,#060610 0%,#0c1025 100%)">
+  <div style="padding:18px 22px 0;display:flex;flex-direction:column;height:800px;overflow:hidden;box-sizing:border-box;">
+    <div style="flex-shrink:0;margin-bottom:10px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+      <h2 style="color:white;margin:0;font-size:.95em;letter-spacing:-.3px;">Live AI Output — Real Posts from the Pipeline</h2>
+      <span style="font-size:.5em;color:rgba(255,255,255,.38);">19 posts · Twitter + Instagram · 97 seconds · $0.43</span>
+    </div>
+    <div class="ow-scroll-outer" style="flex:1;">
+      <div id="ow-scroll-inner" class="ow-scroll-inner">
+        <div class="ow-grid">
+
+      <!-- COL 1: IG TW IG TW IG TW IG -->
+      <div class="ow-col">
+
+      <!-- ① IG: RCB Ee Sala Ghar Namdu (QA 8.0, ER 8.4%) -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 3h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(160deg,#1a0848,#5e23dc);">
+          <div class="ow-ig-blob" style="background:rgba(254,121,47,.3);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">17 saal baad RCB ko cup mila.<br>Tumhe ghar milne mein itna time mat lagao 🏆🏠</div>
+          <div><div class="ow-ig-btags">#RCBWinIPL2025 #EeSalaGharNamdu</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Ee Sala Cup Namdu ✅ Ee Sala Ghar Namdu? 🏠 RCB ko 17 saal lage — ghar ke liye mat karo wait! housing.com/in/buy/bengaluru</div>
+          <div class="ow-ig-tags">#RCBWinIPL2025 #EeSalaGharNamdu #Bengaluru #IPL2025 #HousingDotCom</div>
+          <div class="ow-ig-ft">❤️ 4.2k &nbsp;💬 312 &nbsp;🔖 891<span class="ow-bge" style="margin-left:auto;">QA 8.0</span><span class="ow-bgo">ER 8.4%</span></div>
+        </div>
+      </div>
+
+      <!-- ② TW: Dhoni CSK Chennai (QA 8.4, ER 1.9%) -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 5h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Ranchi ka ladka, Chennai ka Thala 💛<br>Dhoni ne Chennai ko ghar banaya — tu kab banega Chennai-wala?<br>housing.com/in/buy/chennai</div>
+        <div class="ow-tags-t">#CSKForever #ThalaForever #ChennaiHomes</div>
+        <div class="ow-ft">👁 54k &nbsp;❤️ 1.0k &nbsp;🔁 287<span class="ow-bge" style="margin-left:auto;">QA 8.4</span><span class="ow-bgo">ER 1.9%</span></div>
+      </div>
+
+      <!-- ③ IG: Papa Father's Day (QA 8.0, ER 8.5%) -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 6h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(150deg,#200c5a,#6a2be8);">
+          <div class="ow-ig-blob"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">Papa ne kabhi 'I love you' nahi bola.<br>Par har EMI bhar ke — ghar zaroor diya. 🏠</div>
+          <div><div class="ow-ig-btags">#FathersDay #PapaKeLiye</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Papa ne kabhi 'I love you' nahi bola — par ghar zaroor diya. 🏠 Is Father's Day, unke naam ek ghar. ❤️</div>
+          <div class="ow-ig-tags">#FathersDay #PapaKeLiye #DadLove #StillAliveChallenge #GharKhojna</div>
+          <div class="ow-ig-ft">❤️ 3.0k &nbsp;💬 248 &nbsp;🔖 720<span class="ow-bge" style="margin-left:auto;">QA 8.0</span><span class="ow-bgo">ER 8.5%</span></div>
+        </div>
+      </div>
+
+      <!-- ④ TW: IT Layoffs -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 7h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Company ne nikal diya. Ghar nikalne nahi dega. 🏠<br><br>Job switch ho, ya pink slip — apna ghar permanent rehta hai. Ek cheez jo kabhi layoff nahi hoti.<br>housing.com/in/buy/real-estate-mumbai</div>
+        <div class="ow-tags-t">#ITLayoffs2025 #TechLayoffs #HousingDotCom</div>
+        <div class="ow-ft">👁 38k &nbsp;❤️ 836 &nbsp;🔁 224<span class="ow-bge" style="margin-left:auto;">QA 7.0</span><span class="ow-bgo">ER 2.2%</span></div>
+      </div>
+
+      <!-- ⑤ IG: Splitsvilla safe ghar -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 9h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(165deg,#180a42,#5e23dc);">
+          <div class="ow-ig-blob" style="background:rgba(232,0,103,.26);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">TV pe 'safe space' dhundhne se accha,<br>Mumbai mein ek safe ghar dhundho 🏠🔒</div>
+          <div><div class="ow-ig-btags">#SplitsvillaX6 #MumbaiHomes</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Splitsvilla pe 'safe space' dhundhte reh… ya Mumbai mein ek real safe ghar dhoondh? Gated societies, 24/7 security 🔒🏠</div>
+          <div class="ow-ig-tags">#SplitsvillaX6 #MumbaiHomes #SafeHome #GatedSociety #MumbaiRealEstate</div>
+          <div class="ow-ig-ft">❤️ 1.4k &nbsp;💬 187 &nbsp;🔖 340<span class="ow-bge" style="margin-left:auto;">QA 6.3</span><span class="ow-bgo">ER 6.8%</span></div>
+        </div>
+      </div>
+
+      <!-- ⑥ TW: Kartavya flop -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 10h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">#Kartavya ka review: 0 ⭐<br>@SaifAliKhan ka Mumbai bungalow: still appreciating 🏰<br><br>Filmein aati-jaati hain, prime Mumbai real estate sirf upar jaata hai.<br>housing.com/in/buy/mumbai</div>
+        <div class="ow-tags-t">#Kartavya #Mumbai #LuxuryHomes #HousingDotCom</div>
+        <div class="ow-ft">👁 47k &nbsp;❤️ 1.3k &nbsp;🔁 341<span class="ow-bge" style="margin-left:auto;">QA 6.6</span><span class="ow-bgo">ER 2.8%</span></div>
+      </div>
+
+      <!-- ⑦ IG: NRI Italy (col1 last) -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 11h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(155deg,#1e0a56,#5e23dc);">
+          <div class="ow-ig-blob" style="background:rgba(59,130,246,.3);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">Milan se Mumbai tak —<br>NRIs ka dil bhi yahin, ghar bhi yahin 🇮🇳🏡</div>
+          <div><div class="ow-ig-btags">#Melodi #NRIInvestment</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Italy wale dost bana rahe hain, NRIs ghar bana rahe hain 🇮🇳🏡 Milan se Mumbai — apna ghar dhundo housing.com/in/buy/mumbai</div>
+          <div class="ow-ig-tags">#Melodi #NRIInvestment #MumbaiRealEstate #IndiaItalyRelations</div>
+          <div class="ow-ig-ft">❤️ 630 &nbsp;💬 88 &nbsp;🔖 192<span class="ow-bge" style="margin-left:auto;">QA 5.5</span><span class="ow-bgo">ER 4.2%</span></div>
+        </div>
+      </div>
+
+      </div><!-- /ow-col 1 -->
+
+      <!-- COL 2: TW IG TW IG TW TW -->
+      <div class="ow-col">
+
+      <!-- ⑧ TW: CBSE Re-evaluation → Re-location -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 12h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">CBSE: Re-evaluation 📝<br>Housing.com: Re-location 🏠<br><br>Naye marks aaye ya na aaye, naya sheher zaroor milega.<br>housing.com/in/buy/bengaluru</div>
+        <div class="ow-tags-t">#CBSEReEvaluation #Bengaluru #FreshStart #HousingDotCom</div>
+        <div class="ow-ft">👁 24k &nbsp;❤️ 324 &nbsp;🔁 89<span class="ow-bge" style="margin-left:auto;">QA 6.0</span><span class="ow-bgo">ER 1.35%</span></div>
+      </div>
+
+      <!-- ⑨ IG: Diljit concert → ghar ki chaabi -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 14h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(160deg,#220d62,#6428de);">
+          <div class="ow-ig-blob" style="background:rgba(254,121,47,.3);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">Diljit ke liye city-city ghoom rahe ho? 🎤<br>Ek city mein settle ho jao — ghar ki chaabi pakdo 🔑</div>
+          <div><div class="ow-ig-btags">#DilLuminatiTourIndia #DiljitDosanjh</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Diljit ke liye city-city ghoom rahe ho? 😭 Concert ticket nahi, apni city mein ghar ki chaabi pakdo! 🔑 Link in bio 🔗</div>
+          <div class="ow-ig-tags">#DilLuminatiTourIndia #DiljitDosanjh #GharWapsi #DelhiHomes #BengaluruHomes</div>
+          <div class="ow-ig-ft">❤️ — &nbsp;💬 — &nbsp;🔖 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+        </div>
+      </div>
+
+      <!-- ⑩ TW: MahaRERA QR code -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 15h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Ad pe QR nahi? Toh ghar bhi nahi 🚫<br><br>#MahaRERA ne scan mandatory kar diya — ek QR, sara sach. No QR = no trust.<br><br>Housing.com pe sab projects already verified. Scam detector built-in. 📲</div>
+        <div class="ow-tags-t">#MahaRERA #RERAVerified #Mumbai #HousingDotCom</div>
+        <div class="ow-ft">👁 19k &nbsp;❤️ 257 &nbsp;🔁 73<span class="ow-bge" style="margin-left:auto;">QA 5.1</span><span class="ow-bgo">ER 1.35%</span></div>
+      </div>
+
+      <!-- ⑪ IG: Varun Grover Desh Bacha Lo -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 16h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(145deg,#160840,#5e23dc);">
+          <div class="ow-ig-blob" style="background:rgba(232,0,103,.18);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">Varun bhai bole: Desh Bacha Lo 🇮🇳<br>Hum bolte hain: Pehle Ghar Bana Lo 🏠</div>
+          <div><div class="ow-ig-btags">#DeshBachaoGuys #GharBanaLo</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Varun bhai ne kaha desh bacha lo 🇮🇳 Hum bol rahe — pehle apna ghar bana lo 🏠 Address fix, tab baaki sab fix.</div>
+          <div class="ow-ig-tags">#DeshBachaoGuys #GharBanaLo #MillennialProblems #VarunGrover</div>
+          <div class="ow-ig-ft">❤️ — &nbsp;💬 — &nbsp;🔖 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+        </div>
+      </div>
+
+      <!-- ⑫ TW: Mahindra 'Not Everything Will Change' -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 17h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Trends change. Reels change. Jobs change. EMIs change. 😅<br><br>Apna ghar? That's the one constant.<br>housing.com/in/buy/real-estate-mumbai</div>
+        <div class="ow-tags-t">#NotEverythingWillChange #GharKhojna #HousingDotCom</div>
+        <div class="ow-ft">👁 17k &nbsp;❤️ 230 &nbsp;🔁 62<span class="ow-bge" style="margin-left:auto;">QA 4.6</span><span class="ow-bgo">ER 1.35%</span></div>
+      </div>
+
+      <!-- ⑰ TW: Haryana gender ratio (col2 tail) -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 22h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Haryana mein betiyaan badhi 🎉<br>Ab registry bhi unke naam likho 🏡<br><br>Equality sirf survey mein nahi, registry mein bhi dikhni chahiye.<br>housing.com/in/buy/gurgaon</div>
+        <div class="ow-tags-t">#HaryanaGenderRatio #GharBhiBetiKaNaam #WomenWhoOwnIt</div>
+        <div class="ow-ft">👁 — &nbsp;❤️ — &nbsp;🔁 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+      </div>
+
+      </div><!-- /ow-col 2 -->
+
+      <!-- COL 3: IG TW IG TW TW TW -->
+      <div class="ow-col">
+
+      <!-- ⑬ IG: Melodi selfie → ghar ki first pic -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 18h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(170deg,#1c0a52,#6030e0);">
+          <div class="ow-ig-blob" style="background:rgba(139,92,246,.3);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">Melodi ki selfie viral,<br>aur aapke naye ghar ki first pic? 📸🏡</div>
+          <div><div class="ow-ig-btags">#Melodi #GharWaliFeeling</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Melodi selfie toh viral ho gayi… ab teri 'We moved! 🏡🎉' wali pic ka time hai. Apna ghar dhundo 👉</div>
+          <div class="ow-ig-tags">#Melodi #GharWaliFeeling #NewHome #ViralMoment #HousingDotCom</div>
+          <div class="ow-ig-ft">❤️ — &nbsp;💬 — &nbsp;🔖 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+        </div>
+      </div>
+
+      <!-- ⑭ TW: WFH 48h work week -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 19h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">48 ghante kaam. 48 ghante ghar pe. 🪑<br>Bed pe laptop rakh ke kab tak chalega?<br><br>Upgrade to a home with an actual office room — Bengaluru mein ghar dhundo 👉 housing.com/in/buy/bengaluru</div>
+        <div class="ow-tags-t">#NewLabourCodes2026 #WorkFromHome #HousingDotCom</div>
+        <div class="ow-ft">👁 — &nbsp;❤️ — &nbsp;🔁 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+      </div>
+
+      <!-- ⑮ IG: Murthy Corner House Bengaluru -->
+      <div class="ow-ig">
+        <div class="ow-ig-top">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">housingdotcom</div><div class="ow-han">@housingdotcom · 20h</div></div>
+          <div style="font-size:.46em;color:#3897f0;font-weight:700;">Follow</div>
+        </div>
+        <div class="ow-ig-card" style="background:linear-gradient(160deg,#1e0a56,#5830d8);">
+          <div class="ow-ig-blob" style="background:rgba(29,211,143,.22);"></div>
+          <div class="ow-logo-lg"></div>
+          <div class="ow-ig-hook">Murthy sir Corner House gaye.<br>Tum apna corner Bengaluru mein kab loge? 🍦🏡</div>
+          <div><div class="ow-ig-btags">#NarayanaMurthy #CornerHouse</div><div class="ow-ig-brand">housing.com</div></div>
+        </div>
+        <div class="ow-ig-body">
+          <div class="ow-ig-cap">Murthy sir ne apna Corner House choose kiya 🍦 Ab tum apna corner Bengaluru mein dhundo 🏡 housing.com/in/buy/bengaluru</div>
+          <div class="ow-ig-tags">#NarayanaMurthy #CornerHouse #NammaBengaluru #BengaluruHomes</div>
+          <div class="ow-ig-ft">❤️ — &nbsp;💬 — &nbsp;🔖 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+        </div>
+      </div>
+
+      <!-- ⑯ TW: Alia Bhatt 'You noticed me' -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 21h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Trolls: 'Nobody noticed your flat in 2024' 👀<br>Your Mumbai property in 2030: 'You noticed me?' 💅<br><br>Property > trolls. Always.<br>housing.com/in/buy/mumbai</div>
+        <div class="ow-tags-t">#AliaBhattCannes #YouNoticedMe #MumbaiRealEstate</div>
+        <div class="ow-ft">👁 — &nbsp;❤️ — &nbsp;🔁 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+      </div>
+
+      <!-- ⑱ TW: Kapil Sharma glow-up -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 22h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Kapil ka glow-up: ek injection 💉<br>Tumhara glow-up: ek naya ghar 🏡<br><br>Asli transformation yahi hai, boss.<br>housing.com/in/buy/mumbai</div>
+        <div class="ow-tags-t">#KapilSharmaTransformation #GlowUp #Mumbai #HousingDotCom</div>
+        <div class="ow-ft">👁 — &nbsp;❤️ — &nbsp;🔁 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+      </div>
+
+      <!-- ⑲ TW: Diljit tickets 60 seconds sold out -->
+      <div class="ow-tw">
+        <div class="ow-hdr">
+          <div class="ow-logo"></div>
+          <div class="ow-meta"><div class="ow-name">Housing.com</div><div class="ow-han">@housingdotcom · 23h</div></div>
+          <div class="ow-time">𝕏</div>
+        </div>
+        <div class="ow-body">Diljit ke tickets: 60 seconds mein sold out. 😭<br>Sapno ka ghar: roz nayi listings, roz naya chance. 🏠<br><br>Concert miss ho gaya toh ho gaya — ghar mat miss karna.<br>housing.com</div>
+        <div class="ow-tags-t">#DilLuminati #DiljitDosanjh #HousingDotCom</div>
+        <div class="ow-ft">👁 — &nbsp;❤️ — &nbsp;🔁 —<span class="ow-pend" style="margin-left:auto;">QA pending</span></div>
+      </div>
+
+      </div><!-- /ow-col 3 -->
+
+        </div><!-- ow-grid -->
+      </div><!-- ow-scroll-inner -->
+    </div><!-- ow-scroll-outer -->
+  </div>
+</section>
+
+<!-- SLIDE 2: THE PROBLEM -->
+<section id="slide-problem" data-background="#f2f3f8">
+  <div style="padding:40px; color:#222222;">
+    <div class="brand-bar"></div>
+    <h2 style="color:#222222;">Content at Scale is Broken</h2>
+    <p style="font-size:0.58em; color:#767676; margin-bottom:24px;">Every PropTech brand faces the same 4 failure modes. Here's what they cost.</p>
+    <div class="grid-2">
+      <div class="problem-card fragment fade-up" style="border-left-color:#e02727;">
+        <span class="icon">⏱</span>
+        <div class="title">SPEED GAP</div>
+        <div class="body">Market moves daily — RERA notices, rate cuts, new launches. By the time content is ready, the moment is gone. Competitors publish first, we publish best… 3 days later.</div>
+      </div>
+      <div class="problem-card fragment fade-up" style="border-left-color:#fe792f;">
+        <span class="icon">💸</span>
+        <div class="title">COST CLIFF</div>
+        <div class="body">₹8–10L/month for a content team generating 60–70 posts. That's <strong>₹12,857 per post</strong>. 2–3 platforms covered. Each brief needs briefing, writing, editing, approval, scheduling.</div>
+      </div>
+      <div class="problem-card fragment fade-up" style="border-left-color:#5e23dc;">
+        <span class="icon">🎯</span>
+        <div class="title">QUALITY DRIFT</div>
+        <div class="body">No consistent QA. Brand voice varies writer to writer. One bad tweet becomes a crisis. No systematic safety review before publish. No engagement scoring to filter weak posts.</div>
+      </div>
+      <div class="problem-card fragment fade-up" style="border-left-color:#1dd38f;">
+        <span class="icon">🔗</span>
+        <div class="title">PLATFORM BLINDNESS</div>
+        <div class="body">One piece → copy-paste across 5 platforms. Twitter needs hooks. Instagram needs carousels. YouTube needs scripts. LinkedIn needs thought leadership. Each requires native reformatting.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: SOLUTION -->
+<section id="slide-solution" data-background="linear-gradient(135deg, #0B0B0F 0%, #2a1260 50%, #190d3b 100%)">
+  <div style="padding:50px 40px; text-align:center;">
+    <div class="section-label" style="text-align:center; letter-spacing:3px;">Introducing</div>
+    <h1 style="color:white; font-size:2.2em; margin-bottom:0.2em;">#TrendJacker</h1>
+    <p style="font-size:0.68em; color:rgba(255,255,255,0.65); max-width:700px; margin:0 auto 28px; line-height:1.6;">
+      A fully-autonomous multi-agent pipeline that watches <strong>every viral trend in India</strong> — sports, Bollywood, politics, culture — finds the housing angle, generates platform-native content in <strong>Hinglish/English</strong>, passes a 3-layer quality gate, and publishes to 5 platforms in under 2 minutes. <strong style='color:#fe792f; font-size:1.1em;'>For $0.52.</strong>
+    </p>
+    <div style="margin-bottom:24px;">
+      <span class="chip orange">Claude Opus 4.7</span>
+      <span class="chip white">LangGraph</span>
+      <span class="chip green">3-Pass QA</span>
+      <span class="chip orange">Gemini 2.5 Flash</span>
+      <span class="chip">Hinglish</span>
+      <span class="chip green">5 Platforms</span>
+      <span class="chip white">Slack Bot</span>
+      <span class="chip orange">Engagement Prediction</span>
+      <span class="chip">Feedback Flywheel</span>
+    </div>
+    <div style="display:inline-flex; align-items:center; gap:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:9px 18px; font-size:0.54em; margin-bottom:18px; flex-wrap:wrap; justify-content:center;">
+      <span>🔥 <strong style="color:#fe792f;">#SplitsvillaX6</strong> trending</span>
+      <span style="color:rgba(255,255,255,0.3);">→</span>
+      <span>🧠 Planner finds housing angle</span>
+      <span style="color:rgba(255,255,255,0.3);">→</span>
+      <span>✍️ Opus 4.7 writes Hinglish hook</span>
+      <span style="color:rgba(255,255,255,0.3);">→</span>
+      <span>📱 Published to <strong style="color:#1dd38f;">5 platforms</strong></span>
+      <span style="color:rgba(255,255,255,0.3);">·</span>
+      <strong style="color:#fe792f;">$0.52 total</strong>
+    </div>
+    <div class="grid-3" style="max-width:800px; margin:0 auto;">
+      <div class="card-dark" style="text-align:center;">
+        <div style="font-size:1.8em; margin-bottom:6px;">⚡</div>
+        <div style="font-size:0.6em; font-weight:800; color:white;">2 minutes</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.5);">Trend to published</div>
+      </div>
+      <div class="card-dark" style="text-align:center;">
+        <div style="font-size:1.8em; margin-bottom:6px;">🛡</div>
+        <div style="font-size:0.6em; font-weight:800; color:white;">3-Pass QA</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.5);">Safety → Quality → ER</div>
+      </div>
+      <div class="card-dark" style="text-align:center;">
+        <div style="font-size:1.8em; margin-bottom:6px;">📱</div>
+        <div style="font-size:0.6em; font-weight:800; color:white;">5 Platforms</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.5);">Native format each</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 4: ARCHITECTURE — Horizontal Pipeline -->
+<section id="slide-arch" data-background="linear-gradient(160deg, #07050e 0%, #0f0a26 55%, #07050e 100%)">
+  <div style="padding:10px 20px 6px; height:100%; display:flex; flex-direction:column; box-sizing:border-box;">
+    <h2 style="color:white; text-align:center; margin:0 0 6px; font-size:1.05em; flex-shrink:0; letter-spacing:-0.2px;">#TrendJacker — Pipeline Architecture</h2>
+
+    <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
+      <div style="position:relative; width:1352px; height:625px;">
+
+        <!-- SVG: full-width horizontal pipeline -->
+        <svg id="arch-tree-svg" viewBox="0 0 1352 625" width="1352" height="625"
+             style="position:absolute; top:0; left:0; overflow:visible; display:block; font-family:'Rubik',-apple-system,sans-serif;">
+          <defs>
+            <linearGradient id="pubGrad2" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#fe792f"/>
+              <stop offset="100%" stop-color="#ee569f"/>
+            </linearGradient>
+            <linearGradient id="learnGrad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#1dd38f" stop-opacity="1"/>
+              <stop offset="100%" stop-color="#1dd38f" stop-opacity="0.5"/>
+            </linearGradient>
+          </defs>
+
+          <!-- ── PARALLEL GROUP BACKGROUNDS ── -->
+          <rect x="168" y="168" width="60" height="242" rx="8" fill="rgba(94,35,220,0.06)" stroke="rgba(94,35,220,0.25)" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="198" y="159" text-anchor="middle" fill="rgba(167,139,250,0.6)" font-size="11" font-weight="700" letter-spacing="1">PARALLEL</text>
+
+          <rect x="480" y="168" width="66" height="242" rx="8" fill="rgba(249,115,22,0.05)" stroke="rgba(249,115,22,0.25)" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="513" y="159" text-anchor="middle" fill="rgba(249,115,22,0.6)" font-size="11" font-weight="700" letter-spacing="1">PARALLEL</text>
+
+          <rect x="734" y="76" width="60" height="420" rx="8" fill="rgba(29,211,143,0.04)" stroke="rgba(29,211,143,0.22)" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="764" y="67" text-anchor="middle" fill="rgba(29,211,143,0.6)" font-size="11" font-weight="700" letter-spacing="1">PARALLEL × 5</text>
+
+          <!-- ── MAIN CONNECTING LINES (arch-branch) ── -->
+
+          <!-- Trigger → News Research, Social Research (diverge) -->
+          <line class="arch-branch" x1="78" y1="284" x2="170" y2="208" stroke="rgba(254,121,47,0.55)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="78" y1="306" x2="170" y2="382" stroke="rgba(232,0,103,0.55)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+
+          <!-- News Research, Social Research → Planner (converge) -->
+          <line class="arch-branch" x1="226" y1="208" x2="338" y2="281" stroke="rgba(167,139,250,0.65)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="226" y1="382" x2="338" y2="309" stroke="rgba(167,139,250,0.65)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+
+          <!-- Planner → Creative Opus, Creative Sonnet (diverge) -->
+          <line class="arch-branch" x1="378" y1="281" x2="482" y2="208" stroke="rgba(249,115,22,0.65)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="378" y1="309" x2="482" y2="382" stroke="rgba(6,182,212,0.65)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+
+          <!-- Creative Opus, Creative Sonnet → Junction (converge) -->
+          <line class="arch-branch" x1="530" y1="208" x2="622" y2="287" stroke="rgba(249,115,22,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="530" y1="382" x2="622" y2="303" stroke="rgba(6,182,212,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+
+          <!-- Junction → Platform nodes (fan out) -->
+          <line class="arch-branch" x1="636" y1="285" x2="736" y2="112" stroke="rgba(29,211,143,0.55)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="636" y1="291" x2="736" y2="205" stroke="rgba(29,211,143,0.55)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="636" y1="295" x2="736" y2="295" stroke="rgba(29,211,143,0.65)" stroke-width="2"   stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="636" y1="299" x2="736" y2="385" stroke="rgba(29,211,143,0.55)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="636" y1="305" x2="736" y2="475" stroke="rgba(29,211,143,0.55)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+
+          <!-- Platform nodes → QA (converge) -->
+          <line class="arch-branch" x1="794" y1="112" x2="930" y2="277" stroke="rgba(6,182,212,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="794" y1="205" x2="930" y2="285" stroke="rgba(6,182,212,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="794" y1="295" x2="930" y2="295" stroke="rgba(6,182,212,0.65)" stroke-width="2"   stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="794" y1="385" x2="930" y2="305" stroke="rgba(6,182,212,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+          <line class="arch-branch" x1="794" y1="475" x2="930" y2="313" stroke="rgba(6,182,212,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="370"/>
+
+          <!-- QA → HITL → Publisher (output spine, arch-trunk) -->
+          <line class="arch-trunk" x1="968" y1="295" x2="1072" y2="295" stroke="rgba(232,0,103,0.75)" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="492" stroke-dashoffset="492"/>
+          <line class="arch-trunk" x1="1107" y1="295" x2="1243" y2="295" stroke="rgba(254,121,47,0.75)" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="492" stroke-dashoffset="492"/>
+
+          <!-- Past Performance → Planner (solid green learning feed, always visible) -->
+          <line x1="358" y1="492" x2="358" y2="315" stroke="#1dd38f" stroke-width="3" stroke-dasharray="7,5" stroke-linecap="round" opacity="0.85"/>
+          <!-- arrowhead pointing up into Planner -->
+          <polygon points="352,321 358,309 364,321" fill="#1dd38f"/>
+          <!-- "reads" label to the left of the line, clear of Creative nodes -->
+          <text x="348" y="415" text-anchor="end" fill="#1dd38f" font-size="11" font-weight="700">reads</text>
+
+          <!-- RETRY: QA arc back to Platform group (dashed pink — always visible) -->
+          <path d="M 950 277 C 950 32, 764 32, 764 80"
+                stroke="#e80067" stroke-width="1.8" stroke-dasharray="6,4" fill="none"
+                stroke-linecap="round" id="retry-path"/>
+          <polygon points="759,80 769,80 764,93" fill="#e80067"/>
+          <text x="857" y="26" text-anchor="middle" fill="#e80067" font-size="12" font-weight="700">retry ≤ 2×</text>
+
+          <!-- QA → Analytics Collector (vertical dashed green — engagement data collection) -->
+          <line x1="950" y1="313" x2="950" y2="518" stroke="#1dd38f" stroke-width="2" stroke-dasharray="6,4" stroke-linecap="round" opacity="0.75"/>
+          <!-- Analytics → Past Perf DB (routes down then left via bottom arc) -->
+          <path d="M 950 549 C 950 598, 358 598, 358 520" stroke="#1dd38f" stroke-width="2" stroke-dasharray="6,4" fill="none" stroke-linecap="round" opacity="0.75"/>
+          <!-- arrow pointing up into Past Perf DB from below -->
+          <polygon points="352,524 358,512 364,524" fill="#1dd38f"/>
+          <!-- label along the arc -->
+          <text x="665" y="615" text-anchor="middle" fill="rgba(29,211,143,0.7)" font-size="11" font-weight="600">engagement metrics → DB</text>
+
+          <!-- ── JUNCTION DOT (converge point before fan-out) ── -->
+          <circle cx="630" cy="295" r="5" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+
+          <!-- ══════════════════ NODES ══════════════════ -->
+
+          <!-- ① TRIGGER -->
+          <ellipse cx="60" cy="311" rx="28" ry="7" fill="rgba(254,121,47,0.12)"/>
+          <circle cx="60" cy="295" r="17" fill="#fe792f" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="60" y="301" text-anchor="middle" fill="white" font-size="15" font-weight="800">1</text>
+          <text x="60" y="324" text-anchor="middle" fill="#fe792f" font-size="13" font-weight="700">Trigger</text>
+          <text x="60" y="338" text-anchor="middle" fill="rgba(254,121,47,0.65)" font-size="11">Cron · Slack · API</text>
+
+          <!-- ② NEWS RESEARCH -->
+          <circle cx="198" cy="205" r="14" fill="#5e23dc" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="198" y="211" text-anchor="middle" fill="white" font-size="12" font-weight="800">2a</text>
+          <text x="198" y="229" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">News</text>
+          <text x="198" y="244" text-anchor="middle" fill="rgba(167,139,250,0.65)" font-size="11">Tavily · Serper · 12 domains</text>
+
+          <!-- ② SOCIAL RESEARCH -->
+          <circle cx="198" cy="385" r="14" fill="#e80067" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="198" y="391" text-anchor="middle" fill="white" font-size="12" font-weight="800">2b</text>
+          <text x="198" y="409" text-anchor="middle" fill="#f472b6" font-size="13" font-weight="700">Social</text>
+          <text x="198" y="424" text-anchor="middle" fill="rgba(232,0,103,0.65)" font-size="11">Trends · Reddit · YouTube</text>
+
+          <!-- ◆ PAST PERFORMANCE DB (data store, below Planner) -->
+          <rect x="312" y="492" width="92" height="28" rx="5" fill="rgba(29,211,143,0.18)" stroke="#1dd38f" stroke-width="2" stroke-dasharray="4,2"/>
+          <text x="358" y="511" text-anchor="middle" fill="#1dd38f" font-size="12" font-weight="800">⊞ Past Perf DB</text>
+          <text x="358" y="554" text-anchor="middle" fill="#1dd38f" font-size="13" font-weight="700">Past Performance</text>
+          <text x="358" y="570" text-anchor="middle" fill="rgba(29,211,143,0.65)" font-size="11">Self-improves via engagement</text>
+
+          <!-- ③ PLANNER -->
+          <circle cx="358" cy="295" r="18" fill="#a78bfa" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="358" y="301" text-anchor="middle" fill="white" font-size="15" font-weight="800">3</text>
+          <text x="358" y="324" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">Planner</text>
+          <text x="358" y="338" text-anchor="middle" fill="rgba(167,139,250,0.65)" font-size="11">Filters noise · assigns brief</text>
+
+          <!-- ④a CREATIVE: SOCIAL -->
+          <circle cx="513" cy="205" r="15" fill="#f97316" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="513" y="211" text-anchor="middle" fill="white" font-size="12" font-weight="800">4a</text>
+          <text x="513" y="230" text-anchor="middle" fill="#f97316" font-size="13" font-weight="700">Social Writer</text>
+          <text x="513" y="245" text-anchor="middle" fill="rgba(249,115,22,0.65)" font-size="11">Opus 4.7 · Hinglish hooks</text>
+
+          <!-- ④b CREATIVE: SEO -->
+          <circle cx="513" cy="385" r="15" fill="#06b6d4" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="513" y="391" text-anchor="middle" fill="white" font-size="12" font-weight="800">4b</text>
+          <text x="513" y="410" text-anchor="middle" fill="#06b6d4" font-size="13" font-weight="700">SEO Writer</text>
+          <text x="513" y="425" text-anchor="middle" fill="rgba(6,182,212,0.65)" font-size="11">Sonnet 4.6 · 800-word</text>
+
+          <!-- ⑤ PLATFORM NODES -->
+          <circle cx="764" cy="112" r="13" fill="#1d9bf0" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="764" y="118" text-anchor="middle" fill="white" font-size="11" font-weight="800">𝕏</text>
+          <text x="785" y="108" text-anchor="start" fill="#60a5fa" font-size="13" font-weight="700">Twitter</text>
+          <text x="785" y="122" text-anchor="start" fill="rgba(96,165,250,0.65)" font-size="11">Thread · 280-char</text>
+
+          <circle cx="764" cy="205" r="13" fill="#e80067" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="764" y="211" text-anchor="middle" fill="white" font-size="11" font-weight="800">IG</text>
+          <text x="785" y="201" text-anchor="start" fill="#f472b6" font-size="13" font-weight="700">Instagram</text>
+          <text x="785" y="215" text-anchor="start" fill="rgba(244,114,182,0.65)" font-size="11">PIL cards · $0.00 imgs</text>
+
+          <circle cx="764" cy="295" r="13" fill="#dc2626" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="764" y="301" text-anchor="middle" fill="white" font-size="11" font-weight="800">YT</text>
+          <text x="785" y="291" text-anchor="start" fill="#fca5a5" font-size="13" font-weight="700">YouTube</text>
+          <text x="785" y="305" text-anchor="start" fill="rgba(252,165,165,0.65)" font-size="11">Shorts script</text>
+
+          <circle cx="764" cy="385" r="13" fill="#0a66c2" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="764" y="391" text-anchor="middle" fill="white" font-size="11" font-weight="800">in</text>
+          <text x="785" y="381" text-anchor="start" fill="#60a5fa" font-size="13" font-weight="700">LinkedIn</text>
+          <text x="785" y="395" text-anchor="start" fill="rgba(96,165,250,0.65)" font-size="11">Thought leadership</text>
+
+          <circle cx="764" cy="475" r="13" fill="#5e23dc" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="764" y="481" text-anchor="middle" fill="white" font-size="11" font-weight="800">SE</text>
+          <text x="785" y="471" text-anchor="start" fill="#a78bfa" font-size="13" font-weight="700">SEO News</text>
+          <text x="785" y="485" text-anchor="start" fill="rgba(167,139,250,0.65)" font-size="11">Housing.com CMS</text>
+
+          <!-- ⑥ QA -->
+          <circle cx="950" cy="295" r="18" fill="#06b6d4" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="950" y="301" text-anchor="middle" fill="white" font-size="15" font-weight="800">6</text>
+          <text x="950" y="324" text-anchor="middle" fill="#06b6d4" font-size="13" font-weight="700">QA Gate</text>
+          <text x="950" y="338" text-anchor="middle" fill="rgba(6,182,212,0.65)" font-size="11">Safety → Quality → ER predict</text>
+
+          <!-- ◆ ANALYTICS COLLECTOR (below QA, feeds Past Perf DB) -->
+          <circle cx="950" cy="535" r="14" fill="rgba(29,211,143,0.2)" stroke="#1dd38f" stroke-width="2"/>
+          <text x="950" y="540" text-anchor="middle" fill="#1dd38f" font-size="11" font-weight="800">📊</text>
+          <text x="950" y="559" text-anchor="middle" fill="#1dd38f" font-size="13" font-weight="700">Analytics</text>
+          <text x="950" y="574" text-anchor="middle" fill="rgba(29,211,143,0.65)" font-size="11">Post-publish metrics</text>
+
+          <!-- ⑦ HITL -->
+          <circle cx="1090" cy="295" r="17" fill="#e80067" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+          <text x="1090" y="301" text-anchor="middle" fill="white" font-size="15" font-weight="800">7</text>
+          <text x="1090" y="322" text-anchor="middle" fill="#e80067" font-size="13" font-weight="700">Human in Loop</text>
+          <text x="1090" y="336" text-anchor="middle" fill="rgba(232,0,103,0.65)" font-size="11">Slack 1-click approve</text>
+
+          <!-- ⑧ PUBLISHER (crown node) -->
+          <ellipse cx="1265" cy="322" rx="32" ry="8" fill="rgba(254,121,47,0.12)"/>
+          <circle cx="1265" cy="295" r="27" fill="none" stroke="rgba(254,121,47,0.18)" stroke-width="1.5"/>
+          <circle cx="1265" cy="295" r="20" fill="url(#pubGrad2)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+          <text x="1265" y="301" text-anchor="middle" fill="white" font-size="15" font-weight="800">8</text>
+          <text x="1265" y="327" text-anchor="middle" fill="#fe792f" font-size="13" font-weight="700">Publisher</text>
+          <text x="1265" y="341" text-anchor="middle" fill="rgba(254,121,47,0.65)" font-size="11">5 platforms · $0.52/run</text>
+        </svg>
+
+        <!-- Hidden fragment divs retained for JS compatibility -->
+        <div id="arch-left"  class="fragment arch-panel" data-fragment-index="0" style="display:none;"></div>
+        <div id="arch-right" class="fragment arch-panel" data-fragment-index="0" style="display:none;"></div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 5: ZOMATO METHOD -->
+<section id="slide-zomato" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:36px 40px;">
+    <h2 style="color:white; margin-bottom:6px;">The Creative Strategy: The Zomato Method</h2>
+    <div class="big-quote">"Trend is HERO. Housing is PUNCHLINE."</div>
+    <div class="grid-2" style="margin-top:16px;">
+      <div>
+        <div class="card-dark" style="margin-bottom:12px; border-left:3px solid var(--red);">
+          <div style="font-size:0.55em; font-weight:800; color:var(--red); margin-bottom:8px;">❌ BAD — Generic IPL Hook</div>
+          <div style="font-size:0.52em; color:rgba(255,255,255,0.55); line-height:1.4; font-style:italic;">"IPL season is exciting! Just like buying your dream home — both require careful planning and research. Check out our properties..."</div>
+          <div style="font-size:0.48em; color:rgba(255,107,53,0.7); margin-top:6px;">Pred ER: 0.8% · Trend Dominance: 2/10</div>
+        </div>
+        <div class="card-dark" style="border-left:3px solid rgba(255,255,255,0.2);">
+          <div style="font-size:0.55em; font-weight:800; color:rgba(255,255,255,0.5); margin-bottom:8px;">⛔ OMIT — No Real Estate Angle</div>
+          <div style="font-size:0.52em; color:rgba(255,255,255,0.4); line-height:1.4; font-style:italic;">Coldplay concert cancelled → no housing connection possible. System correctly drops this topic instead of forcing a bad post.</div>
+          <div style="font-size:0.48em; color:rgba(0,168,112,0.7); margin-top:6px;">Planner correctly omits → 0 posts generated</div>
+        </div>
+      </div>
+      <div class="fragment fade-up">
+        <div style="font-size:0.52em; font-weight:700; color:rgba(255,255,255,0.5); margin-bottom:8px; text-align:center; text-transform:uppercase; letter-spacing:1px;">✅ Actual Output — Opus 4.7</div>
+        <div class="tweet-card">
+          <div style="display:flex; align-items:center; margin-bottom:10px;">
+            <div class="tweet-avatar">H</div>
+            <div>
+              <div class="tweet-name">Housing.com</div>
+              <div class="tweet-handle">@housingdotcom</div>
+            </div>
+          </div>
+          <div class="tweet-text">Splitsvilla waale safe space dhundh rahe hain,<br>aur tum abhi bhi PG mein ho 💀<br><br>Real safe space mili toh batana 🏠 <span style="color:#4a9ede;">@MTVIndia</span><br><br>housing.com/in/buy/mumbai<br><br><span style="color:#4a9ede;">#SplitsvillaX6</span> #GharKhojna #MumbaiHomes</div>
+          <div class="tweet-stats">
+            <span class="tweet-stat">♡ 3,100</span>
+            <span class="tweet-stat">🔁 1,240</span>
+            <span class="tweet-stat">📊 ER: 7.2%</span>
+          </div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <span class="chip green">Trend: Reality TV 📺</span>
+          <span class="chip orange">Hinglish Wit: 9/10</span>
+          <span class="chip">Pred ER: 7.2%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 6: TWITTER OUTPUT -->
+<section id="slide-twitter" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:32px 40px;">
+    <h2 style="color:white; margin-bottom:4px;">Twitter Output — Real Run <span style="color:var(--orange); font-family:'JetBrains Mono',monospace; font-size:0.7em;">080af0ce</span></h2>
+    <div class="grid-2">
+      <div>
+        <div class="tweet-card" style="margin-bottom:10px;">
+          <div style="display:flex; align-items:center; margin-bottom:8px;">
+            <div class="tweet-avatar">H</div>
+            <div><div class="tweet-name">Housing.com</div><div class="tweet-handle">@housingdotcom · Tweet 1/4</div></div>
+          </div>
+          <div class="tweet-text" style="font-size:0.9em;">🚨 8,212 projects just received RERA notices in Maharashtra alone.<br><br>Is your dream home on the list?<br><br>Bank accounts frozen. Sales halted. Here's how to check before it's too late 👇<br><br>https://housing.com/in/buy/mumbai</div>
+          <div class="tweet-stats"><span class="tweet-stat">238/280 chars</span><span class="tweet-stat" style="color:#1dd38f;">✓ Safety PASSED</span></div>
+        </div>
+        <div class="tweet-card" style="border-color:rgba(255,255,255,0.15);">
+          <div style="font-size:0.7em; color:#8899A6; margin-bottom:6px;">↳ Thread Tweet 2/4</div>
+          <div class="tweet-text" style="font-size:0.85em; color:rgba(255,255,255,0.85);">In the last 30 days, 3 regulators dropped the hammer:<br><br>• <span style="color:#4a9ede;">@MahaRERA_Official</span>: 8,212 notices<br>• Telangana RERA: 11% refund order<br>• Haryana: ₹52Cr penalty<br><br>This isn't a blip. This is a pattern. 🧵</div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
+          <span class="chip green">4-tweet thread</span>
+          <span class="chip">2 internal links</span>
+          <span class="chip orange">Safety PASSED</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.55em; font-weight:700; color:rgba(255,255,255,0.5); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">QA Scores</div>
+        <div style="margin-bottom:8px;">
+          <div class="qa-label"><span>QA Quality</span><span style="color:var(--orange);">6.4/10</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill" data-target="64" data-slide="slide-twitter"></div></div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div class="qa-label"><span>Predicted ER</span><span style="color:var(--orange);">7.15%</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill orange" data-target="71.5" data-slide="slide-twitter"></div></div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div class="qa-label"><span>Trend Dominance</span><span style="color:var(--orange);">8.5/10</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill" data-target="85" data-slide="slide-twitter"></div></div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div class="qa-label"><span>Hinglish Wit</span><span style="color:var(--orange);">7.0/10</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill green" data-target="70" data-slide="slide-twitter"></div></div>
+        </div>
+        <div class="card-dark" style="font-size:0.52em;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div><span style="color:rgba(255,255,255,0.5);">Char count</span><br><strong>238/280</strong></div>
+            <div><span style="color:rgba(255,255,255,0.5);">Safety</span><br><strong style="color:#1dd38f;">PASSED</strong></div>
+            <div><span style="color:rgba(255,255,255,0.5);">Thread length</span><br><strong>4 tweets</strong></div>
+            <div><span style="color:rgba(255,255,255,0.5);">Internal links</span><br><strong>2</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: INSTAGRAM OUTPUT -->
+<section id="slide-instagram" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:32px 40px;">
+    <h2 style="color:white; margin-bottom:12px;">Instagram Output — Same Run</h2>
+    <div class="grid-2">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding-top:8px;">
+        <div class="ig-story-wrap">
+          <div class="ig-story-frame">
+            <!-- Progress bar segments -->
+            <div class="ig-prog-bar">
+              <div class="ig-seg"><div class="ig-seg-fill" id="ig-seg-0"></div></div>
+              <div class="ig-seg"><div class="ig-seg-fill" id="ig-seg-1"></div></div>
+              <div class="ig-seg"><div class="ig-seg-fill" id="ig-seg-2"></div></div>
+              <div class="ig-seg"><div class="ig-seg-fill" id="ig-seg-3"></div></div>
+              <div class="ig-seg"><div class="ig-seg-fill" id="ig-seg-4"></div></div>
+            </div>
+            <!-- Profile header -->
+            <div class="ig-story-hdr">
+              <div class="ig-avi">H</div>
+              <span style="font-size:11px;font-weight:700;color:white;">housingdotcom</span>
+              <span style="font-size:10px;color:rgba(255,255,255,0.55);margin-left:3px;">· Follow</span>
+              <span style="margin-left:auto;font-size:15px;color:rgba(255,255,255,0.6);">✕</span>
+            </div>
+            <!-- Story 1: Hook -->
+            <div class="ig-story-card ig-active" style="background:linear-gradient(160deg,#5e23dc 0%,#3b1c8d 100%);">
+              <div style="position:absolute;top:-30px;right:-30px;width:130px;height:130px;border-radius:50%;background:rgba(232,0,103,0.28);"></div>
+              <div style="font-size:13px;font-weight:900;color:rgba(255,255,255,0.85);line-height:1.3;margin-bottom:6px;">⚠️ 8,212 projects just received RERA notices.</div>
+              <div style="font-size:22px;font-weight:900;color:white;line-height:1.2;margin-bottom:10px;">Is YOUR project safe?</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);">#RERA #RealEstate #housingdotcom</div>
+            </div>
+            <!-- Story 2: Numbers -->
+            <div class="ig-story-card" style="background:linear-gradient(160deg,#0f0a2e 0%,#1e1060 100%);">
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">The Numbers</div>
+              <div style="font-size:44px;font-weight:900;color:#fe792f;line-height:1;margin-bottom:2px;">8,212</div>
+              <div style="font-size:13px;font-weight:700;color:white;margin-bottom:10px;">RERA Notices Issued</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.7;">📍 Maharashtra: 6,200+<br>📍 Gujarat: 1,100+<br>📍 Karnataka: 912</div>
+            </div>
+            <!-- Story 3: What this means -->
+            <div class="ig-story-card" style="background:linear-gradient(160deg,#5e23dc 0%,#e80067 100%);">
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">What this means for YOU</div>
+              <div style="font-size:14px;font-weight:800;color:white;line-height:1.9;">✅ Right to full refund<br>✅ Compensation eligible<br>✅ Builder accountability</div>
+              <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.65);">RERA protects homebuyers.</div>
+            </div>
+            <!-- Story 4: How to check -->
+            <div class="ig-story-card" style="background:linear-gradient(160deg,#3b1c8d 0%,#5e23dc 100%);">
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">How to check in 2 mins</div>
+              <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px;">
+                <div style="background:rgba(255,255,255,0.1);border-radius:7px;padding:6px 10px;font-size:11px;color:white;font-weight:700;">① Visit RERA state portal</div>
+                <div style="background:rgba(255,255,255,0.1);border-radius:7px;padding:6px 10px;font-size:11px;color:white;font-weight:700;">② Search your project name</div>
+                <div style="background:rgba(94,35,220,0.55);border-radius:7px;padding:6px 10px;font-size:11px;color:white;font-weight:700;">③ Check registration status ✓</div>
+              </div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.45);">cc @MahaRERA_Official</div>
+            </div>
+            <!-- Story 5: CTA -->
+            <div class="ig-story-card" style="background:linear-gradient(160deg,#fe792f 0%,#e80067 100%);">
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Free · 2 minutes · Peace of mind.</div>
+              <div style="font-size:16px;font-weight:900;color:white;margin-bottom:8px;">housing.com/rera-check</div>
+              <div style="background:rgba(0,0,0,0.22);border-radius:22px;padding:8px 14px;text-align:center;margin-bottom:8px;">
+                <div style="font-size:12px;font-weight:900;color:white;">👆 Tap to check your project</div>
+              </div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.65);">@housingdotcom · 2.3L+ projects listed</div>
+            </div>
+          </div>
+          <!-- Dot indicators -->
+          <div class="ig-story-dots">
+            <div class="ig-dot ig-dot-active" onclick="showIgCard(0)"></div>
+            <div class="ig-dot" onclick="showIgCard(1)"></div>
+            <div class="ig-dot" onclick="showIgCard(2)"></div>
+            <div class="ig-dot" onclick="showIgCard(3)"></div>
+            <div class="ig-dot" onclick="showIgCard(4)"></div>
+          </div>
+        </div>
+        <div style="font-size:0.42em;color:rgba(255,255,255,0.35);text-align:center;letter-spacing:0.5px;">Auto-playing · 5 story slides · AI-generated</div>
+      </div>
+      <div>
+        <div style="font-size:0.55em; font-weight:700; color:rgba(255,255,255,0.5); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">QA Scores</div>
+        <div style="margin-bottom:8px;">
+          <div class="qa-label"><span>QA Quality</span><span style="color:var(--orange);">7.1/10</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill" data-target="71" data-slide="slide-instagram"></div></div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div class="qa-label"><span>Predicted ER</span><span style="color:var(--orange);">5.7%</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill orange" data-target="57" data-slide="slide-instagram"></div></div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div class="qa-label"><span>Visual Score</span><span style="color:var(--orange);">8.0/10</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill" data-target="80" data-slide="slide-instagram"></div></div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div class="qa-label"><span>CTA Strength</span><span style="color:var(--orange);">7.5/10</span></div>
+          <div class="qa-bar-track"><div class="qa-bar-fill green" data-target="75" data-slide="slide-instagram"></div></div>
+        </div>
+        <div class="card-dark" style="font-size:0.52em; margin-top:8px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div><span style="color:rgba(255,255,255,0.5);">Pred ER</span><br><strong style="color:var(--orange);">5.7%</strong></div>
+            <div><span style="color:rgba(255,255,255,0.5);">Image cost</span><br><strong style="color:#1dd38f;">$0.00 (PIL)</strong></div>
+            <div><span style="color:rgba(255,255,255,0.5);">Cards</span><br><strong>1 feed + 5 stories</strong></div>
+            <div><span style="color:rgba(255,255,255,0.5);">Safety</span><br><strong style="color:#1dd38f;">PASSED</strong></div>
+          </div>
+        </div>
+        <div class="highlight-box" style="margin-top:10px; font-size:0.55em;">
+          PIL-generated 1080×1080 cards — <span style="color:#1dd38f; font-weight:900;">$0.00</span> image generation cost
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: SEO ARTICLE -->
+<section id="slide-seo" data-background="#f2f3f8">
+  <div style="padding:36px 40px; color:#222222;">
+    <div class="brand-bar"></div>
+    <h2 style="color:#222222; margin-bottom:16px;">SEO Article Output — Housing.com News</h2>
+    <div class="grid-2">
+      <div>
+        <div class="card-light" style="height:calc(100% - 0px); overflow:hidden;">
+          <div style="font-size:0.68em; font-weight:900; color:var(--purple); margin-bottom:6px; line-height:1.3;">8,212 RERA Notices in Maharashtra: Is Your Dream Home at Risk?</div>
+          <div style="font-size:0.5em; color:var(--text-muted); margin-bottom:10px;">By Housing.com Newsdesk · 4 min read</div>
+
+          <div style="font-size:0.5em; color:var(--text); line-height:1.7; margin-bottom:8px;">
+            In an unprecedented sweep, MahaRERA has issued notices to <strong>8,212 projects</strong> across the state. If you own or plan to buy in <a href="#" style="color:var(--purple); font-weight:700; text-decoration:none; border-bottom:1px solid rgba(94,35,220,0.3);">Mumbai ↗</a>, <a href="#" style="color:var(--purple); font-weight:700; text-decoration:none; border-bottom:1px solid rgba(94,35,220,0.3);">Pune ↗</a> or <a href="#" style="color:var(--purple); font-weight:700; text-decoration:none; border-bottom:1px solid rgba(94,35,220,0.3);">Thane ↗</a>, check your project's status today.
+          </div>
+
+          <div style="font-size:0.54em; font-weight:800; color:var(--purple); margin:8px 0 3px;">H2: What Triggered the Crackdown?</div>
+          <div style="font-size:0.48em; color:var(--text-muted); line-height:1.6; margin-bottom:6px;">Projects failed to file quarterly progress reports under RERA Section 11. All <a href="#" style="color:var(--purple); font-weight:600;">RERA-verified properties in Mumbai →</a> are excluded from this notice list.</div>
+
+          <div style="font-size:0.54em; font-weight:800; color:var(--purple); margin:6px 0 3px;">H2: How to Verify Your Project in 2 Minutes</div>
+          <div style="font-size:0.48em; color:var(--text-muted); line-height:1.6; margin-bottom:6px;">Use the <a href="#" style="color:var(--purple); font-weight:700;">Housing.com RERA checker ↗</a> — enter your project name and get registration status instantly. Over 2.3L RERA-registered projects listed.</div>
+
+          <div style="font-size:0.54em; font-weight:800; color:var(--purple); margin:6px 0 3px;">H2: Safe Alternatives — RERA-Verified Listings</div>
+          <div style="font-size:0.48em; color:var(--text-muted); line-height:1.6;">Browse only verified projects: <a href="#" style="color:var(--purple); font-weight:600;">Mumbai ready-to-move ↗</a> · <a href="#" style="color:var(--purple); font-weight:600;">Pune under-construction ↗</a> · <a href="#" style="color:var(--purple); font-weight:600;">Hyderabad new launches ↗</a></div>
+
+          <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:4px;">
+            <span style="background:var(--purple-pale); color:var(--purple); border-radius:6px; padding:3px 8px; font-size:0.44em; font-weight:700;">3 internal links</span>
+            <span style="background:var(--purple-pale); color:var(--purple); border-radius:6px; padding:3px 8px; font-size:0.44em; font-weight:700;">CMS-ready JSON</span>
+            <span style="background:var(--purple-pale); color:var(--purple); border-radius:6px; padding:3px 8px; font-size:0.44em; font-weight:700;">NewsArticle schema</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card-light" style="margin-bottom:12px;">
+          <div style="font-size:0.58em; font-weight:800; color:var(--purple); margin-bottom:10px;">SEO Metadata</div>
+          <div class="seo-row"><span class="seo-key">Word count</span><span class="seo-val">800 words</span></div>
+          <div class="seo-row"><span class="seo-key">Title length</span><span class="seo-val"><span class="check">✓</span> ≤70 chars</span></div>
+          <div class="seo-row"><span class="seo-key">Meta description</span><span class="seo-val"><span class="check">✓</span> Optimized</span></div>
+          <div class="seo-row"><span class="seo-key">H2 sections</span><span class="seo-val"><span class="check">✓</span> 4 H2s</span></div>
+          <div class="seo-row"><span class="seo-key">Internal links</span><span class="seo-val"><span class="check">✓</span> 3 links</span></div>
+          <div class="seo-row" style="border:none;"><span class="seo-key">Predicted CTR</span><span class="seo-val" style="color:var(--orange); font-weight:800;">2.1%</span></div>
+        </div>
+        <div class="card-light">
+          <div style="font-size:0.58em; font-weight:800; color:var(--purple); margin-bottom:8px;">QA Score: 8.0/10</div>
+          <div style="margin-bottom:6px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.5em; color:var(--text-muted); margin-bottom:3px;"><span>Content quality</span><span style="color:var(--purple); font-weight:700;">8.0/10</span></div>
+            <div style="background:var(--purple-pale); border-radius:4px; height:6px; overflow:hidden;"><div class="qa-bar-fill" data-target="80" data-slide="slide-seo" style="background:linear-gradient(90deg,#5e23dc,#fe792f);"></div></div>
+          </div>
+          <div style="margin-bottom:6px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.5em; color:var(--text-muted); margin-bottom:3px;"><span>SEO optimization</span><span style="color:var(--purple); font-weight:700;">7.5/10</span></div>
+            <div style="background:var(--purple-pale); border-radius:4px; height:6px; overflow:hidden;"><div class="qa-bar-fill" data-target="75" data-slide="slide-seo" style="background:linear-gradient(90deg,#5e23dc,#fe792f);"></div></div>
+          </div>
+          <div style="margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; font-size:0.5em; color:var(--text-muted); margin-bottom:3px;"><span>Predicted CTR</span><span style="color:var(--orange); font-weight:700;">2.1%</span></div>
+            <div style="background:var(--purple-pale); border-radius:4px; height:6px; overflow:hidden;"><div class="qa-bar-fill orange" data-target="42" data-slide="slide-seo" style="background:linear-gradient(90deg,#fe792f,#ee569f);"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: 3-PASS QA -->
+<section id="slide-qa" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:36px 40px;">
+    <h2 style="color:white; text-align:center; margin-bottom:20px;">The 3-Pass QA Engine</h2>
+    <div class="grid-3">
+      <div class="pass-card fragment fade-up">
+        <span class="pass-num" style="color:var(--green);">01</span>
+        <div class="pass-title" style="color:var(--green);">Safety Gate</div>
+        <div class="pass-sub">Gemini 2.5 Flash · ~$0.001/post</div>
+        <div class="pass-item">Competitor brand mentions → BLOCK</div>
+        <div class="pass-item">Legal/regulatory claims → BLOCK</div>
+        <div class="pass-item">Misleading stats → BLOCK</div>
+        <div class="pass-item">Offensive content → BLOCK</div>
+        <div class="pass-item">Price predictions → BLOCK</div>
+        <div class="pass-item" style="color:rgba(0,168,112,0.8);">Housing.com brand terms → ALLOW</div>
+        <div style="margin-top:10px; background:rgba(29,211,143,0.1); border:1px solid rgba(0,168,112,0.3); border-radius:8px; padding:8px; font-size:0.48em; color:rgba(0,168,112,0.9);">
+          Hard binary gate — FAIL = post killed, no revision
+        </div>
+      </div>
+      <div class="pass-card fragment fade-up">
+        <span class="pass-num" style="color:var(--purple);">02</span>
+        <div class="pass-title" style="color:#BB86FC;">Quality Scoring</div>
+        <div class="pass-sub">Claude Sonnet 4.6 · ~$0.012/post</div>
+        <div class="pass-item">Hook strength (0–10)</div>
+        <div class="pass-item">Trend relevance (0–10)</div>
+        <div class="pass-item">Brand voice match (0–10)</div>
+        <div class="pass-item">Hinglish wit & authenticity (0–10)</div>
+        <div class="pass-item">CTA clarity (0–10)</div>
+        <div class="pass-item">Platform nativeness (0–10)</div>
+        <div class="pass-item">Emotional resonance (0–10)</div>
+        <div style="margin-top:10px; background:rgba(94,35,220,0.15); border:1px solid rgba(94,35,220,0.4); border-radius:8px; padding:8px; font-size:0.48em; color:#a78bfa;">
+          Score &lt;5.0 → auto-REVISE with feedback (max 2 loops)
+        </div>
+      </div>
+      <div class="pass-card fragment fade-up">
+        <span class="pass-num" style="color:var(--orange);">03</span>
+        <div class="pass-title" style="color:var(--orange);">Engagement Prediction</div>
+        <div class="pass-sub">Claude Opus 4.7 · ~$0.015/post</div>
+        <div class="pass-item">pred_impressions (platform-calibrated)</div>
+        <div class="pass-item">pred_engagement_rate (%)</div>
+        <div class="pass-item">pred_clicks (for news/SEO)</div>
+        <div class="pass-item">Confidence score (0–1)</div>
+        <div class="pass-item">Historical comparison</div>
+        <div class="pass-item">Optimal publish time</div>
+        <div class="pass-item">Improvement suggestions</div>
+        <div style="margin-top:10px; background:rgba(255,107,53,0.15); border:1px solid rgba(255,107,53,0.3); border-radius:8px; padding:8px; font-size:0.48em; color:rgba(255,107,53,0.9);">
+          Calibrated per platform using post history
+        </div>
+      </div>
+    </div>
+    <div class="fragment fade-up" style="margin-top:16px; text-align:center;">
+      <div class="card-dark" style="display:inline-block; padding:12px 24px; font-size:0.55em; border-color:rgba(255,107,53,0.3);">
+        <span style="color:var(--orange); font-weight:800;">Revision Loop:</span>
+        <span style="color:rgba(255,255,255,0.7);"> If Quality &lt;5.0 → structured feedback to Opus 4.7 → regenerate → re-score → max 2 attempts → discard if still failing</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 10: COST BREAKDOWN -->
+<section id="slide-cost-breakdown" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:32px 40px;">
+    <h2 style="color:white; margin-bottom:16px;">Where Every Dollar Goes — Per Run Cost Breakdown</h2>
+    <div class="grid-2">
+      <div>
+        <canvas id="costChart" width="560" height="360"></canvas>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px; justify-content:center;">
+        <div class="card-dark" style="border-left:4px solid var(--orange);">
+          <div style="font-size:0.6em; font-weight:800; color:var(--orange);">Social Creative = 24% of total</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-top:4px; line-height:1.4;">Opus 4.7 for social content — the most expensive model, but it's why the Hinglish hooks land. Worth every cent.</div>
+        </div>
+        <div class="card-dark" style="border-left:4px solid var(--green);">
+          <div style="font-size:0.6em; font-weight:800; color:var(--green);">Image generation: $0.00</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-top:4px; line-height:1.4;">PIL/Pillow generates 1080×1080 branded IG cards locally. No DALL-E, no Midjourney, no image API cost.</div>
+        </div>
+        <div class="card-dark" style="border-left:4px solid white; background:rgba(255,255,255,0.1);">
+          <div style="font-size:0.6em; font-weight:800; color:white;">5 platform posts for $0.52</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-top:4px; line-height:1.4;">Twitter thread + Instagram cards + YouTube script + LinkedIn article + SEO news post. All QA'd. All published. Price of a coffee.</div>
+        </div>
+        <div style="text-align:center; margin-top:6px;">
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Total per run</div>
+          <div style="font-size:3em; font-weight:900; color:var(--orange); line-height:1;">$0.52</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.4);">≈ ₹43</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 11: MONTHLY COST COMPARISON -->
+<section id="slide-monthly-cost" data-background="#f2f3f8">
+  <div style="padding:36px 40px; color:#222222;">
+    <div class="brand-bar"></div>
+    <h2 style="color:#222222; margin-bottom:16px;">₹8L+ of Content Output. ₹14K AI Cost.</h2>
+    <div class="grid-2">
+      <div>
+        <canvas id="monthlyChart" width="560" height="320"></canvas>
+        <div style="display:flex; justify-content:center; gap:30px; margin-top:12px; font-size:0.52em; color:var(--text-muted);">
+          <div><span class="legend-dot" style="background:#e02727;"></span>Traditional Agency</div>
+          <div><span class="legend-dot" style="background:#1dd38f;"></span>AI Content Engine</div>
+        </div>
+        <div style="text-align:center; margin-top:12px;">
+          <div class="annotation-badge">₹8.5L worth of output for ₹14K</div>
+          <div style="font-size:0.5em; color:var(--text-muted); margin-top:6px;">₹12,857/post (agency) → ₹47/post (AI) · <strong style="color:var(--text);">same brand quality, 25× more output</strong></div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; justify-content:center;">
+        <div class="card-light">
+          <div style="font-size:0.58em; font-weight:800; color:var(--text); margin-bottom:8px;">Monthly Comparison</div>
+          <div class="seo-row"><span class="seo-key">Agency cost</span><span class="seo-val" style="color:var(--red);">₹8.5L / $10,200</span></div>
+          <div class="seo-row"><span class="seo-key">AI Engine cost</span><span class="seo-val" style="color:var(--green);">₹14K / $168 (LLM + API)</span></div>
+          <div class="seo-row"><span class="seo-key">Per-post (agency)</span><span class="seo-val" style="color:var(--red);">₹12,857</span></div>
+          <div class="seo-row" style="border:none;"><span class="seo-key">Per-post (AI)</span><span class="seo-val" style="color:var(--green);">₹47</span></div>
+        </div>
+        <div class="grid-2" style="gap:8px;">
+          <div class="card-light" style="text-align:center;">
+            <div style="font-size:1.6em; font-weight:900; color:var(--purple);">25×</div>
+            <div style="font-size:0.48em; color:var(--text-muted);">more content output</div>
+          </div>
+          <div class="card-light" style="text-align:center;">
+            <div style="font-size:1.6em; font-weight:900; color:var(--green);">&lt;2mo</div>
+            <div style="font-size:0.48em; color:var(--text-muted);">Payback period</div>
+          </div>
+          <div class="card-light" style="text-align:center;">
+            <div style="font-size:1.6em; font-weight:900; color:var(--orange);">5×</div>
+            <div style="font-size:0.48em; color:var(--text-muted);">More posts (300 vs 70)</div>
+          </div>
+          <div class="card-light" style="text-align:center;">
+            <div style="font-size:1.6em; font-weight:900; color:var(--purple);">5</div>
+            <div style="font-size:0.48em; color:var(--text-muted);">Platforms (vs 2–3)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 12: 6-MONTH PROJECTION -->
+<section id="slide-projection" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:28px 32px;">
+    <h2 style="color:white; margin-bottom:14px;">6-Month Content Compounding</h2>
+    <div class="grid-2" style="gap:24px; align-items:start;">
+      <!-- Chart -->
+      <div>
+        <canvas id="projectionChart" width="580" height="360"></canvas>
+        <div style="display:flex; justify-content:center; gap:24px; margin-top:8px; font-size:0.5em; color:rgba(255,255,255,0.55);">
+          <div><span class="legend-dot" style="background:rgba(94,35,220,0.7);"></span>Posts/month</div>
+          <div><span class="legend-dot" style="background:#fe792f;"></span>Monthly Impressions (K)</div>
+        </div>
+      </div>
+      <!-- Table -->
+      <div>
+        <div style="font-size:0.56em; font-weight:800; color:rgba(255,255,255,0.7); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Starting Audience Base</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:8px;">
+          <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); border-radius:7px; padding:7px 10px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1em;">🐦</span>
+            <div>
+              <div style="font-size:0.54em; font-weight:700; color:white;">Twitter/X</div>
+              <div style="font-size:0.48em; color:rgba(255,255,255,0.5);">700K followers · 420K–700K reach/mo</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); border-radius:7px; padding:7px 10px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1em;">📸</span>
+            <div>
+              <div style="font-size:0.54em; font-weight:700; color:white;">Instagram</div>
+              <div style="font-size:0.48em; color:rgba(255,255,255,0.5);">704K followers · 350K–600K reach/mo</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); border-radius:7px; padding:7px 10px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1em;">▶️</span>
+            <div>
+              <div style="font-size:0.54em; font-weight:700; color:white;">YouTube</div>
+              <div style="font-size:0.48em; color:rgba(255,255,255,0.5);">678K subs · 300K–500K reach/mo</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); border-radius:7px; padding:7px 10px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1em;">💼</span>
+            <div>
+              <div style="font-size:0.54em; font-weight:700; color:white;">LinkedIn</div>
+              <div style="font-size:0.48em; color:rgba(255,255,255,0.5);">248K followers · 120K–200K reach/mo</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09); border-radius:7px; padding:7px 10px; display:flex; align-items:center; gap:8px; grid-column:1/-1;">
+            <span style="font-size:1.1em;">🏠</span>
+            <div>
+              <div style="font-size:0.54em; font-weight:700; color:white;">Housing.com News</div>
+              <div style="font-size:0.48em; color:rgba(255,255,255,0.5);">Organic SEO · 80K–150K reach/mo as articles index</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:rgba(254,121,47,0.12); border:1px solid rgba(254,121,47,0.3); border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.54em; font-weight:800; color:white;">300 posts/month · 5 platforms</span>
+          <span style="font-size:0.62em; font-weight:900; color:var(--orange);">1.2M–2.1M reach/mo</span>
+        </div>
+        <div class="card-dark" style="font-size:0.52em;">
+          <div style="font-weight:800; color:var(--orange); margin-bottom:6px;">Why impressions compound</div>
+          <div style="color:rgba(255,255,255,0.65); line-height:1.5;">
+            <div style="margin-bottom:4px;">Month 1–2: Existing audience, algorithm neutral</div>
+            <div style="margin-bottom:4px;">Month 3–4: Platforms reward consistency → organic boost</div>
+            <div style="margin-bottom:4px;">Month 5–6: SEO articles index → organic traffic adds up</div>
+            <div>By month 6: 1.5M–2M+ monthly impressions, compounding</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 13: BUSINESS IMPACT -->
+<section id="slide-impact" data-background="linear-gradient(135deg, #0B0B0F 0%, #2a1260 50%, #190d3b 100%)">
+  <div style="padding:36px 40px;">
+    <h2 style="color:white; text-align:center; margin-bottom:20px;">What Changes From Day 1</h2>
+    <div class="grid-3">
+      <div class="big-stat fragment fade-up">
+        <span class="num">300</span>
+        <span class="sub">posts every month</span>
+        <span class="note">vs ~12 today (1 post / 2–3 days, 1–2 platforms)</span>
+      </div>
+      <div class="big-stat fragment fade-up">
+        <span class="num" style="color:#1dd38f;">5</span>
+        <span class="sub">platforms, native format</span>
+        <span class="note">Twitter · Instagram · YouTube · LinkedIn · Housing News</span>
+      </div>
+      <div class="big-stat fragment fade-up">
+        <span class="num">&lt;2min</span>
+        <span class="sub">trend to published</span>
+        <span class="note">Any viral moment → 5-platform content package</span>
+      </div>
+      <div class="big-stat fragment fade-up">
+        <span class="num" style="color:#fe792f;">$0.52</span>
+        <span class="sub">per full 5-platform run</span>
+        <span class="note">₹8L+ worth of creative work · delivered for ₹14K/month</span>
+      </div>
+      <div class="big-stat fragment fade-up">
+        <span class="num" style="color:#a78bfa;">0</span>
+        <span class="sub">viral trends missed</span>
+        <span class="note">Runs at 9AM + 6PM IST daily · or triggered manually anytime</span>
+      </div>
+      <div class="big-stat fragment fade-up">
+        <span class="num" style="color:#1dd38f;">3-pass</span>
+        <span class="sub">QA before every publish</span>
+        <span class="note">Safety · Quality scoring · Engagement prediction</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 14: CASE STUDY TIMELINE -->
+<section id="slide-casestudy" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:32px 40px;">
+    <h2 style="color:white; margin-bottom:16px;">Case Study: RERA Crackdown → 5 Platforms in 97 Seconds</h2>
+    <div class="grid-2">
+      <div>
+        <div class="timeline">
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">0s</span> → <span class="timeline-node">researcher_node</span>
+            <div style="color:rgba(255,255,255,0.6);">Tavily fetches 8 RE stories, Serper validates</div>
+          </div>
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">0s</span> → <span class="timeline-node">trend_researcher</span> <span style="color:#1dd38f; font-size:0.9em;">(parallel)</span>
+            <div style="color:rgba(255,255,255,0.6);">#RERA trending, 15 social signals captured</div>
+          </div>
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">19s</span> → <span class="timeline-node">planner_node</span>
+            <div style="color:rgba(255,255,255,0.6);">2 ContentBriefs generated, 9 topics dropped</div>
+          </div>
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">27s</span> → <span class="timeline-node">social_creative</span> <span style="color:var(--orange); font-size:0.9em;">(Opus 4.7)</span>
+            <div style="color:rgba(255,255,255,0.6);">Hinglish urgency hook — "Is your dream home safe?"</div>
+          </div>
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">35s</span> → <span class="timeline-node">news_creative</span> <span style="color:#BB86FC; font-size:0.9em;">(Sonnet)</span>
+            <div style="color:rgba(255,255,255,0.6);">800-word SEO article, 4 H2s, 3 internal links</div>
+          </div>
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">53s</span> → <span class="timeline-node">platform_agents ×5</span> <span style="color:#1dd38f; font-size:0.9em;">(parallel)</span>
+            <div style="color:rgba(255,255,255,0.6);">Twitter + Instagram + YouTube + LinkedIn + Housing News</div>
+          </div>
+          <div class="timeline-item fragment fade-up">
+            <span class="timeline-time">71s</span> → <span class="timeline-node">qa_agent</span> <span style="color:rgba(255,255,255,0.5); font-size:0.9em;">3-pass</span>
+            <div style="color:rgba(255,255,255,0.6);">Safety PASS · Quality 6.4–8.0 · Pred ER 5.7–7.15%</div>
+          </div>
+          <div class="timeline-item fragment fade-up" style="margin-bottom:0;">
+            <span class="timeline-time">97s</span> → <span class="timeline-node" style="color:var(--orange);">publisher</span>
+            <div style="color:rgba(255,255,255,0.6);">4 posts queued · 6 internal links · Slack summary sent</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-dark">
+          <div style="font-size:0.58em; font-weight:800; color:var(--orange); margin-bottom:8px;">Run Cost Breakdown</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.7); line-height:1.7;">
+            <div style="display:flex; justify-content:space-between;"><span>Research agents</span><span style="color:white;">$0.066</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>Planner (Gemini)</span><span style="color:white;">$0.003</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>Creatives (Opus + Sonnet)</span><span style="color:white;">$0.161</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>Platform agents ×5</span><span style="color:white;">$0.096</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>QA (3-pass)</span><span style="color:white;">$0.131</span></div>
+            <div style="display:flex; justify-content:space-between; padding-top:6px; border-top:1px solid rgba(255,255,255,0.1); font-weight:800;"><span style="color:var(--orange);">Total</span><span style="color:var(--orange);">$0.52</span></div>
+          </div>
+        </div>
+        <div class="card-dark" style="border-color:rgba(29,211,143,0.3);">
+          <div style="font-size:0.58em; font-weight:800; color:#1dd38f; margin-bottom:8px;">Why This Wins</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.7); line-height:1.5;">
+            <div style="margin-bottom:5px;">⚡ Parallel research + platform phases = 60% time saved</div>
+            <div style="margin-bottom:5px;">🎯 Planner kills bad ideas before expensive Opus call</div>
+            <div style="margin-bottom:5px;">🛡 3-pass QA catches issues before they're published</div>
+            <div>📈 Engagement prediction calibrates per platform</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 15: FEEDBACK FLYWHEEL -->
+<section id="slide-flywheel" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:36px 40px;">
+    <h2 style="color:white; margin-bottom:16px;">Gets Smarter Every Run</h2>
+    <div class="grid-2">
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <div class="flywheel-container">
+          <div class="flywheel-ring"></div>
+          <!-- Top: Generate -->
+          <div class="flywheel-node" style="top:6px; left:50%; transform:translateX(-50%); width:100px; font-size:0.48em;">✍️ Generate<br>Content</div>
+          <!-- Right: Publish -->
+          <div class="flywheel-node orange" style="top:50%; right:-4px; transform:translateY(-50%); width:96px; font-size:0.48em;">📤 Publish<br>Live</div>
+          <!-- Bottom: Track -->
+          <div class="flywheel-node green" style="bottom:6px; left:50%; transform:translateX(-50%); width:100px; font-size:0.48em;">📊 Track ER<br>6h/24h/7d</div>
+          <!-- Left: Inject -->
+          <div class="flywheel-node" style="top:50%; left:-4px; transform:translateY(-50%); width:96px; font-size:0.48em;">🔄 Inject to<br>Next Run</div>
+          <!-- Center -->
+          <div class="flywheel-center" style="font-size:0.48em; width:90px; line-height:1.4;">Better<br>Content<br>Over Time</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px; justify-content:center;">
+        <div class="card-dark">
+          <div style="font-size:0.6em; font-weight:800; color:var(--orange); margin-bottom:8px;">What the System Learns</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.7); line-height:1.6;">
+            <div>🏏 Cricket + Bengaluru = <strong style="color:white;">3× higher ER</strong></div>
+            <div>🗣 Hinglish outperforms English <strong style="color:white;">2:1</strong></div>
+            <div>⏰ 6PM IST = <strong style="color:white;">40% better reach</strong></div>
+            <div>⚡ Urgency hooks beat data hooks on Twitter</div>
+            <div>📸 IG carousels outperform single images by 2.3×</div>
+          </div>
+        </div>
+        <div class="card-dark">
+          <div style="font-size:0.6em; font-weight:800; color:white; margin-bottom:8px;">Realistic Timeline</div>
+          <div style="font-size:0.5em; color:rgba(255,255,255,0.7); line-height:1.7;">
+            <div><span style="color:rgba(255,255,255,0.4);">Runs 1–15:</span> Cold start, baseline calibration</div>
+            <div><span style="color:#BB86FC;">Runs 16–30:</span> Patterns emerge, ER predictions improve</div>
+            <div><span style="color:var(--orange);">Runs 31–50:</span> ~22% ER improvement over baseline</div>
+            <div><span style="color:#1dd38f;">Runs 50+:</span> Plateau — consistent high performance</div>
+          </div>
+        </div>
+        <div class="card-dark" style="border-color:rgba(255,107,53,0.3);">
+          <div class="big-quote" style="font-size:0.55em; margin:0; padding-left:12px;">"This is a compounding asset, not a one-shot tool."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 16: DEPLOYMENT MODES -->
+<section id="slide-deploy" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:36px 40px;">
+    <h2 style="color:white; margin-bottom:20px;">5 Ways to Run It — Production-Ready Today</h2>
+    <div class="grid-3" style="margin-bottom:12px;">
+      <div class="deploy-card">
+        <div class="d-title">🖥 Scheduled Server</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-bottom:8px; line-height:1.3;">Auto-runs at 9AM + 6PM IST. Set it and forget it.</div>
+        <div class="code-block">python main.py serve<br><span style="color:#BB86FC;"># APScheduler: 9AM + 6PM IST</span></div>
+      </div>
+      <div class="deploy-card">
+        <div class="d-title">💬 Slack Bot</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-bottom:8px; line-height:1.3;">DM the bot a content idea. Pipeline completes in 2 min.</div>
+        <div class="code-block">@HousingBot content idea<br><span style="color:#BB86FC;"># → runs full pipeline</span></div>
+      </div>
+      <div class="deploy-card">
+        <div class="d-title">🔌 REST API</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-bottom:8px; line-height:1.3;">Async trigger, returns run_id for status polling.</div>
+        <div class="code-block">POST /run<br><span style="color:#BB86FC;"># returns run_id</span><br>GET /run/{id}/status</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="deploy-card">
+        <div class="d-title">🖱 React Dashboard</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-bottom:8px; line-height:1.3;">Browser UI — run history, QA scores, engagement tracking, content preview.</div>
+        <div class="code-block">npm run dev <span style="color:#BB86FC;"># Vite + React</span><br><span style="color:#BB86FC;"># → localhost:5173</span></div>
+      </div>
+      <div class="deploy-card">
+        <div class="d-title">⌨️ CLI — Single Run</div>
+        <div style="font-size:0.5em; color:rgba(255,255,255,0.6); margin-bottom:8px; line-height:1.3;">Fastest way to test. Live progress output. 2–3 min end-to-end.</div>
+        <div class="code-block">python main.py run<br><span style="color:#BB86FC;"># live progress + output/</span><br><span style="color:#1dd38f;"># ~2-3 min · $0.52</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 17: TECH STACK -->
+<section id="slide-stack" data-background="#f2f3f8">
+  <div style="padding:36px 40px; color:#222222;">
+    <div class="brand-bar"></div>
+    <h2 style="color:#222222; margin-bottom:20px;">Technology Stack</h2>
+    <div class="grid-4">
+      <div class="tech-card">
+        <div class="tc-title">AI / LLM</div>
+        <div class="tech-item"><strong>Claude Opus 4.7</strong><br>Social creative, engagement prediction</div>
+        <div class="tech-item"><strong>Claude Sonnet 4.6</strong><br>Research, news, QA scoring, platform agents</div>
+        <div class="tech-item"><strong>Gemini 2.5 Flash</strong><br>Planner + safety gate (53% cheaper)</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-title">Orchestration</div>
+        <div class="tech-item"><strong>LangGraph</strong><br>Stateful multi-agent graph, parallel fan-out</div>
+        <div class="tech-item"><strong>AsyncSqliteSaver</strong><br>Crash-resumable checkpointing</div>
+        <div class="tech-item"><strong>RetryPolicy</strong><br>Exponential backoff (publisher=None)</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-title">Data &amp; Tools</div>
+        <div class="tech-item"><strong>Tavily + Serper</strong><br>12 RE domains, real-time search</div>
+        <div class="tech-item"><strong>Google Trends + Reddit</strong><br>Social trend aggregation</div>
+        <div class="tech-item"><strong>SQLite + SQLAlchemy</strong><br>Post storage, engagement history</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-title">Infrastructure</div>
+        <div class="tech-item"><strong>FastAPI</strong><br>REST API, async endpoints</div>
+        <div class="tech-item"><strong>APScheduler</strong><br>9AM + 6PM IST cron</div>
+        <div class="tech-item"><strong>React + Vite</strong><br>Dashboard UI</div>
+        <div class="tech-item"><strong>PIL/Pillow</strong><br>1080×1080 branded cards — $0</div>
+      </div>
+    </div>
+    <div style="margin-top:16px; text-align:center;">
+      <span class="chip" style="background:rgba(94,35,220,0.08); border-color:rgba(94,35,220,0.2); color:var(--purple);">Python 3.11</span>
+      <span class="chip" style="background:rgba(94,35,220,0.08); border-color:rgba(94,35,220,0.2); color:var(--purple);">AsyncIO</span>
+      <span class="chip" style="background:rgba(94,35,220,0.08); border-color:rgba(94,35,220,0.2); color:var(--purple);">Docker-ready</span>
+      <span class="chip" style="background:rgba(94,35,220,0.08); border-color:rgba(94,35,220,0.2); color:var(--purple);">DRY_RUN mode</span>
+      <span class="chip" style="background:rgba(94,35,220,0.08); border-color:rgba(94,35,220,0.2); color:var(--purple);">Structured logging</span>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 18: ROADMAP -->
+<section id="slide-roadmap" data-background="#f2f3f8">
+  <div style="padding:36px 40px; color:#222222;">
+    <div class="brand-bar"></div>
+    <h2 style="color:#222222; margin-bottom:20px;">What's Next — 6-Month Roadmap</h2>
+    <div class="grid-3" style="height:480px;">
+      <div class="road-card now">
+        <div class="road-title" style="color:var(--green);">✅ NOW — Proof of Concept</div>
+        <div class="road-item">5-platform publish pipeline</div>
+        <div class="road-item">3-pass QA (safety + quality + ER pred)</div>
+        <div class="road-item">Hinglish social content (Opus 4.7)</div>
+        <div class="road-item">800-word SEO articles (Sonnet)</div>
+        <div class="road-item">Slack bot integration</div>
+        <div class="road-item">Engagement prediction + feedback flywheel</div>
+        <div class="road-item">PIL branded image cards ($0)</div>
+        <div class="road-item">2-minute end-to-end runtime</div>
+        <div class="road-item">React dashboard + REST API</div>
+      </div>
+      <div class="road-card mid">
+        <div class="road-title" style="color:var(--purple);">🚀 Month 1–2 — Production</div>
+        <div class="road-item">Live posting to all 5 platforms (DRY_RUN=false)</div>
+        <div class="road-item">Human-in-loop approval UI (1-click approve)</div>
+        <div class="road-item">PostgresSaver for multi-worker scale</div>
+        <div class="road-item">A/B model routing (Opus vs Sonnet per content type)</div>
+        <div class="road-item">Real-time monitoring dashboard</div>
+        <div class="road-item">Webhook + CMS integration (WordPress/Ghost)</div>
+        <div class="road-item">Cost guardrails + spend alerts</div>
+      </div>
+      <div class="road-card far">
+        <div class="road-title" style="color:var(--orange);">🌍 Month 3–6 — Scale</div>
+        <div class="road-item">Vernacular content (Hindi / Tamil / Telugu)</div>
+        <div class="road-item">Video generation (Sora API)</div>
+        <div class="road-item">City microsites — Mumbai / Bengaluru / Hyderabad</div>
+        <div class="road-item">Builder partnership content (automated)</div>
+        <div class="road-item">WhatsApp broadcast channel</div>
+        <div class="road-item">PropTech SEO cluster strategy</div>
+        <div class="road-item">Housing.com #1 PropTech content brand</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 19: THE ASK -->
+<section id="slide-ask" data-background="linear-gradient(135deg, #0B0B0F 0%, #2a1260 50%, #190d3b 100%)">
+  <div style="padding:50px 40px; text-align:center;">
+    <div class="section-label" style="text-align:center;">The Ask</div>
+    <h1 style="color:white; margin-bottom:0.2em;">#TrendJacker is live.</h1>
+    <p style="font-size:0.65em; color:rgba(255,255,255,0.65); max-width:760px; margin:0 auto 30px; line-height:1.6;">
+      300 posts/month. ₹14,000/month all-in. Brand-safe, platform-native, Hinglish-first.
+    </p>
+    <div class="grid-3" style="max-width:900px; margin:0 auto 28px;">
+      <div class="ask-card fragment fade-up">
+        <span class="ask-icon">✅</span>
+        <div class="ask-title">Deploy Now</div>
+        <div class="ask-body">Set DRY_RUN=false + platform API keys → live in 30 minutes. Already integrated with Slack, Twitter, Instagram, LinkedIn, YouTube.</div>
+      </div>
+      <div class="ask-card fragment fade-up">
+        <span class="ask-icon">📊</span>
+        <div class="ask-title">Run a 30-Day Pilot</div>
+        <div class="ask-body">Run alongside the human content team. Measure engagement delta at 30 days. We're confident the numbers win.</div>
+      </div>
+      <div class="ask-card fragment fade-up">
+        <span class="ask-icon">🚀</span>
+        <div class="ask-title">Scale</div>
+        <div class="ask-body">Multi-city, multi-language rollout. Housing.com becomes #1 PropTech content brand in India by Q4 2026.</div>
+      </div>
+    </div>
+    <div class="fragment fade-up">
+      <div class="code-block" style="display:inline-block; padding:14px 40px; font-size:0.65em; color:#1dd38f;">python main.py run</div>
+    </div>
+    <div class="bottom-tag">#TrendJacker — Multi Agent Content Machine</div>
+  </div>
+</section>
+
+<!-- SLIDE 20: CLOSE -->
+<section id="slide-close" data-background="linear-gradient(135deg, #0B0B0F 0%, #190d3b 100%)">
+  <div style="padding:60px 40px; text-align:center; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <img src="https://c.housingcdn.com/demand/s/client/common/assets/housing.820bbe77.png" alt="housing.com" style="height:44px; opacity:0.92; margin-bottom:24px; display:block; margin-left:auto; margin-right:auto;">
+    <h1 style="color:white; font-size:2.4em; line-height:1.15; margin-bottom:0.3em; max-width:900px;">
+      Trend → Publish.<br>
+      <span style="color:var(--orange);">2 minutes. $0.52.</span><br>
+      <span style="color:var(--orange);">#TrendJacker.</span>
+    </h1>
+    <p style="font-size:0.65em; color:rgba(255,255,255,0.55); max-width:700px; line-height:1.7; margin:20px auto;">
+      The content race in Indian PropTech is won by whoever publishes first, best, and most.<br>
+      We just automated all three.
+    </p>
+    <div style="margin-top:24px; display:flex; gap:16px; justify-content:center; align-items:center;">
+      <span class="chip orange">50+ runs completed</span>
+      <span class="chip green">output/ directory growing</span>
+      <span class="chip">₹1.06Cr annual savings</span>
+    </div>
+    <div style="margin-top:30px;">
+      <div class="code-block" style="display:inline-block; padding:12px 36px; font-size:0.6em; color:#1dd38f; border-color:rgba(29,211,143,0.4);">python main.py run  <span style="color:rgba(255,255,255,0.3)"># it's that simple</span></div>
+    </div>
+  </div>
+</section>
+
+</div><!-- .slides -->
+</div><!-- .reveal -->
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ─── REVEAL.JS INIT ───────────────────────────────────────────────
+// Seamless credits loop — clone grid so animation restarts invisibly
+(function(){
+  var inner = document.getElementById('ow-scroll-inner');
+  if (inner && inner.firstElementChild) {
+    inner.appendChild(inner.firstElementChild.cloneNode(true));
+  }
+})();
+
+Reveal.initialize({
+  width: 1400,
+  height: 800,
+  margin: 0.04,
+  minScale: 0.2,
+  maxScale: 2.0,
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'slide',
+  plugins: [RevealHighlight]
+});
+
+// ─── COUNTER ANIMATION ────────────────────────────────────────────
+function animateCounter(el, target, prefix, suffix, duration) {
+  duration = duration || 1800;
+  var start = Date.now();
+  function update() {
+    var progress = Math.min((Date.now() - start) / duration, 1);
+    var ease = 1 - Math.pow(1 - progress, 3);
+    var val = Math.round(ease * target);
+    el.textContent = prefix + val + suffix;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+function runTitleCounters() {
+  var c1 = document.getElementById('c1');
+  var c2 = document.getElementById('c2');
+  var c3 = document.getElementById('c3');
+  var c4 = document.getElementById('c4');
+  if (c1) { c1.textContent = '0'; animateCounter(c1, 300, '', '/mo', 2000); }
+  if (c2) { c2.textContent = '0'; animateCounter(c2, 100, '', '%', 1800); }
+  if (c3) { c3.textContent = '0'; animateCounter(c3, 5, '', '', 1400); }
+  if (c4) {
+    c4.textContent = '$0.00';
+    var _s4 = Date.now();
+    (function tick4() {
+      var p = Math.min((Date.now()-_s4)/1600,1), e=1-Math.pow(1-p,3);
+      c4.textContent = '$' + (e*0.52).toFixed(2);
+      if(p<1) requestAnimationFrame(tick4);
+    })();
+  }
+}
+
+// ─── QA BAR ANIMATIONS ────────────────────────────────────────────
+function animateBarsInSlide(slideEl) {
+  var bars = slideEl.querySelectorAll('.qa-bar-fill');
+  bars.forEach(function(bar) {
+    var target = parseFloat(bar.getAttribute('data-target')) || 0;
+    setTimeout(function() {
+      bar.style.width = target + '%';
+    }, 200);
+  });
+}
+
+// ─── CHART STATE ──────────────────────────────────────────────────
+var chartState = { costBreakdown: false, monthly: false, projection: false };
+
+function initCostBreakdownChart() {
+  var ctx = document.getElementById('costChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [
+        'Social Creative (Opus 4.7)',
+        'Platform Agents ×5',
+        'QA Engagement (Opus)',
+        'Other (Flash/tools)',
+        'QA Quality (Sonnet)',
+        'News Creative (Sonnet)',
+        'Research (Sonnet)',
+        'Trend Research (Sonnet)'
+      ],
+      datasets: [{
+        data: [0.123, 0.096, 0.068, 0.064, 0.063, 0.038, 0.034, 0.032],
+        backgroundColor: [
+          '#fe792f', '#5e23dc', '#fe792f', '#1dd38f',
+          '#5e23dc', '#5e23dc', '#5e23dc', '#5e23dc'
+        ],
+        borderRadius: 6,
+        borderSkipped: false,
+        barThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: false,
+      animation: { duration: 1800, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ' $' + ctx.parsed.x.toFixed(3); }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 11, family: 'Rubik' }, callback: function(v) { return '$' + v.toFixed(2); } },
+          grid: { color: 'rgba(255,255,255,0.1)' },
+          border: { color: 'rgba(255,255,255,0.1)' }
+        },
+        y: {
+          ticks: { color: 'rgba(255,255,255,0.8)', font: { size: 11, family: 'Rubik' } },
+          grid: { display: false },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function initMonthlyChart() {
+  var ctx = document.getElementById('monthlyChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Traditional Agency', 'AI Content Engine'],
+      datasets: [{
+        data: [10200, 168],
+        backgroundColor: ['#e02727', '#1dd38f'],
+        borderRadius: 10,
+        borderSkipped: false,
+        barThickness: 80
+      }]
+    },
+    options: {
+      responsive: false,
+      animation: { duration: 2000, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var v = ctx.parsed.y;
+              return ' $' + v.toLocaleString() + '/mo';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#333', font: { size: 13, family: 'Rubik', weight: '700' } },
+          grid: { display: false },
+          border: { display: false }
+        },
+        y: {
+          type: 'logarithmic',
+          min: 100,
+          ticks: {
+            color: '#666', font: { size: 11, family: 'Rubik' },
+            callback: function(v) {
+              if ([100,1000,10000].includes(v)) return '$' + (v>=1000 ? (v/1000).toFixed(0)+'K' : v);
+              return null;
+            }
+          },
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          border: { display: false }
+        }
+      }
+    },
+    plugins: [{
+      id: 'valueLabels',
+      afterDatasetsDraw: function(chart) {
+        var ctx2 = chart.ctx;
+        chart.data.datasets.forEach(function(ds, i) {
+          var meta = chart.getDatasetMeta(i);
+          meta.data.forEach(function(bar, idx) {
+            var v = ds.data[idx];
+            var labels = ['$10,200/mo\n(₹8.5L)', '$168/mo\n(₹14K)'];
+            var label = labels[idx] || '';
+            ctx2.save();
+            ctx2.fillStyle = idx === 0 ? '#e02727' : '#1dd38f';
+            ctx2.font = 'bold 14px Rubik';
+            ctx2.textAlign = 'center';
+            var lines = label.split('\n');
+            var yPos = Math.max(bar.y - 28, 16); // clamp to minimum y=16
+            lines.forEach(function(line, li) { ctx2.fillText(line, bar.x, yPos + li*18); });
+            ctx2.restore();
+          });
+        });
+      }
+    }]
+  });
+}
+
+function initProjectionChart() {
+  var ctx = document.getElementById('projectionChart');
+  if (!ctx) return;
+
+  // Plugin: clips chart canvas so line reveals left→right
+  var _lineClip = 0;
+  var lineRevealPlugin = {
+    id: 'lineReveal',
+    beforeDatasetsDraw: function(chart, args) {
+      if (chart._lineRevealActive) {
+        var ca = chart.chartArea;
+        chart.ctx.save();
+        chart.ctx.beginPath();
+        chart.ctx.rect(ca.left - 2, ca.top - 10, (ca.width + 4) * _lineClip, ca.height + 20);
+        chart.ctx.clip();
+      }
+    },
+    afterDatasetsDraw: function(chart) {
+      if (chart._lineRevealActive) chart.ctx.restore();
+    }
+  };
+
+  var projChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6'],
+      datasets: [{
+        label: 'Posts Published',
+        data: [300, 300, 300, 300, 300, 300],
+        backgroundColor: 'rgba(94,35,220,0.65)',
+        borderRadius: 6,
+        borderSkipped: false,
+        yAxisID: 'yPosts',
+      }]
+    },
+    options: {
+      responsive: false,
+      animation: { duration: 1400, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 11, family: 'Rubik' } },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          border: { display: false }
+        },
+        yPosts: {
+          position: 'left',
+          min: 0, max: 600,
+          ticks: { color: 'rgba(94,35,220,0.8)', font: { size: 11, family: 'Rubik' }, callback: function(v) { return v + ' posts'; } },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          border: { display: false }
+        }
+      }
+    },
+    plugins: [lineRevealPlugin]
+  });
+
+  // After bars finish, add line dataset and animate it left→right via clip
+  setTimeout(function() {
+    projChart.data.datasets.push({
+      type: 'line',
+      label: 'Monthly Impressions (K)',
+      data: [500, 680, 850, 1080, 1320, 1600],
+      borderColor: '#fe792f',
+      backgroundColor: 'rgba(254,121,47,0.12)',
+      borderWidth: 3,
+      tension: 0.4,
+      fill: true,
+      pointRadius: 6,
+      pointBackgroundColor: '#fe792f',
+      pointBorderColor: '#fe792f',
+      pointBorderWidth: 2,
+      yAxisID: 'yImpressions',
+    });
+    projChart.options.scales.yImpressions = {
+      position: 'right',
+      min: 0, max: 2000,
+      ticks: { color: 'rgba(254,121,47,0.8)', font: { size: 11, family: 'Rubik' }, callback: function(v) { return v + 'K'; } },
+      grid: { display: false },
+      border: { display: false }
+    };
+    // Draw with no animation, then animate clip manually
+    projChart._lineRevealActive = true;
+    _lineClip = 0;
+    projChart.update('none');
+    var _lineStart = Date.now();
+    var _lineDur = 1300;
+    function _revealLine() {
+      var p = Math.min((Date.now() - _lineStart) / _lineDur, 1);
+      _lineClip = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      projChart.draw();
+      if (p < 1) requestAnimationFrame(_revealLine);
+    }
+    requestAnimationFrame(_revealLine);
+  }, 1700);
+}
+
+// ─── SLIDE EVENT HANDLERS ─────────────────────────────────────────
+Reveal.on('ready', function(e) {
+  var id = e.currentSlide.id;
+  if (id === 'slide-title') { runTitleCounters(); }
+  animateBarsInSlide(e.currentSlide);
+  if (id === 'slide-cost-breakdown' && !chartState.costBreakdown) {
+    chartState.costBreakdown = true;
+    setTimeout(initCostBreakdownChart, 200);
+  }
+  if (id === 'slide-monthly-cost' && !chartState.monthly) {
+    chartState.monthly = true;
+    setTimeout(initMonthlyChart, 200);
+  }
+  if (id === 'slide-projection' && !chartState.projection) {
+    chartState.projection = true;
+    setTimeout(initProjectionChart, 200);
+  }
+});
+
+Reveal.on('slidechanged', function(e) {
+  var id = e.currentSlide.id;
+  var prevId = e.previousSlide ? e.previousSlide.id : '';
+  if (id === 'slide-title') { runTitleCounters(); }
+  animateBarsInSlide(e.currentSlide);
+  if (id === 'slide-cost-breakdown' && !chartState.costBreakdown) {
+    chartState.costBreakdown = true;
+    setTimeout(initCostBreakdownChart, 300);
+  }
+  if (id === 'slide-monthly-cost' && !chartState.monthly) {
+    chartState.monthly = true;
+    setTimeout(initMonthlyChart, 300);
+  }
+  if (id === 'slide-projection' && !chartState.projection) {
+    chartState.projection = true;
+    setTimeout(initProjectionChart, 300);
+  }
+  if (id === 'slide-arch') {
+    setTimeout(function() { _animateTrunk(true); }, 200);
+  }
+  if (prevId === 'slide-arch') {
+    _animateTrunk(false);
+    _animateArchTree(false);
+  }
+  if (id === 'slide-instagram') { setTimeout(startIgCarousel, 400); }
+  if (prevId === 'slide-instagram') { stopIgCarousel(); }
+});
+
+// ─── ARCH ANIMATION ───────────────────────────────────────────────
+function _animateTrunk(show) {
+  var trunks = document.querySelectorAll('#arch-tree-svg .arch-trunk');
+  trunks.forEach(function(t) {
+    t.style.strokeDashoffset = show ? '0' : '492';
+  });
+  if (show) {
+    setTimeout(function() { _animateArchTree(true); }, 200);
+  }
+}
+
+function _animateArchTree(show) {
+  var branches = document.querySelectorAll('#arch-tree-svg .arch-branch');
+  branches.forEach(function(b, i) {
+    var da = b.getAttribute('stroke-dasharray') || '370';
+    b.style.transitionDelay = show ? (i * 0.05) + 's' : '0s';
+    b.style.strokeDashoffset = show ? '0' : da;
+  });
+}
+
+// ─── IG STORY CAROUSEL ───────────────────────────────────────────────
+var igCarouselTimer = null;
+var igCurrentCard = 0;
+var igTotalCards = 5;
+var igDuration = 2800;
+
+function showIgCard(idx) {
+  var cards = document.querySelectorAll('#slide-instagram .ig-story-card');
+  var dots  = document.querySelectorAll('#slide-instagram .ig-dot');
+  var segs  = document.querySelectorAll('#slide-instagram .ig-seg-fill');
+  cards.forEach(function(c, i) { c.classList.toggle('ig-active', i === idx); });
+  dots.forEach(function(d, i) { d.classList.toggle('ig-dot-active', i === idx); });
+  segs.forEach(function(s, i) {
+    s.style.transition = 'none';
+    s.style.width = (i < idx) ? '100%' : '0%';
+  });
+  if (segs[idx]) {
+    setTimeout(function() {
+      segs[idx].style.transition = 'width ' + igDuration + 'ms linear';
+      segs[idx].style.width = '100%';
+    }, 30);
+  }
+  igCurrentCard = idx;
+}
+
+function startIgCarousel() {
+  stopIgCarousel();
+  showIgCard(0);
+  igCarouselTimer = setInterval(function() {
+    showIgCard((igCurrentCard + 1) % igTotalCards);
+  }, igDuration);
+}
+
+function stopIgCarousel() {
+  if (igCarouselTimer) { clearInterval(igCarouselTimer); igCarouselTimer = null; }
+  var segs = document.querySelectorAll('#slide-instagram .ig-seg-fill');
+  segs.forEach(function(s) { s.style.transition = 'none'; s.style.width = '0%'; });
+}
+
+Reveal.on('fragmentshown', function(e) {
+  var frag = e.fragment;
+  var bars = frag.querySelectorAll('.qa-bar-fill');
+  bars.forEach(function(bar) {
+    var target = parseFloat(bar.getAttribute('data-target')) || 0;
+    setTimeout(function() { bar.style.width = target + '%'; }, 100);
+  });
+});
+
+Reveal.on('fragmenthidden', function(e) {});
+</script>
+</body>
+</html>

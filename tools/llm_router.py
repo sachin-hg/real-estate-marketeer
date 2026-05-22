@@ -48,6 +48,26 @@ def _log_cost(model: str, input_tokens: int, output_tokens: int, label: str) -> 
     )
 
 
+def _log_llm_to_db(label: str, model: str, system: str, user_msg: str, response: str,
+                   stop_reason: str, in_tok: int, out_tok: int, elapsed_ms: float) -> None:
+    """Non-blocking DB write for llm_router call_json paths (planner, QA, etc.)."""
+    try:
+        from tools.run_logger import log_llm_call
+        log_llm_call(
+            logger,
+            agent=label,
+            model=model,
+            system_prompt=system,
+            user_message=user_msg,
+            response_text=response,
+            stop_reason=stop_reason or "end_turn",
+            elapsed_ms=elapsed_ms,
+            extra={"input_tokens": in_tok, "output_tokens": out_tok},
+        )
+    except Exception:
+        pass  # logging must never fail the pipeline
+
+
 # ── Sync interface ────────────────────────────────────────────────────────────
 
 def call_json_sync(
@@ -100,7 +120,10 @@ async def call_json_async(
 
 def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
                  label: str, *, temperature: float = 1.0) -> dict:
+    import time as _time
     from tools.json_utils import extract_json
+    from config import get_settings
+    t0 = _time.perf_counter()
     try:
         from google import genai
         from google.genai import types as gtypes
@@ -117,26 +140,33 @@ def _gemini_sync(api_key: str, model: str, system: str, user_msg: str, max_token
             contents=user_msg,
             config=config,
         )
+        elapsed = (_time.perf_counter() - t0) * 1000
         raw = response.text or ""
         usage = getattr(response, "usage_metadata", None)
-        if usage:
-            _log_cost(model,
-                      getattr(usage, "prompt_token_count", 0),
-                      getattr(usage, "candidates_token_count", 0),
-                      label)
+        in_tok = getattr(usage, "prompt_token_count", 0) if usage else 0
+        out_tok = getattr(usage, "candidates_token_count", 0) if usage else 0
+        _log_cost(model, in_tok, out_tok, label)
+        _log_llm_to_db(label, model, system, user_msg, raw, "end_turn", in_tok, out_tok, elapsed)
         data = extract_json(raw)
         return data if isinstance(data, dict) else {}
     except ImportError:
         logger.warning("google-genai not installed — falling back to Anthropic Haiku for %s", label)
-        return {}
+        settings = get_settings()
+        return _anthropic_sync(settings.anthropic_api_key, settings.model_fast,
+                               system, user_msg, max_tokens, label, temperature=temperature)
     except Exception as exc:
-        logger.error("Gemini Flash sync failed [%s]: %s", label, exc, exc_info=True)
-        return {}
+        logger.warning("Gemini Flash sync failed [%s]: %s — falling back to Haiku", label, exc)
+        settings = get_settings()
+        return _anthropic_sync(settings.anthropic_api_key, settings.model_fast,
+                               system, user_msg, max_tokens, label, temperature=temperature)
 
 
 async def _gemini_async(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
                         label: str, *, temperature: float = 1.0) -> dict:
+    import time as _time
     from tools.json_utils import extract_json
+    from config import get_settings
+    t0 = _time.perf_counter()
     try:
         from google import genai
         from google.genai import types as gtypes
@@ -153,21 +183,25 @@ async def _gemini_async(api_key: str, model: str, system: str, user_msg: str, ma
             contents=user_msg,
             config=config,
         )
+        elapsed = (_time.perf_counter() - t0) * 1000
         raw = response.text or ""
         usage = getattr(response, "usage_metadata", None)
-        if usage:
-            _log_cost(model,
-                      getattr(usage, "prompt_token_count", 0),
-                      getattr(usage, "candidates_token_count", 0),
-                      label)
+        in_tok = getattr(usage, "prompt_token_count", 0) if usage else 0
+        out_tok = getattr(usage, "candidates_token_count", 0) if usage else 0
+        _log_cost(model, in_tok, out_tok, label)
+        _log_llm_to_db(label, model, system, user_msg, raw, "end_turn", in_tok, out_tok, elapsed)
         data = extract_json(raw)
         return data if isinstance(data, dict) else {}
     except ImportError:
         logger.warning("google-genai not installed — falling back to Anthropic Haiku for %s", label)
-        return {}
+        settings = get_settings()
+        return await _anthropic_async(settings.anthropic_api_key, settings.model_fast,
+                                      system, user_msg, max_tokens, label, temperature=temperature)
     except Exception as exc:
-        logger.error("Gemini Flash async failed [%s]: %s", label, exc, exc_info=True)
-        return {}
+        logger.warning("Gemini Flash async failed [%s]: %s — falling back to Haiku", label, exc)
+        settings = get_settings()
+        return await _anthropic_async(settings.anthropic_api_key, settings.model_fast,
+                                      system, user_msg, max_tokens, label, temperature=temperature)
 
 
 # ── Retry-aware message wrappers (used by platform agents + internal helpers) ──
@@ -274,13 +308,18 @@ def call_message(
 def _anthropic_sync(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
                     label: str, *, temperature: float = 1.0) -> dict:
     import anthropic
+    import time as _time
     from tools.json_utils import extract_json
+    t0 = _time.perf_counter()
     try:
         client = anthropic.Anthropic(api_key=api_key)
         resp = call_message(client, model, system, [{"role": "user", "content": user_msg}],
                             max_tokens, temperature=temperature)
-        _log_cost(model, resp.usage.input_tokens, resp.usage.output_tokens, label)
+        elapsed = (_time.perf_counter() - t0) * 1000
+        in_tok, out_tok = resp.usage.input_tokens, resp.usage.output_tokens
+        _log_cost(model, in_tok, out_tok, label)
         raw = resp.content[0].text
+        _log_llm_to_db(label, model, system, user_msg, raw, resp.stop_reason, in_tok, out_tok, elapsed)
         data = extract_json(raw)
         return data if isinstance(data, dict) else {}
     except Exception as exc:
@@ -291,13 +330,18 @@ def _anthropic_sync(api_key: str, model: str, system: str, user_msg: str, max_to
 async def _anthropic_async(api_key: str, model: str, system: str, user_msg: str, max_tokens: int,
                            label: str, *, temperature: float = 1.0) -> dict:
     import anthropic
+    import time as _time
     from tools.json_utils import extract_json
+    t0 = _time.perf_counter()
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
         resp = await acall_message(client, model, system, [{"role": "user", "content": user_msg}],
                                    max_tokens, temperature=temperature)
-        _log_cost(model, resp.usage.input_tokens, resp.usage.output_tokens, label)
+        elapsed = (_time.perf_counter() - t0) * 1000
+        in_tok, out_tok = resp.usage.input_tokens, resp.usage.output_tokens
+        _log_cost(model, in_tok, out_tok, label)
         raw = resp.content[0].text
+        _log_llm_to_db(label, model, system, user_msg, raw, resp.stop_reason, in_tok, out_tok, elapsed)
         data = extract_json(raw)
         return data if isinstance(data, dict) else {}
     except Exception as exc:

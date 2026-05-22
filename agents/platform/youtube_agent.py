@@ -51,7 +51,14 @@ Return JSON:
   },
   "tags": ["tag1", "tag2", ...],
   "category": "News & Politics | Education | Finance | Entertainment"
-}"""
+}
+
+CREATIVE ANGLE INTEGRITY:
+The draft's `angle` field is the creative director's instruction. Your role is to
+EXPRESS that angle in platform-appropriate format — not replace or dilute it.
+If the angle says "Hyderabad metro expansion makes 3 localities the new hotspots",
+every line of output should reinforce that framing. Never drift into generic
+real estate copy unrelated to the angle."""
 
 
 async def run_youtube_agent(draft: CreativeDraft, settings) -> PlatformPost:
@@ -115,12 +122,17 @@ Create the YouTube content now."""
         "",
         f"LONG-FORM TITLE: {longform.get('title', draft['headline'])}",
     ]
+    content = "\n".join(content_lines)
+
+    # Append city links section — YouTube descriptions auto-link bare URLs
+    from tools.link_embedder import embed_city_links
+    content = embed_city_links(content, "youtube", links)
 
     post = {
         "id": str(uuid.uuid4()),
         "draft_id": draft["id"],
         "platform": "youtube",
-        "content": "\n".join(content_lines),
+        "content": content,
         "hashtags": data.get("tags", draft.get("hashtags", []))[:15],
         "media_urls": [],
         "image_prompt": data.get("longform_outline", {}).get("thumbnail_concept", ""),

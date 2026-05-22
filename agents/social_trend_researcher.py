@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextvars
 import json
 import logging
 
@@ -8,7 +10,7 @@ import anthropic
 from config import get_settings
 from models.state import TrendItem, WorkflowState
 from tools.social_trends import RE_HASHTAG_SEEDS, fetch_all_trends
-from tools.web_search import web_search
+from tools.web_search import serper_news_search, web_search, web_search_async
 
 logger = logging.getLogger(__name__)
 
@@ -80,22 +82,53 @@ linkedin, career, hiring, workculture, genz, salary, wfh, hustle, proptech
 Return ONLY the JSON array."""
 
 
-def trend_researcher_node(state: WorkflowState) -> dict:
+async def trend_researcher_node(state: WorkflowState) -> dict:
     """LangGraph node: fetches trends and uses Claude to add creative hooks."""
     from tools.run_logger import Timer, log_llm_call, log_tool_call, log_agent_io
     settings = get_settings()
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    loop = asyncio.get_running_loop()
 
-    logger.info("Trend researcher: fetching raw trends | model=%s", settings.model_balanced)
+    logger.info("Trend researcher: fetching raw trends | model=%s serper=%s",
+                settings.model_balanced, bool(settings.serper_api_key))
 
+    # ── Parallel fetch: existing sync scraper + optional Serper news queries ──
+    # Explicitly copy the current ContextVar context into the executor thread so
+    # that get_run_id() returns the correct run_id inside fetch_all_trends and
+    # all the API logging calls it makes (YouTube, Twitter, RapidAPI, Reddit).
+    # loop.run_in_executor() in Python 3.12 does NOT propagate ContextVars
+    # automatically — it calls executor.submit(func, *args) with no ctx.run().
+    _ctx = contextvars.copy_context()
     with Timer() as t_trends:
-        raw_data = fetch_all_trends()
+        if settings.serper_api_key:
+            raw_data_fut = loop.run_in_executor(None, _ctx.run, fetch_all_trends)
+            s1_fut = asyncio.create_task(
+                serper_news_search("viral India trending today", settings.serper_api_key))
+            s2_fut = asyncio.create_task(
+                serper_news_search("trending India news social media", settings.serper_api_key))
+            raw_data, serper_1, serper_2 = await asyncio.gather(
+                raw_data_fut, s1_fut, s2_fut, return_exceptions=True)
+        else:
+            raw_data = await loop.run_in_executor(None, _ctx.run, fetch_all_trends)
+            serper_1, serper_2 = [], []
+
+    if isinstance(raw_data, Exception):
+        logger.error("fetch_all_trends failed: %s", raw_data)
+        raw_data = {"google_trends": [], "youtube_trending": [], "reddit_viral": [],
+                    "twitter_trends": [], "re_hashtag_interest": {}, "sources_active": []}
+    serper_items: list[dict] = []
+    for chunk in [serper_1, serper_2]:
+        if isinstance(chunk, list):
+            serper_items.extend(chunk)
+        elif isinstance(chunk, Exception):
+            logger.warning("Serper fetch failed: %s", chunk)
+
     logger.info(
-        "Trend researcher: raw data collected | google=%d youtube=%d reddit=%d twitter=%d | active=%s | elapsed_ms=%.0f",
+        "Trend researcher: raw data collected | google=%d youtube=%d reddit=%d twitter=%d serper=%d | active=%s | elapsed_ms=%.0f",
         len(raw_data["google_trends"]),
         len(raw_data["youtube_trending"]),
         len(raw_data["reddit_viral"]),
         len(raw_data["twitter_trends"]),
+        len(serper_items),
         ",".join(raw_data.get("sources_active", [])) or "none",
         t_trends.elapsed_ms,
     )
@@ -105,7 +138,8 @@ def trend_researcher_node(state: WorkflowState) -> dict:
     logger.debug("Trend researcher: twitter_trends=%s", json.dumps(raw_data["twitter_trends"][:5]))
 
     # Use research from state if already available (direct_graph flow — topic_enricher ran first).
-    # Otherwise do a fresh viral news search (main graph — runs in parallel with researcher).
+    # If Serper ran, use those results for viral news instead of a separate Tavily call.
+    # Otherwise fall back to Tavily.
     existing_research = state.get("research", [])
     if existing_research:
         viral_news = [
@@ -114,12 +148,20 @@ def trend_researcher_node(state: WorkflowState) -> dict:
         ]
         logger.info("Trend researcher: using %d stories from state (skipping viral news search)",
                     len(viral_news))
+    elif serper_items:
+        viral_news = [
+            {"title": s.get("title", ""), "content": s.get("snippet", "")}
+            for s in serper_items[:8]
+        ]
+        logger.info("Trend researcher: using %d Serper news items (skipping Tavily viral search)",
+                    len(viral_news))
     else:
         logger.info("Trend researcher: searching viral India news events")
         with Timer() as t_viral:
-            viral_news = web_search(
+            viral_news = await web_search_async(
                 "viral trending India news today social media Twitter Instagram meme 2025",
                 max_results=8,
+                search_depth="basic",
             )
         log_tool_call(
             logger,
@@ -131,9 +173,10 @@ def trend_researcher_node(state: WorkflowState) -> dict:
 
     logger.info("Trend researcher: running supplementary web_search for RE hashtags")
     with Timer() as t_ws:
-        re_trend_results = web_search(
+        re_trend_results = await web_search_async(
             "trending hashtags real estate India property Instagram Twitter",
             max_results=5,
+            search_depth="basic",
         )
     log_tool_call(
         logger,
@@ -146,10 +189,11 @@ def trend_researcher_node(state: WorkflowState) -> dict:
     # LinkedIn-specific: work culture, career, and hiring debates going viral
     logger.info("Trend researcher: searching LinkedIn India trending professional discussions")
     with Timer() as t_li:
-        linkedin_trends = web_search(
+        linkedin_trends = await web_search_async(
             "viral LinkedIn India post 2025 work culture jobs layoffs salary startup tech career",
             max_results=6,
             days_back=14,
+            search_depth="basic",
         )
     log_tool_call(
         logger,
@@ -177,6 +221,17 @@ def trend_researcher_node(state: WorkflowState) -> dict:
             lines.append(f"  {p['subreddit']}{flair} | {p['score']} upvotes | {p['title']}")
         return "\n".join(lines)
 
+    serper_section = ""
+    if serper_items:
+        serper_section = f"""
+━━━ SERPER NEWS — FRESH INDIA TRENDING (real-time, higher recency than Tavily) ━━━
+{json.dumps([{'title': s.get('title', ''), 'snippet': s.get('snippet', '')[:200], 'source': s.get('source', '')} for s in serper_items[:10]], indent=2)}
+"""
+
+    # Pre-compute compact lists to avoid {{...}} set-of-dict bug in f-string expressions
+    viral_news_compact = [{'title': r.get('title', ''), 'snippet': r.get('content', '')[:200]} for r in viral_news]
+    linkedin_compact = [{'title': r.get('title', ''), 'snippet': r.get('content', '')[:200]} for r in linkedin_trends]
+
     user_msg = f"""Here is the raw trend data I've collected from {len(raw_data.get('sources_active', []))} active sources:
 
 ━━━ GOOGLE TRENDING SEARCHES (India, right now) ━━━
@@ -192,8 +247,8 @@ def trend_researcher_node(state: WorkflowState) -> dict:
 {json.dumps(raw_data['twitter_trends'][:10], indent=2) if raw_data['twitter_trends'] else 'Not available (APIFY_API_TOKEN not configured)'}
 
 ━━━ VIRAL NEWS & EVENTS (web search, India today) ━━━
-{json.dumps([{{'title': r.get('title', ''), 'snippet': r.get('content', '')[:200]}} for r in viral_news], indent=2)}
-
+{json.dumps(viral_news_compact, indent=2)}
+{serper_section}
 ━━━ REAL ESTATE HASHTAG INTEREST SCORES (Google, 7-day average, 0-100) ━━━
 {json.dumps(raw_data['re_hashtag_interest'], indent=2)}
 
@@ -201,7 +256,7 @@ def trend_researcher_node(state: WorkflowState) -> dict:
 {json.dumps([r.get('title', '') + ': ' + r.get('content', '')[:120] for r in re_trend_results], indent=2)}
 
 ━━━ LINKEDIN INDIA — VIRAL WORK CULTURE / CAREER DISCUSSIONS (use for linkedin/career tags) ━━━
-{json.dumps([{{'title': r.get('title', ''), 'snippet': r.get('content', '')[:200]}} for r in linkedin_trends], indent=2)}
+{json.dumps(linkedin_compact, indent=2)}
 (Tag these trends with: linkedin, career, workculture, hiring, salary, wfh, layoffs, hustle, or genz as appropriate)
 
 RE HASHTAG SEEDS TO INCLUDE (if they have activity): {', '.join(RE_HASHTAG_SEEDS)}
@@ -209,21 +264,23 @@ RE HASHTAG SEEDS TO INCLUDE (if they have activity): {', '.join(RE_HASHTAG_SEEDS
 SIGNAL HIERARCHY — use this priority order when picking the 15 items:
 1. YOUTUBE trending clips + REDDIT hot posts → these surface the meme/reel layer BEFORE news picks it up
 2. GOOGLE trending searches → confirms the moment has gone mainstream
-3. VIRAL NEWS & EVENTS (web search) → adds context and the real-estate angle
-4. TWITTER hashtags → volume signals, use to confirm #trend_hashtag spelling
-5. LINKEDIN DISCUSSIONS → professional/career debates (layoffs, salary, work culture, Gen Z, AI jobs);
+3. SERPER NEWS (if present) → freshest signal; prioritise over Tavily viral news
+4. VIRAL NEWS & EVENTS (web search) → adds context and the real-estate angle
+5. TWITTER hashtags → volume signals, use to confirm #trend_hashtag spelling
+6. LINKEDIN DISCUSSIONS → professional/career debates (layoffs, salary, work culture, Gen Z, AI jobs);
    include 2-3 of these with tags [linkedin, career, workculture, etc.] — these feed the LinkedIn employer brand posts
-6. RE hashtags → secondary, include 2-3 if they have real Google interest scores
+7. RE hashtags → secondary, include 2-3 if they have real Google interest scores
 
 For each item, make sure trend_hashtag matches the exact hashtag people are using \
 (e.g. '#FA9LA' not '#Dhurandhar' if the dance step is the actual viral moment).
 
 Now produce the curated 15-item trend list."""
 
+    aclient = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     with Timer() as t_llm:
-        response = client.messages.create(
+        response = await aclient.messages.create(
             model=settings.model_balanced,
-            max_tokens=3000,
+            max_tokens=5000,
             system=SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
         )
@@ -237,6 +294,7 @@ Now produce the curated 15-item trend list."""
         response_text=raw_response,
         stop_reason=response.stop_reason,
         elapsed_ms=t_llm.elapsed_ms,
+        extra={"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens},
     )
 
     trends = _parse_trends(raw_response)
@@ -250,6 +308,7 @@ Now produce the curated 15-item trend list."""
             "youtube_trending_count": len(raw_data["youtube_trending"]),
             "reddit_viral_count": len(raw_data["reddit_viral"]),
             "twitter_trends_count": len(raw_data["twitter_trends"]),
+            "serper_items_count": len(serper_items),
             "linkedin_trends_count": len(linkedin_trends),
             "sources_active": raw_data.get("sources_active", []),
         },

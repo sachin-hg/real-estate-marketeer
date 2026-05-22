@@ -1,0 +1,111 @@
+{
+  "id": "m0",
+  "title": "Backstory & Demo",
+  "subtitle": "See the finished pipeline. Understand why single-LLM approaches fail for content production at scale.",
+  "durationMin": 30,
+  "pipelineVersion": null,
+  "difficulty": "intro",
+  "tags": ["overview", "motivation", "demo", "pipeline"],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "The Problem With One Prompt",
+      "durationMin": 15,
+      "concept": [
+        {
+          "heading": "What we're building",
+          "body": "Housing.com publishes real estate content across Twitter, Instagram, YouTube, and their news blog — twice a day, every day. Each post needs to be platform-specific, trend-relevant, brand-safe, and SEO-optimised.\n\nA single ChatGPT prompt produces something generic every time. We need something better.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "The core problem",
+              "body": "A single LLM call has no awareness of today's trends, no platform constraints, no brand voice, and no quality gate. It produces the same generic output regardless of context."
+            }
+          ]
+        },
+        {
+          "heading": "The destination",
+          "body": "By the end of this course you will have built a 10-node LangGraph pipeline that:\n\n- Researches 8 real estate news stories in parallel with 15 trending topics\n- Filters them through a quality gate (no off-topic content)\n- Generates Hinglish social copy, SEO articles, and platform-specific posts\n- Runs 3-pass QA (safety → quality → engagement prediction)\n- Publishes to 5 platforms or saves locally for review",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "The learning model",
+              "body": "Every module adds ONE concept to a single pipeline.py file. By Module 12, that file IS the Housing.com agent."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "A single LLM call to 'write a tweet about real estate' fails primarily because:",
+          "options": [
+            "LLMs can't write tweets",
+            "It has no context about today's trends, platform constraints, or brand voice",
+            "The model is too small",
+            "Twitter's API blocks LLM-generated content"
+          ],
+          "correctIndex": 1,
+          "explanation": "Without context — current trends, platform rules, brand examples — the LLM defaults to generic safe output."
+        },
+        {
+          "type": "fillin",
+          "stem": "In our pipeline, which agent filters out topics with no real estate angle (e.g. 'Coldplay concert')?",
+          "answer": "planner",
+          "hint": "It runs after research and before creative agents",
+          "explanation": "The planner is the quality gate — it omits anything without a genuine housing angle."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: More LLM calls always means better output.",
+          "answer": false,
+          "explanation": "More calls add latency and cost. Only the RIGHT calls improve output — each agent must add specific value."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Pipeline Walkthrough",
+      "durationMin": 15,
+      "concept": [
+        {
+          "heading": "10 nodes, one run",
+          "body": "The pipeline runs in roughly this order:\n\n**researcher** + **trend_researcher** run in parallel — Tavily web search for RE news, Serper/pytrends for viral topics.\n\n**planner** waits for both, then filters and creates up to 8 content briefs.\n\n**social_creative** + **news_creative** run in parallel — Hinglish social drafts (Opus 4.7) and SEO articles (Sonnet 4.6).\n\n**platform_agents** format each draft for Twitter, Instagram, YouTube, LinkedIn, Housing News — all simultaneously.\n\n**qa_agent** runs 3 passes: safety gate → quality scoring → engagement prediction. Failing posts get revised.\n\n**publisher** saves to disk (dry run) or posts live.\n\n**notifier** posts a Slack summary.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Why parallel?",
+              "body": "researcher and trend_researcher both take ~15 seconds. Running them sequentially = 30s. Parallel = 15s. At 2 runs/day, that's 15 minutes saved per month just on research."
+            },
+            {
+              "type": "warning",
+              "title": "Cost matters",
+              "body": "Using Opus 4.7 for every call costs ~$12/run. Model routing brings it to ~$0.85. 2 runs/day for 30 days: $720 vs $51."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Which part of the pipeline uses the most expensive model (Opus 4.7)?",
+          "options": ["researcher", "planner", "social_creative", "publisher"],
+          "correctIndex": 2,
+          "explanation": "social_creative uses Opus 4.7 because creative quality directly impacts engagement. Other nodes use cheaper models appropriate to their task."
+        },
+        {
+          "type": "mcq",
+          "stem": "What is the QA agent's 'revision' decision?",
+          "options": [
+            "Reject the post permanently",
+            "Send the post back to the platform agent with specific fix instructions",
+            "Ask a human to rewrite it",
+            "Publish it anyway with a warning"
+          ],
+          "correctIndex": 1,
+          "explanation": "A fixable post (e.g. 312 chars instead of 280) gets sent back to the platform agent with locked elements preserved and specific fix instructions."
+        }
+      ]
+    }
+  ]
+}

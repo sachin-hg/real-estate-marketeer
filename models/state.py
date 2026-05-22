@@ -108,6 +108,7 @@ class QAResult(TypedDict):
     critique: str
     revision_instructions: list[str]
     qa_attempt: int            # which attempt produced this result (1-indexed)
+    quality_scores: dict       # raw per-dimension scores from quality LLM pass {dim: float}
 
 
 class PublishedPost(TypedDict):

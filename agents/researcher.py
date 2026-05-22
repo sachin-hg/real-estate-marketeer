@@ -68,6 +68,17 @@ After researching, return a JSON array of the top 8 stories. Each item must matc
 Return ONLY the JSON array, no prose, no markdown fences."""
 
 
+def _fetch_serpapi_news_sync(api_key: str) -> list[dict]:
+    """Run the async SerpAPI news fetch synchronously (in a fresh event loop)."""
+    import asyncio
+    from tools.serpapi_utils import get_serpapi_re_news
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(get_serpapi_re_news(api_key))
+    finally:
+        loop.close()
+
+
 def researcher_node(state: WorkflowState) -> dict:
     """LangGraph node: runs the real estate researcher agent."""
     from tools.run_logger import Timer, log_llm_call, log_tool_call, log_agent_io
@@ -75,14 +86,33 @@ def researcher_node(state: WorkflowState) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     hint = state.get("topic_hint")
-    user_msg = (
-        f"Research the latest Indian real estate developments. "
-        f"Focus especially on: {hint}. " if hint else
-        "Research the latest Indian real estate developments. "
-    ) + "Use multiple searches. Cover RERA, policy, builders, and market trends."
 
-    logger.info("Researcher: starting web search loop | model=%s | topic_hint=%s",
-                settings.model_balanced, hint or "none")
+    # Pre-fetch SerpAPI Google News for India RE (parallel signal, no extra LLM cost)
+    serpapi_news: list[dict] = []
+    if settings.serp_api_key:
+        try:
+            serpapi_news = _fetch_serpapi_news_sync(settings.serp_api_key)
+            logger.info("Researcher: SerpAPI pre-fetched %d India RE articles", len(serpapi_news))
+        except Exception as exc:
+            logger.warning("Researcher: SerpAPI pre-fetch failed: %s", exc)
+
+    serpapi_context = ""
+    if serpapi_news:
+        lines = [f"  [{i+1}] {a['title']} ({a['source']}, {a['date']})\n      {a['snippet'][:200]}"
+                 for i, a in enumerate(serpapi_news[:12])]
+        serpapi_context = (
+            "\n\nPRE-FETCHED NEWS via SerpAPI Google News (use these as seed stories — "
+            "verify or expand with web_search):\n" + "\n".join(lines)
+        )
+
+    base_msg = (
+        f"Research the latest Indian real estate developments. Focus especially on: {hint}. "
+        if hint else "Research the latest Indian real estate developments. "
+    )
+    user_msg = base_msg + "Use multiple searches. Cover RERA, policy, builders, and market trends." + serpapi_context
+
+    logger.info("Researcher: starting web search loop | model=%s | topic_hint=%s | serpapi=%d",
+                settings.model_balanced, hint or "none", len(serpapi_news))
 
     messages = [{"role": "user", "content": user_msg}]
     round_num = 0
@@ -132,14 +162,10 @@ def researcher_node(state: WorkflowState) -> dict:
                 logger.info("Researcher: web_search round=%d query=%r",
                             round_num + 1, block.input.get("query", ""))
                 with Timer() as tsearch:
-                    results = web_search(**block.input)
-                log_tool_call(
-                    logger,
-                    tool_name="web_search",
-                    inputs=block.input,
-                    outputs=results,
-                    elapsed_ms=tsearch.elapsed_ms,
-                )
+                    results = web_search(
+                        **{**block.input, "search_depth": "advanced"},
+                        _use_case=f"Researcher: {block.input.get('query', '')[:120]}",
+                    )
                 logger.debug("Researcher: web_search returned %d results", len(results))
                 tool_results.append({
                     "type": "tool_result",

@@ -1,0 +1,278 @@
+{
+  "id": "m7",
+  "title": "Creative Agents & Prompt Engineering",
+  "subtitle": "Build social and news creative agents. Master few-shot prompting, hooks banks, and the Zomato model.",
+  "durationMin": 120,
+  "pipelineVersion": "v6",
+  "difficulty": "intermediate",
+  "tags": [
+    "creative",
+    "few-shot",
+    "hooks-bank",
+    "hinglish",
+    "prompt-engineering",
+    "zomato-model"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Anatomy of a System Prompt",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "Four components every creative system prompt needs",
+          "body": "A system prompt that just says 'write like Zomato' is vague. Zomato's actual posts are not vague. The difference between a 6/10 and a 9/10 creative output comes down to how precisely the prompt specifies the target style.\n\n**1. Identity** — who this agent is and its brand personality\n\n**2. Rules** — hard constraints (char limits, hashtag counts, format requirements)\n\n**3. Examples** — concrete demonstrations of the target style (few-shot)\n\n**4. Output schema** — exact JSON structure the agent must return",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Examples override defaults",
+              "body": "LLMs trained on the internet have seen enormous amounts of corporate real estate copy. Without examples, that's the default style. Few-shot examples physically override this by showing the model what you actually want."
+            },
+            {
+              "type": "mistake",
+              "title": "Describing style vs showing style",
+              "body": "'Write in a witty Hinglish style' is a description. Showing 3 actual examples of witty Hinglish posts is a demonstration. Descriptions tell the model what to aim for. Examples show the target. Demonstrations consistently outperform descriptions."
+            },
+            {
+              "type": "insight",
+              "title": "Why examples outperform instructions: the mechanism",
+              "body": "When you add 'write in Hinglish wit' to a system prompt, the model receives an abstract description of the target style. It then samples tokens conditioned on that instruction — but the instruction competes with the training prior for real estate content (overwhelmingly formal English).\n\nFew-shot examples work differently. They don't describe the target style — they instantiate it. The model sees actual token sequences that match the target distribution, and these in-context examples act as strong evidence for sampling similar sequences.\n\nPractical implication: for tasks where the training prior is strong (formal domains, legal text, corporate writing), instructions are weak and examples are strong. For tasks close to the training distribution (answer a question clearly), instructions work fine. Hinglish wit in real estate is far from the training prior — hence the hooks bank."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "SOCIAL_CREATIVE_SYSTEM = \"\"\"\nYou write social media content for Housing.com — Zomato's wit meets real estate.\n\nIdentity: Witty brand that trend-jacks viral moments with a housing punchline.\nStyle: Hinglish, max 2 emojis, city mentions embed SRP URL mentally.\nRule: Trend = HERO. Housing = PUNCHLINE. Never the other way.\nFirst hashtag MUST be the trending tag (Twitter discovery).\n\n# ⚠ TODO: What is missing that shows HOW to write, not just WHAT to write?\n# Hint: \"Write like Zomato\" is vague. Zomato's actual posts are not vague.\n# The difference between a 6/10 and a 9/10 creative is this one component.\n# It already exists in the hooks_bank. What is it?\n???\n\nOutput JSON: {main_tweet, thread_tweets, hashtags, instagram_caption, trend_used}\n\"\"\"",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "{get_examples(brief['tags'])} — inject few-shot examples from hooks bank",
+            "whyItMatters": "Without examples, the model defaults to its training data's most common real estate writing style — formal, hedged, corporate. Few-shot examples physically override this by demonstrating the exact target voice. It's the single highest-leverage prompt improvement.",
+            "correctCode": "{get_examples(brief['tags'])}\n\nNEVER write:\n- Generic corporate copy ('Real estate market shows promising trends')\n- Posts that lead with housing instead of the trend",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Why do few-shot examples outperform style descriptions in creative prompts?",
+          "options": [
+            "Examples use fewer tokens",
+            "Examples show the concrete target style, overriding the model's default training distribution",
+            "Descriptions are too long for the context window",
+            "The model can't understand abstract style descriptions"
+          ],
+          "correctIndex": 1,
+          "explanation": "LLMs have strong priors from training data. Style descriptions adjust the direction. Concrete examples anchor the output to a specific target — the model imitates what it sees, not what it's told."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v6 (social creative excerpt)",
+        "code": "def get_examples(tags: list[str]) -> str:\n    \"\"\"Fetch positive + negative examples from hooks bank by tag.\"\"\"\n    bank = json.load(open(\"prompts/hooks_bank.json\"))\n    positives = [e for e in bank[\"examples\"]\n                 if any(t in e.get(\"tags\", []) for t in tags)][:8]\n    negatives = bank.get(\"negative_examples\", [])[:2]\n    \n    output = \"WRITE LIKE THESE:\\n\"\n    for ex in positives:\n        output += f\"- \\\"{ex['text']}\\\"\\n\"\n    output += \"\\nNEVER WRITE LIKE THESE:\\n\"\n    for ex in negatives:\n        output += f\"- \\\"{ex['text']}\\\" (avoid because: {ex['avoid_because']})\\n\"\n    return output\n\nSOCIAL_CREATIVE_SYSTEM = \"\"\"\nYou write social media content for Housing.com — Zomato's wit meets real estate.\nIdentity: Witty brand that trend-jacks viral moments with a housing punchline.\nStyle: Hinglish, max 2 emojis, city mentions embed SRP URL mentally.\nRule: Trend = HERO. Housing = PUNCHLINE. Never the other way.\nFirst hashtag MUST be the trending tag (Twitter discovery).\n{examples_placeholder}\nOutput JSON: {{main_tweet, thread_tweets, hashtags, instagram_caption, trend_used}}\n\"\"\"\n\ndef social_creative_node(state: PipelineState) -> dict:\n    social_briefs = [b for b in state[\"content_briefs\"] if b.get(\"draft_type\") == \"social\"]\n    drafts = []\n    for brief in social_briefs:\n        examples = get_examples(brief.get(\"tags\", []))\n        system = SOCIAL_CREATIVE_SYSTEM.replace(\"{examples_placeholder}\", examples)\n        resp = client.messages.create(\n            model=\"claude-opus-4-7\",\n            max_tokens=1024,\n            system=system,\n            messages=[{\"role\": \"user\", \"content\": f\"Brief: {json.dumps(brief)}\"}]\n        )\n        draft = json.loads(resp.content[0].text)\n        draft[\"draft_type\"] = \"social\"\n        drafts.append(draft)\n    return {\"creative_drafts\": drafts}"
+      },
+      "productionRef": {
+        "file": "agents/social_creative_agent.py",
+        "startLine": 1,
+        "endLine": 30,
+        "excerpt": "from tools.example_retriever import get_examples\nfrom tools.llm_router import llm_router\nfrom tools.run_logger import log_llm_call\n\nSOCIAL_CREATIVE_SYSTEM = \"\"\"\nYou write social media content for Housing.com.\nPersona: Zomato's wit applied to real estate — trend-jacked, Hinglish, city-specific.\n\nCORE RULE: Trend = HERO. Housing = PUNCHLINE.\nThe trend hook leads. The housing angle is the clever twist.\nNever write 'buy a home' first.\n\nSTYLE RULES:\n- Hinglish (mix Hindi + English naturally, not forced)\n- Max 2 emojis per post\n- First hashtag MUST be the trending tag\n- 2-4 hashtags on Twitter, 15-20 on Instagram\n\n{examples}  ← injected from hooks_bank at runtime\n\nOutput JSON matching CreativeDraft schema.\n\"\"\"",
+        "annotations": [
+          {
+            "line": 15,
+            "text": "{examples} is replaced at runtime with get_examples(brief.tags) — tag-matched hooks"
+          },
+          {
+            "line": 16,
+            "text": "Same system prompt handles all social drafts — examples make it brand-specific per topic"
+          }
+        ]
+      },
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "The hooks bank has 50 examples tagged ['cricket', 'ipl', 'bengaluru']. A brief has tags ['ipl', 'whitefield']. Which examples get injected?",
+          "options": [
+            "All 50 examples",
+            "Examples tagged with ANY of ['ipl', 'whitefield'] — tag intersection",
+            "Only examples tagged with ALL of ['ipl', 'whitefield']",
+            "Random 8 examples regardless of tags"
+          ],
+          "correctIndex": 1,
+          "explanation": "The retriever fetches examples where any tag matches — broader recall is better than strict intersection here. More relevant examples = better style anchoring."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: Negative examples in the prompt reduce creativity.",
+          "answer": false,
+          "explanation": "False — negative examples improve contrast learning. Showing what NOT to write (and why) makes the boundary explicit. The model avoids the failure mode while exploring the allowed space."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "The Zomato Model",
+      "durationMin": 25,
+      "concept": [
+        {
+          "heading": "Trend = HERO. Housing = PUNCHLINE.",
+          "body": "Zomato built its social media brand on a simple model: attach food to whatever is culturally trending. The food is never the main event — it's the clever twist at the end.\n\nHousing.com applies the same model:\n\n- IPL final trending → 'IPL ka season hai, ghar dekhne ka bhi 🏏 Andheri East mein flats starting ₹85L'\n- WFH debate trending → 'WFH cancelled? Upgrade to working from YOUR home 🏡 WFH-ready flats in Pune'\n- Coldplay sells out → OMIT (no housing angle, planner filtered it)\n\nThe trend is the hook. Housing is the punchline. The order matters.",
+          "callouts": [
+            {
+              "type": "mistake",
+              "title": "Leading with housing kills engagement",
+              "body": "'Looking to buy a flat in Andheri? IPL season discounts available!' — this leads with housing and uses IPL as an afterthought. Scroll-past guaranteed. The trend must open; the housing angle must close."
+            },
+            {
+              "type": "insight",
+              "title": "Why this works psychologically",
+              "body": "People are scrolling past housing ads. They're engaged with the trend. By leading with the trend, you earn their attention before making the housing pivot. The punchline lands because they stayed."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "In the Zomato model for housing content, which statement correctly describes the roles?",
+          "options": [
+            "Trend = PUNCHLINE (housing leads), Housing = HERO (trend supports)",
+            "Trend = HERO (leads attention, earns the scroll stop), Housing = PUNCHLINE (lands the message)",
+            "Trend = CONTEXT (background info), Housing = HOOK (opens the post)",
+            "Trend = CTA (drives action), Housing = HERO (main focus)"
+          ],
+          "correctIndex": 1,
+          "explanation": "Trend = HERO (leads, earns attention first). Housing = PUNCHLINE (lands after the trend hook). The structure is always: trend hook → housing twist. Never the other way around — leading with housing feels like an ad."
+        },
+        {
+          "type": "mcq",
+          "stem": "Which of these correctly applies the Zomato model to the 'Budget 2025 income tax cuts' trend?",
+          "options": [
+            "'Real estate benefits from Budget 2025 tax cuts — buy now!'",
+            "'Tax cuts mili, ab ghar kharidne ka time hai 🏠 More in-hand salary = more EMI capacity. Mumbai 2BHKs starting ₹75L'",
+            "'Income tax reduced in Budget 2025. Housing market expected to benefit.'",
+            "'Budget 2025: Great time to invest in real estate'"
+          ],
+          "correctIndex": 1,
+          "explanation": "Option B leads with the trend in Hinglish (tax cuts mili), pivots naturally to the housing angle (more EMI capacity), and ends with a specific call to action. The others lead with housing or use formal language."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Hooks Bank & Negative Examples",
+      "durationMin": 35,
+      "concept": [
+        {
+          "heading": "The hooks bank structure",
+          "body": "The hooks bank is a JSON file with positive examples (tagged by topic, city, format) and negative examples (with explicit reasons why they fail).\n\nAt runtime, `get_examples(tags)` fetches the 8 most relevant positive examples and 2 negative examples and injects them into the system prompt.",
+          "codeExample": {
+            "language": "json",
+            "filename": "prompts/hooks_bank.json (excerpt)",
+            "code": "{\n  \"examples\": [\n    {\n      \"text\": \"IPL ka season hai, ghar dekhne ka bhi 🏏 Andheri East mein flats starting ₹85L\",\n      \"tags\": [\"cricket\", \"ipl\", \"mumbai\", \"andheri\"],\n      \"engagement_rate\": 0.089\n    },\n    {\n      \"text\": \"WFH cancelled? Upgrade to working from YOUR home 🏡 WFH-ready flats in Pune\",\n      \"tags\": [\"work-from-home\", \"wfh\", \"pune\"],\n      \"engagement_rate\": 0.071\n    }\n  ],\n  \"negative_examples\": [\n    {\n      \"text\": \"Real estate market shows promising trends in Q2 2025\",\n      \"avoid_because\": \"corporate-speak, no trend hook, no city specificity, no personality\"\n    },\n    {\n      \"text\": \"Find your dream home today! Contact us.\",\n      \"avoid_because\": \"generic CTA, no trend, no Hinglish, could be any brand\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "heading": "Two things that silently degrade hook bank quality",
+          "body": "**1. Example ordering matters.** The model pays more attention to recent examples in the context window (recency bias). Consistently placing the same top-performing example first creates an anchoring effect — the model defaults to that pattern even when a different example would be more relevant. In production, randomise example order within each tag group on every call.\n\n**2. Stale examples reduce diversity.** A post about IPL 2024 is still tagged 'cricket' but produces output that feels dated. Users scroll past '2024 world cup' references in 2025. The hooks bank needs periodic rotation — retire examples older than 3 months of posting date, or when the engagement_rate benchmark for that tag drops below threshold.\n\nNeither of these appears in the diff between run #1 and run #30. They manifest as slow degradation in engagement over months — the kind of bug that's hard to attribute to a specific change.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Survivorship bias in your examples",
+              "body": "Your hooks bank accumulates high-engagement examples. But high engagement correlates with: trending topic at time of posting, lucky timing, viral amplification. The same creative pattern may perform poorly when the trend fades. Using last summer's viral posts as examples for this summer will produce content that feels familiar but doesn't trend-jack current moments."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "def get_examples(tags: list[str]) -> str:\n    bank = json.load(open(\"prompts/hooks_bank.json\"))\n    positives = [e for e in bank[\"examples\"]\n                 if any(t in e.get(\"tags\", []) for t in tags)][:8]\n    negatives = bank.get(\"negative_examples\", [])[:2]\n    \n    output = \"WRITE LIKE THESE:\\n\"\n    for ex in positives:\n        output += f'- \"{ex[\"text\"]}\"\\n'\n    \n    # ⚠ TODO: What should be appended using the `negatives` list?\n    # Hint: Showing what NOT to write improves contrast learning.\n    # The negatives are already loaded. They have an `avoid_because` field.\n    # Without this section, the LLM drifts toward generic \"safe\" copy.\n    ???\n    \n    return output",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "output += NEVER WRITE LIKE THESE section with avoid_because",
+            "whyItMatters": "Without negative examples, the model doesn't know the specific failure modes to avoid. It may write technically correct but generically 'safe' copy that fits the positive examples but lacks contrast. Negatives make the boundary explicit.",
+            "correctCode": "output += \"\\nNEVER WRITE LIKE THESE:\\n\"\n    for ex in negatives:\n        output += f'- \"{ex[\"text\"]}\" (avoid because: {ex[\"avoid_because\"]})\\n'",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Why are negative examples included in the hooks bank injection?",
+          "options": [
+            "To pad the prompt with more context",
+            "To improve contrast learning — showing failure modes makes the boundary explicit and reduces drift toward generic copy",
+            "Because the model can't learn from positive examples alone",
+            "To reduce hallucination risk"
+          ],
+          "correctIndex": 1,
+          "explanation": "Negative examples anchor the failure boundary. Without them, the model knows what good looks like but not what to actively avoid. The avoid_because field makes the failure reason explicit."
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "The hooks bank uses engagement_rate to sort examples. Why show high-performing examples instead of random ones?",
+          "options": [
+            "High engagement = model is more likely to imitate them",
+            "High engagement examples demonstrate styles that actually worked with the target audience — they're empirically validated, not just stylistically good",
+            "Random examples would confuse the model",
+            "High engagement examples are shorter"
+          ],
+          "correctIndex": 1,
+          "explanation": "Empirical validation matters — a stylistically clever example that flopped is worse than a simpler example that drove 8% engagement. The feedback loop (Module 11) keeps the bank updated with real performance data."
+        }
+      ]
+    },
+    {
+      "id": "l4",
+      "title": "News Creative & Model Selection",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "Two creative tracks, two model tiers",
+          "body": "The pipeline has two creative agents:\n\n**social_creative** → Hinglish wit, trend-jacking, 280-char precision → Opus 4.7 (creative quality critical)\n\n**news_creative** → 700-1000 word SEO article, structured, informational → Sonnet 4.6 (balanced quality sufficient)\n\nThe news article needs to be accurate and well-structured, not witty. Sonnet is ~5× cheaper than Opus and produces comparable results for structured writing.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Match model to the decision complexity",
+              "body": "Ask: 'What could go wrong if I use the cheaper model?' For social copy — a flat, generic post that gets scrolled past (high cost). For news articles — slightly less punchy intro but accurate content (acceptable cost)."
+            }
+          ],
+          "codeExample": {
+            "language": "python",
+            "filename": "model_routing.py",
+            "code": "NEWS_CREATIVE_SYSTEM = \"\"\"\nYou write SEO-optimised news articles for Housing.com.\nLength: 700-1000 words.\nStructure: H1 → H2 subheadings → bullet stats → expert quote → CTA.\nSEO: primary keyword in first 100 chars, natural density 1-2%.\nOutput JSON: {headline, subheadline, body_markdown, seo_keywords, meta_description}\n\"\"\"\n\ndef news_creative_node(state: PipelineState) -> dict:\n    news_briefs = [b for b in state[\"content_briefs\"] if b.get(\"draft_type\") == \"news\"]\n    drafts = []\n    for brief in news_briefs:\n        resp = client.messages.create(\n            model=\"claude-sonnet-4-6\",  # balanced — structured writing, not wit\n            max_tokens=2048,\n            system=NEWS_CREATIVE_SYSTEM,\n            messages=[{\"role\": \"user\", \"content\": f\"Brief: {json.dumps(brief)}\"}]\n        )\n        draft = json.loads(resp.content[0].text)\n        draft[\"draft_type\"] = \"news\"\n        drafts.append(draft)\n    return {\"creative_drafts\": drafts}"
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "social_creative uses Opus 4.7 but news_creative uses Sonnet 4.6. The primary reason is:",
+          "options": [
+            "Opus can't write long-form articles",
+            "Hinglish wit and cultural trend-jacking require creative quality that scales with model capability; SEO article structure does not",
+            "Sonnet has a larger context window for long articles",
+            "Cost is the only factor"
+          ],
+          "correctIndex": 1,
+          "explanation": "Creative quality for social copy has a direct engagement impact — better wit = more shares. SEO article quality is more about structure and accuracy, where Sonnet performs comparably to Opus at 5× less cost."
+        },
+        {
+          "type": "mcq",
+          "stem": "First hashtag in a tweet MUST be the trending tag. Why?",
+          "options": [
+            "Twitter requires trending tags first",
+            "Twitter's discovery algorithm shows posts to people following or searching the hashtag — trending first maximises reach",
+            "It looks better visually",
+            "Instagram requires it"
+          ],
+          "correctIndex": 1,
+          "explanation": "Twitter surfaces tweets to hashtag followers and search results. Trending hashtag first = maximum visibility at peak trend momentum. It's not a style preference — it's distribution strategy."
+        }
+      ]
+    }
+  ]
+}

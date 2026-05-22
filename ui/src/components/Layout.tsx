@@ -6,31 +6,31 @@ import {
   BookOpen,
   Wand2,
   TrendingUp,
-  Radio,
-  Terminal,
   Settings,
   ChevronRight,
+  Play,
+  BarChart2,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FileText, label: 'Posts', path: '/posts' },
+  { icon: Play, label: 'Runs', path: '/runs' },
+  { icon: BarChart2, label: 'Analytics', path: '/analytics' },
   { icon: BookOpen, label: 'Prompts', path: '/prompts' },
   { icon: Wand2, label: 'Generate', path: '/generate' },
   { icon: TrendingUp, label: 'Trending', path: '/trending' },
-  { icon: Radio, label: 'Live Feed', path: '/live' },
-  { icon: Terminal, label: 'Dev Mode', path: '/dev' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ]
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/posts': 'Posts',
+  '/runs': 'Runs',
+  '/analytics': 'Analytics',
   '/prompts': 'Prompts',
   '/generate': 'Generate',
   '/trending': 'Trending',
-  '/live': 'Live Feed',
-  '/dev': 'Dev Mode',
   '/settings': 'Settings',
 }
 

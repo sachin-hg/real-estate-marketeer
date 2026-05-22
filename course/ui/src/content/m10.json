@@ -1,0 +1,424 @@
+{
+  "id": "m10",
+  "title": "Production Patterns",
+  "subtitle": "Wrap the v8 pipeline in production-grade reliability: RetryPolicy with exponential backoff, AsyncSqliteSaver checkpointing, and multi-provider model routing.",
+  "durationMin": 155,
+  "pipelineVersion": "v9",
+  "difficulty": "advanced",
+  "tags": [
+    "retry-policy",
+    "checkpointing",
+    "model-routing",
+    "async-sqlite",
+    "cost-optimization",
+    "production",
+    "distributed-deployment",
+    "postgres-checkpointing"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Retry Policies",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "Why production LLM calls fail",
+          "body": "Network blips, rate limits, and transient API errors are facts of life in production. A pipeline that runs perfectly in development will fail in production — not if, but when.\n\nLangGraph's `RetryPolicy` wraps any node in automatic exponential backoff:\n\n```python\nRetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0)\n```\n\nThis retries up to 3 times, waiting 1s → 2s → 4s between attempts. The node never changes; the retry logic is declared at the graph level.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Exponential backoff vs fixed interval",
+              "body": "Thundering herd problem — if 100 agents retry at a fixed 5s interval, they all hammer the API at the same time. Exponential backoff spreads retries across time: 1s, 2s, 4s, 8s. Each failed agent retries at a different offset, smoothing the load spike."
+            }
+          ]
+        },
+        {
+          "heading": "The publisher idempotency trap",
+          "body": "Most nodes in the pipeline are **idempotent**: retrying researcher_node just re-fetches the same data. Retrying planner_node re-plans from the same state. No side effects.\n\n`publisher_node` is different. It posts to live APIs — Twitter, Instagram. A successful post followed by a network error on the DB write looks like a failure to RetryPolicy. So it retries. And posts again.\n\nThe audience sees a duplicate tweet. **Over-publishing is worse than under-publishing.**\n\nThe correct pattern: attach RetryPolicy to every node *except* publisher_node. Set `retry=None` on publisher.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "Publisher idempotency",
+              "body": "publisher_node successfully posts to Twitter at second 1, then hits a network error on DB write. RetryPolicy retries. It posts again. The audience sees a duplicate tweet. For non-idempotent operations, no retry is safer than automatic retry."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "_retry = RetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0)\n\nbuilder.add_node(\"researcher\",  researcher_node, retry=_retry)\nbuilder.add_node(\"planner\",     planner_node,    retry=_retry)\nbuilder.add_node(\"qa\",          qa_node,         retry=_retry)\n# publisher:\nbuilder.add_node(\"publisher\",   publisher_node,  ???)\n# ⚠ TODO: Same retry policy as above, or different?\n# Hint: publisher successfully posts to Twitter, then hits a network error.\n# RetryPolicy retries. Publisher posts to Twitter AGAIN.\n# Is the risk of under-publishing or over-publishing worse here?",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "retry=None — publisher must not retry after partial success",
+            "whyItMatters": "publisher_node posts to live APIs. If it posts to Twitter successfully then fails on DB write, a retry posts again. The audience sees a duplicate tweet. For non-idempotent operations, no retry is safer than automatic retry.",
+            "correctCode": "retry=None  # publisher is not idempotent — never retry after partial success",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "What is the risk of applying RetryPolicy to publisher_node?",
+          "options": [
+            "It may run faster",
+            "It may post the same tweet twice if it partially succeeds then fails",
+            "It prevents any posts from being published",
+            "The graph won't compile"
+          ],
+          "correctIndex": 1,
+          "explanation": "publisher_node posts to live APIs. If it succeeds on the API call but fails on the subsequent DB write, RetryPolicy sees a failure and retries — causing the same tweet to be posted again. Non-idempotent nodes must use retry=None."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "workflow/graph.py",
+        "code": "from langgraph.graph import StateGraph\nfrom langgraph.checkpoint.aiosqlite import AsyncSqliteSaver\nfrom langgraph.pregel import RetryPolicy\nfrom workflow.state import PipelineState\nfrom workflow.nodes import (\n    researcher_node, trend_researcher_node,\n    planner_node, social_creative_node, news_creative_node,\n    twitter_agent_node, instagram_agent_node,\n    qa_safety_node, qa_quality_node, qa_engagement_node,\n    publisher_node,\n)\n\n# Exponential backoff: 1s → 2s → 4s, max 3 attempts\n_retry = RetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0)\n\nasync def build_graph(checkpoints_db: str = \"checkpoints.db\"):\n    builder = StateGraph(PipelineState)\n\n    # All nodes get retry EXCEPT publisher — publisher is not idempotent\n    builder.add_node(\"researcher\",       researcher_node,       retry=_retry)\n    builder.add_node(\"trend_researcher\", trend_researcher_node, retry=_retry)\n    builder.add_node(\"planner\",          planner_node,          retry=_retry)\n    builder.add_node(\"social_creative\",  social_creative_node,  retry=_retry)\n    builder.add_node(\"news_creative\",    news_creative_node,    retry=_retry)\n    builder.add_node(\"twitter_agent\",    twitter_agent_node,    retry=_retry)\n    builder.add_node(\"instagram_agent\",  instagram_agent_node,  retry=_retry)\n    builder.add_node(\"qa_safety\",        qa_safety_node,        retry=_retry)\n    builder.add_node(\"qa_quality\",       qa_quality_node,       retry=_retry)\n    builder.add_node(\"qa_engagement\",    qa_engagement_node,    retry=_retry)\n    # publisher: retry=None — posting to live APIs is NOT idempotent\n    builder.add_node(\"publisher\",        publisher_node,        retry=None)\n\n    # ... edges omitted for brevity ...\n\n    memory = AsyncSqliteSaver.from_conn_string(checkpoints_db)\n    return builder.compile(checkpointer=memory)",
+        "highlightLines": [
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          33
+        ]
+      },
+      "productionRef": {
+        "file": "workflow/graph.py",
+        "startLine": 40,
+        "endLine": 75,
+        "excerpt": "# Exponential backoff: 1s → 2s → 4s, max 3 attempts\n_retry = RetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0)\n\nbuilder.add_node(\"researcher\",       researcher_node,       retry=_retry)\nbuilder.add_node(\"trend_researcher\", trend_researcher_node, retry=_retry)\nbuilder.add_node(\"planner\",          planner_node,          retry=_retry)\nbuilder.add_node(\"social_creative\",  social_creative_node,  retry=_retry)\nbuilder.add_node(\"news_creative\",    news_creative_node,    retry=_retry)\nbuilder.add_node(\"twitter_agent\",    twitter_agent_node,    retry=_retry)\nbuilder.add_node(\"instagram_agent\",  instagram_agent_node,  retry=_retry)\nbuilder.add_node(\"qa_safety\",        qa_safety_node,        retry=_retry)\nbuilder.add_node(\"qa_quality\",       qa_quality_node,       retry=_retry)\nbuilder.add_node(\"qa_engagement\",    qa_engagement_node,    retry=_retry)\n# publisher: retry=None — posting to live APIs is NOT idempotent\nbuilder.add_node(\"publisher\",        publisher_node,        retry=None)",
+        "annotations": [
+          {
+            "line": 54,
+            "text": "All content-generation nodes get exponential backoff"
+          },
+          {
+            "line": 55,
+            "text": "retry=None: publisher posts to live APIs — duplicate post on retry is worse than missing post"
+          }
+        ]
+      },
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "RetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0). researcher_node fails on attempt 1 and attempt 2. How long does it wait before attempt 3?",
+          "options": [
+            "1 second (fixed, same as before attempt 2)",
+            "2 seconds (1.0 x 2.0^1)",
+            "4 seconds (1.0 x 2.0^2)",
+            "3 seconds (attempt_number x initial_interval)"
+          ],
+          "correctIndex": 1,
+          "explanation": "wait = initial_interval x backoff_factor^(retry_count). Before attempt 2 (retry 1): 1.0 x 2.0^0 = 1s. Before attempt 3 (retry 2): 1.0 x 2.0^1 = 2s. The sequence is 1s then 2s — each wait doubles, spreading retries across time instead of hammering at a fixed interval."
+        },
+        {
+          "type": "tf",
+          "stem": "Exponential backoff means each retry waits the same amount of time.",
+          "answer": false,
+          "explanation": "Exponential backoff increases the wait time between retries by a multiplier (backoff_factor). With initial_interval=1.0 and backoff_factor=2.0, waits are 1s, 2s, 4s — each retry waits longer, spreading load and reducing thundering-herd collisions."
+        },
+        {
+          "type": "mcq",
+          "stem": "Two pipeline runs share thread_id \"run-001\". Run 2 starts before Run 1 finishes. What happens?",
+          "options": [
+            "Run 2 starts from scratch, ignoring Run 1's state",
+            "The graph raises a conflict error and rejects Run 2",
+            "Run 2 resumes from Run 1's checkpoint state, mixing their data",
+            "Both runs produce independent outputs stored under separate keys"
+          ],
+          "correctIndex": 2,
+          "explanation": "thread_id is the checkpoint namespace. Two runs sharing the same thread_id will read and write to the same checkpoint — Run 2 picks up Run 1's in-progress state. This causes silent data contamination. Each run must use a unique, stable thread_id (e.g., run_id)."
+        },
+        {
+          "type": "mcq",
+          "stem": "Why is checkpoints.db kept separate from housing_content.db?",
+          "options": [
+            "SQLite cannot store both schemas in one file",
+            "Checkpoints require a different SQLite version",
+            "They have different lifecycles: checkpoints are temporary and can be deleted after a run; content is permanent engagement history",
+            "AsyncSqliteSaver only works with dedicated databases"
+          ],
+          "correctIndex": 2,
+          "explanation": "Checkpoints are operational metadata — once a run completes successfully, those checkpoint rows are safe to delete. housing_content.db stores engagement history that informs future runs and must be retained. Mixing them couples cleanup operations that should be independent."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Checkpointing",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "How AsyncSqliteSaver works",
+          "body": "AsyncSqliteSaver saves the full graph state to SQLite after every node completes. The state is keyed by `thread_id` — a string you pass in the run config.\n\nIf the process crashes mid-run and you restart with the same `thread_id`, LangGraph reads the last checkpoint and resumes from the next unfinished node. Completed nodes are skipped entirely.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "What checkpointing actually saves",
+              "body": "Each node's output is serialized to SQLite. On resume, completed nodes are skipped — the graph jumps straight to the failed node with its input state intact. This means a 10-node pipeline that crashes at node 7 restarts at node 7 with nodes 1-6 output already in state."
+            }
+          ]
+        },
+        {
+          "heading": "Choosing the right thread_id",
+          "body": "The `thread_id` is the checkpoint namespace. Get it wrong and you get one of two failure modes:\n\n**Static string** (`thread_id=\"main\"`): every run resumes the previous run's state. Research from run #1 appears in run #2's planner. Silent data contamination.\n\n**Random UUID per run** (`thread_id=str(uuid4())`): a new UUID on restart means a new namespace — the crashed run's checkpoint is orphaned and lost. No benefit from checkpointing.\n\n**`run_id`** is the right value: unique per pipeline invocation, stable across retries of the same run. A crash-restart with the same `run_id` finds the exact checkpoint.",
+          "callouts": [
+            {
+              "type": "mistake",
+              "title": "Using a static thread_id",
+              "body": "thread_id=\"main\" means every run resumes the previous run's state. Research from run #1 appears in run #2's planner. Silent data contamination — no error is raised, the output just silently blends previous and current run data."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "result = await graph.ainvoke(\n    initial_state,\n    config={\"configurable\": {\"thread_id\": ???}}\n    # ⚠ TODO: What value should thread_id be?\n    # Hint 1: Checkpointing saves state PER thread_id.\n    # Hint 2: If two runs share the same thread_id, run 2 resumes from run 1's checkpoint.\n    # Hint 3: If a crashed run restarts with a NEW thread_id, you lose the checkpoint.\n    # What unique-per-run value do we already have?\n)",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "run_id — unique per pipeline invocation",
+            "whyItMatters": "thread_id is the checkpoint namespace. Static = contamination between runs. Random UUID per run = checkpoints are useless on restart. run_id is the right value: unique per run but stable across retries of the same run.",
+            "correctCode": "run_id  # unique per pipeline invocation; stable on retry → correct checkpoint namespace",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "fillin",
+          "stem": "The thread_id for checkpointing should be ___.",
+          "answer": "run_id",
+          "hint": "It must be unique per run but stable if that run is retried after a crash.",
+          "explanation": "run_id is set once per pipeline invocation and passed through the entire run. It's unique enough to avoid namespace collisions between runs, and stable enough that a crash-restart can find the existing checkpoint."
+        }
+      ],
+      "pyodideCode": "# Module 10 — Checkpoint Resume Simulation\n# Simulates a 10-node pipeline that crashed at node 7 and is now resuming.\n# Nodes 1-6: restored from checkpoint (skipped)\n# Nodes 7-10: re-executed\n\nimport time\n\nCHECKPOINT_SAVED_AFTER = 6  # last node that completed before crash\nTOTAL_NODES = 10\n\nprint(\"Resuming pipeline run_id='run-2024-001'\")\nprint(f\"Checkpoint found: nodes 1-{CHECKPOINT_SAVED_AFTER} already complete\\n\")\n\nfor i in range(1, TOTAL_NODES + 1):\n    node_name = [\n        \"\", \"researcher\", \"trend_researcher\", \"planner\",\n        \"social_creative\", \"news_creative\", \"twitter_agent\",\n        \"qa_safety\", \"qa_quality\", \"qa_engagement\", \"publisher\"\n    ][i]\n    if i <= CHECKPOINT_SAVED_AFTER:\n        print(f\"  node {i:2d} — {node_name:<20} ✓ (restored from checkpoint)\")\n    else:\n        print(f\"  node {i:2d} — {node_name:<20} ● running...\")\n        time.sleep(0.05)  # simulate work\n        print(f\"  node {i:2d} — {node_name:<20} ✓ complete\")\n\nprint(\"\\nPipeline complete. Checkpoint namespace: run-2024-001\")",
+      "pyodideExpected": "restored from checkpoint",
+      "endQuiz": [
+        {
+          "type": "fillin",
+          "stem": "thread_id='hardcoded' means all runs share the same ___.",
+          "answer": "checkpoint namespace",
+          "hint": "Think about contamination — what exactly is being shared between runs?",
+          "explanation": "thread_id is the key under which LangGraph stores and looks up checkpoints. A static value means every run reads the previous run's saved state on startup, silently contaminating results."
+        },
+        {
+          "type": "mcq",
+          "stem": "A checkpoint was saved after node 5 of 10. The run crashed during node 7. On restart with the same run_id, which nodes re-run?",
+          "options": [
+            "All 10 nodes re-run from scratch",
+            "Only node 7 re-runs; 8, 9, 10 are skipped",
+            "Nodes 6, 7, 8, 9, 10 re-run",
+            "Nodes 7, 8, 9, 10 re-run; nodes 1-6 are restored from checkpoint"
+          ],
+          "correctIndex": 3,
+          "explanation": "AsyncSqliteSaver checkpoints after each node completion. The last checkpoint was at node 5 — but node 6 also completed (crash was during node 7). So nodes 1-6 are restored, and nodes 7-10 re-execute. LangGraph resumes at the first node not found in the checkpoint."
+        },
+        {
+          "type": "tf",
+          "stem": "AsyncSqliteSaver is suitable for multi-worker production deployments where multiple processes run the same pipeline concurrently.",
+          "answer": false,
+          "explanation": "SQLite uses file-level locking and is inherently single-process. In a multi-worker deployment, concurrent writes from multiple processes will cause lock contention and data corruption. Use PostgresSaver (or a similar server-based backend) for multi-worker production environments."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Model Routing & Cost Calculator",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "Multi-provider LLM routing",
+          "body": "Not every node needs Opus. The v9 pipeline routes each node to the cheapest model that can do the job:\n\n| Tier | Model | Use case |\n|------|-------|----------|\n| `fast` | Gemini Flash | Classification, filtering, binary decisions |\n| `balanced` | Sonnet 4.6 | Research, structured output, QA scoring |\n| `creative` | Opus 4.7 | Hinglish social copy, trend-jacking, wit |\n\nThe router selects based on which API keys are set in the environment and the tier the task requires. Missing an API key? It falls back gracefully to the next available model in the same tier.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Cost tiers in practice",
+              "body": "researcher (balanced), planner (fast), social_creative (creative), news_creative (balanced), twitter_agent (balanced), instagram_agent (balanced), qa_safety (fast), qa_quality (balanced), qa_engagement (balanced), publisher (no LLM call)"
+            }
+          ]
+        },
+        {
+          "heading": "Why routing matters at scale",
+          "body": "The cost difference between models is not marginal — it's an order of magnitude:\n\n- **Gemini Flash input**: $0.00015/1K tokens\n- **Sonnet 4.6 input**: $0.003/1K tokens (20× Flash)\n- **Opus 4.7 input**: $0.015/1K tokens (100× Flash)\n\nFor a pipeline with 10 nodes running 2× per day, the model selection has a direct and measurable impact on monthly infrastructure costs.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Why model routing matters at scale",
+              "body": "2 runs/day × 30 days. All-Opus: ~$12/run = $720/month. Routed: ~$0.85/run = $51/month. That's ~$669/month savings — roughly 93% reduction. The creative quality of social copy is preserved because Opus is still used where it matters: social_creative."
+            }
+          ]
+        },
+        {
+          "heading": "Cost-quality tradeoff framework",
+          "body": "Cutting model costs without measuring quality impact is optimization theater. The right sequence:\n\n1. **Establish baseline** — record QA approval rate and 7-day engagement rate for 10+ runs with current routing.\n2. **A/B test the candidate downgrade** — route 10% of jobs to the cheaper model on the target node. Keep input distribution identical.\n3. **Decision threshold** — if engagement rate drops >5% or QA approval rate drops >5%, the downgrade is not safe for that node.\n4. **Where cost-cutting is safe without A/B testing**: internal classification nodes (planner, qa_safety) rarely show measurable quality degradation. Start cheap and only upgrade if QA approval rate drops.\n\nHousing.com result: downgrading `social_creative` from Opus 4.7 to Sonnet 4.6 was tested on 30 posts. QA approval rate: −3%. Engagement rate: −8%. The engagement drop exceeded threshold — Opus stays for social_creative.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "The one question that determines whether a downgrade is safe",
+              "body": "Is this node's output shown directly to end users, and does it require cultural nuance or creative judgment? If yes, measure before cutting. If it's classification, filtering, or structured extraction — start with the cheapest model and only upgrade if outcomes degrade."
+            }
+          ]
+        }
+      ],
+      "pyodideCode": "# Module 10 — Cost Calculator\n# Fill in the estimated token costs and calculate monthly savings\n\nMODELS = {\n    \"opus_4_7\":     {\"input_per_1k\": 0.015,   \"output_per_1k\": 0.075},\n    \"sonnet_4_6\":   {\"input_per_1k\": 0.003,   \"output_per_1k\": 0.015},\n    \"haiku_4_5\":    {\"input_per_1k\": 0.0008,  \"output_per_1k\": 0.004},\n    \"gemini_flash\": {\"input_per_1k\": 0.00015, \"output_per_1k\": 0.0006},\n}\n\n# Approximate tokens per node per run\nPIPELINE_NODES = {\n    \"researcher\":      {\"model\": \"sonnet_4_6\",   \"input_k\": 2.0,  \"output_k\": 0.8},\n    \"trend_researcher\":{\"model\": \"sonnet_4_6\",   \"input_k\": 1.5,  \"output_k\": 0.6},\n    \"planner\":         {\"model\": \"gemini_flash\", \"input_k\": 3.0,  \"output_k\": 0.5},\n    \"social_creative\": {\"model\": \"opus_4_7\",     \"input_k\": 4.0,  \"output_k\": 1.2},\n    \"news_creative\":   {\"model\": \"sonnet_4_6\",   \"input_k\": 5.0,  \"output_k\": 2.5},\n    \"twitter_agent\":   {\"model\": \"sonnet_4_6\",   \"input_k\": 1.5,  \"output_k\": 0.4},\n    \"instagram_agent\": {\"model\": \"sonnet_4_6\",   \"input_k\": 1.5,  \"output_k\": 0.5},\n    \"qa_safety\":       {\"model\": \"haiku_4_5\",    \"input_k\": 0.5,  \"output_k\": 0.1},\n    \"qa_quality\":      {\"model\": \"sonnet_4_6\",   \"input_k\": 2.0,  \"output_k\": 0.6},\n    \"qa_engagement\":   {\"model\": \"sonnet_4_6\",   \"input_k\": 1.5,  \"output_k\": 0.4},\n}\n\ndef node_cost(node_name, config):\n    node = config[node_name]\n    m = MODELS[node[\"model\"]]\n    return node[\"input_k\"] * m[\"input_per_1k\"] + node[\"output_k\"] * m[\"output_per_1k\"]\n\n# Routed (current config)\nrouted_cost = sum(node_cost(n, PIPELINE_NODES) for n in PIPELINE_NODES)\n\n# All-Opus config (replace every model with opus)\nall_opus_nodes = {k: {**v, \"model\": \"opus_4_7\"} for k, v in PIPELINE_NODES.items()}\nall_opus_cost = sum(node_cost(n, all_opus_nodes) for n in all_opus_nodes)\n\nruns_per_day = 2\ndays = 30\nrouted_monthly = routed_cost * runs_per_day * days\nall_opus_monthly = all_opus_cost * runs_per_day * days\nsavings_pct = (1 - routed_monthly / all_opus_monthly) * 100\n\nprint(f\"Cost per run:\")\nprint(f\"  Routed:   ${routed_cost:.3f}\")\nprint(f\"  All-Opus: ${all_opus_cost:.3f}\")\nprint(f\"\\nMonthly ({runs_per_day} runs/day x {days} days):\")\nprint(f\"  Routed:   ${routed_monthly:.2f}\")\nprint(f\"  All-Opus: ${all_opus_monthly:.2f}\")\nprint(f\"  Savings:  {savings_pct:.0f}%\")\n\n# Bar chart\ndef bar(val, max_val, width=40):\n    filled = int(val / max_val * width)\n    return \"\\u2588\" * filled + \"\\u2591\" * (width - filled)\n\nprint(f\"\\nRouted    [{bar(routed_monthly, all_opus_monthly)}] ${routed_monthly:.0f}\")\nprint(f\"All-Opus  [{bar(all_opus_monthly, all_opus_monthly)}] ${all_opus_monthly:.0f}\")",
+      "pyodideExpected": "Savings:",
+      "productionRef": {
+        "file": "tools/llm_router.py",
+        "startLine": 1,
+        "endLine": 30,
+        "excerpt": "import os\nfrom typing import Literal\n\nTier = Literal[\"fast\", \"balanced\", \"creative\"]\n\ndef get_model(tier: Tier) -> str:\n    \"\"\"Route to the cheapest capable model for a given task tier.\n\n    fast      → Gemini Flash (53% cheaper than Haiku) or Haiku fallback\n    balanced  → Sonnet 4.6\n    creative  → Opus 4.7\n\n    Falls back to the next tier up if the required API key is missing.\n    \"\"\"\n    if tier == \"fast\":\n        if os.getenv(\"GEMINI_API_KEY\"):\n            return \"gemini/gemini-1.5-flash\"\n        return \"anthropic/claude-haiku-4-5\"\n    elif tier == \"balanced\":\n        return \"anthropic/claude-sonnet-4-6\"\n    elif tier == \"creative\":\n        if os.getenv(\"ANTHROPIC_API_KEY\"):\n            return \"anthropic/claude-opus-4-7\"\n        # Fallback: balanced if Anthropic key unavailable\n        return \"anthropic/claude-sonnet-4-6\"\n    raise ValueError(f\"Unknown tier: {tier}\")",
+        "annotations": [
+          {
+            "line": 16,
+            "text": "fast tier prefers Gemini Flash — 53% cheaper than Haiku for classification tasks"
+          },
+          {
+            "line": 21,
+            "text": "creative tier uses Opus 4.7 — measurably better on Hinglish wit and trend-jacking"
+          },
+          {
+            "line": 23,
+            "text": "graceful fallback: missing API key → next available model, never a hard crash"
+          }
+        ]
+      },
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "planner_node uses Gemini Flash instead of Opus. What is the primary justification?",
+          "options": [
+            "Planner output is never shown to end users so quality doesn't matter",
+            "Flash has a larger context window than Opus",
+            "Classification and topic-filtering is not a creative task — a fast model is equally capable and approximately 98% cheaper than Opus",
+            "Opus is deprecated for planning tasks in LangGraph v9"
+          ],
+          "correctIndex": 2,
+          "explanation": "Planner's job is to filter off-topic research and structure a content brief — a classification task, not creative generation. Gemini Flash handles binary and categorical decisions as well as Opus at a fraction of the cost. Save Opus for where creativity is genuinely needed: social_creative."
+        },
+        {
+          "type": "mcq",
+          "stem": "Running all-Opus vs the routed config at 2 runs/day for 30 days. What is the approximate monthly savings?",
+          "options": [
+            "~$10",
+            "~$150",
+            "~$400",
+            "~$670"
+          ],
+          "correctIndex": 3,
+          "explanation": "All-Opus runs ~$12/run × 60 runs = ~$720/month. Routed config runs ~$0.85/run × 60 runs = ~$51/month. Difference ≈ $669/month, roughly a 93% reduction. The cost calculator in the Pyodide exercise above computes this precisely from per-node token estimates."
+        },
+        {
+          "type": "tf",
+          "stem": "Replacing Opus 4.7 with a cheaper model for social_creative would produce the same quality Hinglish social copy.",
+          "answer": false,
+          "explanation": "Opus 4.7 measurably outperforms Sonnet and smaller models on creative tasks requiring cultural nuance, wit, and trend-jacking — particularly in code-switched languages like Hinglish. QA engagement scores drop when social_creative is downgraded. The model routing deliberately preserves Opus for this node while cutting cost everywhere else."
+        }
+      ]
+    },
+    {
+      "id": "l4",
+      "title": "Distributed Deployment",
+      "durationMin": 35,
+      "concept": [
+        {
+          "heading": "AsyncSqliteSaver is single-process only",
+          "body": "SQLite uses file-level locking. In a single-process pipeline this is fine — one writer, no contention. In a multi-worker deployment (Celery workers, Kubernetes pods, two concurrent uvicorn processes), concurrent writes cause lock contention and silent state corruption.\n\nSymptom: `database is locked` errors in logs, intermittent checkpoint failures, missing node output in later stages. The error often doesn't surface immediately — it manifests several nodes later as a KeyError on state data that was never written.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "SQLite is not multi-writer safe",
+              "body": "Two workers writing to the same checkpoints.db simultaneously will have write conflicts. The second writer gets `sqlite3.OperationalError: database is locked`. This is not a configuration issue — it is a fundamental SQLite constraint. If your deployment has more than one process, stop using AsyncSqliteSaver."
+            }
+          ]
+        },
+        {
+          "heading": "AsyncPostgresSaver for multi-worker production",
+          "body": "LangGraph ships `AsyncPostgresSaver` that replaces SQLite with a Postgres backend. It uses connection pooling, row-level locking, and proper transaction isolation.\n\n```python\nfrom langgraph.checkpoint.postgres.aio import AsyncPostgresSaver\n\nmemory = AsyncPostgresSaver.from_conn_string(\n    os.getenv(\"DATABASE_URL\")  # standard Postgres connection URL\n)\napp = builder.compile(checkpointer=memory)\n```\n\nThe interface is identical to AsyncSqliteSaver — swap the import and the connection string. All graph logic, node functions, and edges are unchanged. This is the value of LangGraph's abstracted CheckpointSaver interface.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "When to upgrade checkpoint backends",
+              "body": "Development: AsyncSqliteSaver (zero setup, local file). Single-server production: AsyncSqliteSaver still works. Multi-worker (Celery, k8s, multiple dynos): AsyncPostgresSaver required. Don't over-engineer — only upgrade when you add a second worker."
+            }
+          ]
+        },
+        {
+          "heading": "Checkpoint lifecycle and cleanup",
+          "body": "Checkpoints accumulate. A 10-node pipeline running twice daily generates ~20 checkpoint rows per day: 600/month, 7,200/year — multiplied by each node's state serialization size.\n\nCheckpoint rows are only useful while a specific run might still need to resume. Three cleanup strategies:\n\n- **Delete on completion**: call `checkpointer.delete(config)` after a successful run. The Housing.com pipeline uses this — publisher_node success triggers `_cleanup_checkpoint(run_id)`.\n- **TTL job**: Postgres scheduled job deletes checkpoints older than 7 days.\n- **Never cleanup**: only valid for small teams, low frequency, negligible storage costs.\n\nNever store checkpoints in the same database as content history — they have opposite retention requirements.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Opposite retention requirements",
+              "body": "Checkpoint rows: temporary. Useful only while a run could crash and resume. Delete on success. Content history rows: permanent. Engagement data from 6 months ago still informs today's creative. Mixing them couples cleanup operations that must be independent."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "# production deployment — select checkpointer based on worker count\nfrom langgraph.checkpoint.aiosqlite import AsyncSqliteSaver\n# from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver\n\nWORKERS = int(os.getenv(\"NUM_WORKERS\", \"1\"))\n\nasync def build_graph():\n    if WORKERS > 1:\n        # ⚠ TODO: Which checkpointer is safe for multi-worker deployments?\n        # Hint: You have 4 Celery workers processing pipeline runs in parallel.\n        # AsyncSqliteSaver uses file-level locking.\n        # What happens when 4 workers try to write to the same file simultaneously?\n        memory = ???\n    else:\n        memory = AsyncSqliteSaver.from_conn_string(\"checkpoints.db\")\n    return builder.compile(checkpointer=memory)",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "AsyncPostgresSaver.from_conn_string(os.getenv('DATABASE_URL'))",
+            "whyItMatters": "SQLite uses file-level locking. Four Celery workers writing to the same checkpoints.db will hit sqlite3.OperationalError: database is locked. AsyncPostgresSaver uses row-level locking and connection pooling — safe for concurrent multi-worker access.",
+            "correctCode": "AsyncPostgresSaver.from_conn_string(os.getenv(\"DATABASE_URL\"))",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "Three Celery workers simultaneously try to write checkpoints to the same checkpoints.db SQLite file. What is the most likely outcome?",
+          "options": [
+            "SQLite handles concurrent writes automatically using MVCC",
+            "The second and third workers get sqlite3.OperationalError: database is locked",
+            "Writes are queued and processed sequentially with no errors",
+            "Only the first worker's checkpoint is saved; others are silently dropped"
+          ],
+          "correctIndex": 1,
+          "explanation": "SQLite uses file-level write locking. When one process holds the write lock, all others block and eventually raise OperationalError: database is locked. This is not a configuration issue — it is a fundamental SQLite constraint. Multi-worker deployments require a server-based checkpoint backend like AsyncPostgresSaver."
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "tf",
+          "stem": "AsyncSqliteSaver is safe to use in a single-process pipeline running on a single server.",
+          "answer": true,
+          "explanation": "True — single-process means one writer, which is exactly what SQLite handles safely and efficiently. AsyncSqliteSaver is appropriate for development, CI/CD, and single-server deployments where at most one process writes to the checkpoint file at a time."
+        },
+        {
+          "type": "mcq",
+          "stem": "Switching from AsyncSqliteSaver to AsyncPostgresSaver in production requires changing:",
+          "options": [
+            "All node logic to use Postgres-compatible data types",
+            "The graph topology to add explicit checkpoint save/restore nodes",
+            "Two lines: the import and the connection string",
+            "All existing SQLite checkpoint data must be migrated to Postgres first"
+          ],
+          "correctIndex": 2,
+          "explanation": "AsyncPostgresSaver implements the same CheckpointSaver interface as AsyncSqliteSaver. Only two lines change: the import and the from_conn_string argument. All graph logic, node functions, and edges remain unchanged. This is the value of LangGraph's abstracted checkpointer interface."
+        },
+        {
+          "type": "mcq",
+          "stem": "After a successful pipeline run, what should happen to that run's checkpoint rows?",
+          "options": [
+            "Keep permanently — they serve as an audit trail",
+            "Archive to cold storage after 90 days",
+            "Delete immediately — their only purpose was crash-recovery for this run",
+            "Retain for 7 days in case the publisher needs to retry"
+          ],
+          "correctIndex": 2,
+          "explanation": "Checkpoint rows are only useful if a specific run crashes mid-execution and needs to resume. Once a run completes successfully, that run's checkpoint data has no further value. Delete on completion keeps the checkpoint table small and makes 'active' checkpoints (a live run that could resume) easy to distinguish from 'expired' ones (completed runs)."
+        }
+      ]
+    }
+  ]
+}

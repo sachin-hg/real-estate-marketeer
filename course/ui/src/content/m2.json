@@ -1,0 +1,203 @@
+{
+  "id": "m2",
+  "title": "Your First Agent",
+  "subtitle": "Build the researcher agent with tool use. Understand the ReAct loop — the heartbeat of every agent in the pipeline.",
+  "durationMin": 90,
+  "pipelineVersion": "v1",
+  "difficulty": "beginner",
+  "tags": ["tool-use", "react-loop", "anthropic-sdk", "agent-basics"],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Tools: Giving LLMs Hands",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "What is a tool?",
+          "body": "A tool is a function that the LLM can call. You define the function. You define its input schema. The LLM decides *when* to call it and *what arguments* to pass.\n\nThis is how we give an LLM access to the real world: web search, database queries, API calls — all through tools.",
+          "codeExample": {
+            "language": "python",
+            "filename": "tools_intro.py",
+            "code": "TOOLS = [\n    {\n        \"name\": \"web_search\",\n        \"description\": \"Search for real estate news articles\",\n        \"input_schema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"query\": {\n                    \"type\": \"string\",\n                    \"description\": \"The search query\"\n                }\n            },\n            \"required\": [\"query\"]\n        }\n    }\n]"
+          },
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "The LLM decides, you execute",
+              "body": "You never call the tool yourself. You give the tool definition to the LLM. When it wants to search, it returns stop_reason='tool_use' with the arguments. YOU call the actual function and return the result."
+            }
+          ]
+        },
+        {
+          "heading": "The tool use protocol",
+          "body": "When an LLM wants to use a tool, the API response has `stop_reason = 'tool_use'` and a `tool_use` block in content with the tool name and input arguments.\n\nYou then:\n1. Read the tool name and arguments from the response\n2. Call the actual function with those arguments  \n3. Add the result back as a `tool_result` message\n4. Call the LLM again with the updated message history",
+          "callouts": [
+            {
+              "type": "mistake",
+              "title": "The single-call trap",
+              "body": "If you call the LLM once, check stop_reason, get 'tool_use', and return — the search never happens. The agent made a decision but never acted on it. This is the bug the TODO placeholder in the next lesson prevents."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "What does stop_reason = 'tool_use' mean?",
+          "options": [
+            "The LLM has finished its response",
+            "An error occurred",
+            "The LLM wants to call a tool — it's pausing for you to execute it",
+            "The context window is full"
+          ],
+          "correctIndex": 2,
+          "explanation": "tool_use means the model is mid-reasoning. It has decided what to search for but needs YOU to run the search and return the results."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: You call the tool function directly based on the LLM's tool_use response.",
+          "answer": true,
+          "explanation": "Correct — the LLM signals WHICH tool and WHAT arguments; your code executes the actual function and feeds results back."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "The ReAct Loop",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "Why a loop?",
+          "body": "An agent isn't a single API call. It's a loop where the LLM reasons, acts (calls tools), observes (gets results), reasons again, and repeats until it has enough information.\n\nThis is the **ReAct pattern**: **Re**ason → **Act** → Observe → repeat.\n\nWithout the loop, your 'agent' is just a single LLM call that happens to have tools defined — but never uses them.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "The LLM decides when it's done",
+              "body": "You don't tell the agent 'search 3 times then stop'. The LLM decides when it has enough information. When stop_reason = 'end_turn', it's done reasoning. This is what makes it an agent vs a script."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "def researcher_agent(topic: str) -> list[dict]:\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {topic}\"}]\n\n    # ⚠ TODO: What keeps the agent reasoning until it has enough information?\n    # Without this, the LLM makes ONE call and stops — it never uses the search tool.\n    # Hint: An agent isn't a single call. It's a loop. The LLM decides when it's done.\n    ???\n\n    return parse_results(messages)",
+        "todos": [
+          {
+            "marker": "???",
+            "lineHint": "while True loop with stop condition",
+            "whyItMatters": "Without the loop, the LLM calls once, gets stop_reason='tool_use' (meaning 'I want to search'), and the function returns. The search never happens. The agent made a decision but never acted.",
+            "correctCode": "while True:\n        resp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                          tools=TOOLS, messages=messages)\n        if resp.stop_reason == \"end_turn\":\n            return json.loads(resp.content[-1].text)\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [{\"role\": \"assistant\", \"content\": resp.content},\n                     {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                      \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}]",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "What condition should break the agent's loop?",
+          "options": [
+            "After exactly 3 tool calls",
+            "When resp.stop_reason == 'end_turn'",
+            "After 60 seconds",
+            "When the results list has 5 items"
+          ],
+          "correctIndex": 1,
+          "explanation": "end_turn means the LLM has finished reasoning and has a final answer. It chose to stop — not you. This is what makes it autonomous."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v1",
+        "code": "# pipeline.py — v1: A single agent with tool use\nimport anthropic, json\n\nclient = anthropic.Anthropic()\nTOOLS = [{\"name\": \"web_search\", \"description\": \"Search for RE news\",\n           \"input_schema\": {\"type\": \"object\",\n                            \"properties\": {\"query\": {\"type\": \"string\"}},\n                            \"required\": [\"query\"]}}]\n\ndef mock_web_search(query: str) -> list[dict]:\n    return [{\"title\": f\"Result: {query}\", \"content\": \"Mumbai prices up 8% YoY\"}]\n\ndef researcher_agent(topic: str) -> list[dict]:\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {topic}\"}]\n    while True:\n        resp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                      tools=TOOLS, messages=messages)\n        if resp.stop_reason == \"end_turn\":\n            return json.loads(resp.content[-1].text)\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [{\"role\": \"assistant\", \"content\": resp.content},\n                     {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                      \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}]\n\nif __name__ == \"__main__\":\n    print(researcher_agent(\"Mumbai real estate 2025\"))"
+      },
+      "productionRef": {
+        "file": "agents/researcher.py",
+        "startLine": 128,
+        "endLine": 145,
+        "excerpt": "    async def _run_tool_loop(self, messages: list) -> list[dict]:\n        \"\"\"ReAct loop: reason → tool call → observe → repeat.\"\"\"\n        while True:\n            resp = await asyncio.wait_for(\n                self.client.messages.create(\n                    model=llm_router('balanced')['model'],\n                    max_tokens=2048,\n                    tools=self.tools,\n                    messages=messages,\n                ),\n                timeout=60.0,\n            )\n            if resp.stop_reason == 'end_turn':\n                return self._parse_results(resp.content)\n            tool_block = next(b for b in resp.content if b.type == 'tool_use')\n            result = await self._execute_tool(tool_block.name, tool_block.input)\n            messages = messages + [\n                {\"role\": \"assistant\", \"content\": resp.content},\n                {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                 \"tool_use_id\": tool_block.id,\n                 \"content\": json.dumps(result)}]},\n            ]",
+        "annotations": [
+          { "line": 131, "text": "asyncio.wait_for adds a 60s timeout — prevents runaway loops from burning tokens" },
+          { "line": 138, "text": "end_turn = agent chose to stop. Your code never decides — the LLM does." }
+        ]
+      },
+      "pyodideCode": "# The complete v1 researcher agent — runs in your browser\n# LLM calls are mocked but the loop logic is real\n\nclient = MockAnthropicClient()\n\nTOOLS = [{\"name\": \"web_search\",\n           \"description\": \"Search for RE news\",\n           \"input_schema\": {\"type\": \"object\",\n                            \"properties\": {\"query\": {\"type\": \"string\"}},\n                            \"required\": [\"query\"]}}]\n\ndef mock_web_search(query):\n    return web_search(query)\n\ndef researcher_agent(topic):\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {topic}\"}]\n    iterations = 0\n    while True:\n        iterations += 1\n        resp = client.messages.create(\n            model=\"claude-sonnet-4-6\",\n            max_tokens=1024,\n            tools=TOOLS,\n            messages=messages\n        )\n        print(f\"Iteration {iterations}: stop_reason={resp.stop_reason}\")\n        if resp.stop_reason == \"end_turn\":\n            result = json.loads(resp.content[0].text)\n            print(f\"\\nFinal results ({len(result)} items):\")\n            for item in result:\n                print(f\"  - {item.get('title', 'No title')}\")\n            return result\n        # Handle tool call\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        print(f\"  Tool call: {tool.name}({tool.input})\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [\n            {\"role\": \"assistant\", \"content\": resp.content},\n            {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n             \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}\n        ]\n\nresearcher_agent(\"Mumbai real estate stamp duty 2025\")",
+      "pyodideExpected": "Final results",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "An agent loop runs with tools=['web_search', 'calculator']. The LLM only calls web_search. What happens to calculator?",
+          "options": [
+            "Error — all tools must be called",
+            "It's called automatically at the end",
+            "Nothing — the LLM only calls tools it decides it needs",
+            "The loop runs twice, once per tool"
+          ],
+          "correctIndex": 2,
+          "explanation": "The LLM autonomously decides which tools to use and when. Having a tool defined doesn't mean it gets called."
+        },
+        {
+          "type": "mcq",
+          "stem": "What does the ReAct pattern stand for?",
+          "options": [
+            "React, Axios, Context, Tools",
+            "Reason, Act, Observe — the three phases of an agent loop",
+            "Retrieve, Execute, Aggregate, Check, Terminate",
+            "It's the React.js framework applied to agents"
+          ],
+          "correctIndex": 1,
+          "explanation": "ReAct = Reason (LLM thinks) → Act (tool call) → Observe (result back) → repeat. It's a loop, not a single call."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: Without a break condition, the agent loop would run forever and exhaust your API rate limit.",
+          "answer": true,
+          "explanation": "Yes — if the LLM never returns end_turn (e.g. a bug keeps it calling tools), the loop runs until you hit a rate limit or timeout. Production code adds asyncio.wait_for(timeout=60)."
+        },
+        {
+          "type": "mcq",
+          "stem": "In production (agents/researcher.py), what prevents a runaway agent from running for minutes?",
+          "options": [
+            "A maximum tool call counter",
+            "asyncio.wait_for(timeout=60) wrapping each LLM call",
+            "The LLM is programmed to always stop after 3 calls",
+            "A database lock"
+          ],
+          "correctIndex": 1,
+          "explanation": "asyncio.wait_for raises TimeoutError after 60 seconds, which the retry policy catches. Each retry resets the timeout."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "pipeline.py v1 — Complete",
+      "durationMin": 30,
+      "concept": [
+        {
+          "heading": "What you just built",
+          "body": "You have the first version of pipeline.py — a working researcher agent with tool use and the ReAct loop.\n\nThis is the foundation every subsequent module builds on. In Module 3 we'll add TypedDict state so multiple agents can share information. In Module 4 we'll wire it into a LangGraph graph.\n\nFor now: run the code, verify it works, and read the production comparison.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "What's the same in production",
+              "body": "The core loop in agents/researcher.py:128-145 is structurally identical to what you wrote. The production version adds: asyncio for async, wait_for for timeouts, the LLM router for model selection, and structured logging."
+            }
+          ],
+          "codeExample": {
+            "language": "python",
+            "filename": "pipeline.py — v1 (complete)",
+            "code": "# pipeline.py — v1: A single agent with tool use\nimport anthropic, json\n\nclient = anthropic.Anthropic()\nTOOLS = [{\"name\": \"web_search\", \"description\": \"Search for RE news\",\n           \"input_schema\": {\"type\": \"object\",\n                            \"properties\": {\"query\": {\"type\": \"string\"}},\n                            \"required\": [\"query\"]}}]\n\ndef mock_web_search(query: str) -> list[dict]:\n    return [{\"title\": f\"Result: {query}\", \"content\": \"Mumbai prices up 8% YoY\"}]\n\ndef researcher_agent(topic: str) -> list[dict]:\n    messages = [{\"role\": \"user\", \"content\": f\"Research: {topic}\"}]\n    while True:\n        resp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                      tools=TOOLS, messages=messages)\n        if resp.stop_reason == \"end_turn\":\n            return json.loads(resp.content[-1].text)\n        tool = next(b for b in resp.content if b.type == \"tool_use\")\n        result = mock_web_search(tool.input[\"query\"])\n        messages += [{\"role\": \"assistant\", \"content\": resp.content},\n                     {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n                      \"tool_use_id\": tool.id, \"content\": json.dumps(result)}]}]\n\nif __name__ == \"__main__\":\n    print(researcher_agent(\"Mumbai real estate 2025\"))"
+          }
+        }
+      ],
+      "productionRef": {
+        "file": "agents/researcher.py",
+        "startLine": 1,
+        "endLine": 30,
+        "excerpt": "import asyncio\nimport json\nimport logging\nfrom typing import Any\n\nfrom anthropic import AsyncAnthropic\n\nfrom config import settings\nfrom tools.llm_router import llm_router\nfrom tools.run_logger import log_llm_call\n\nlogger = logging.getLogger(__name__)\n\nSEARCH_TOOL = {\n    \"name\": \"web_search\",\n    \"description\": (\n        \"Search for recent real estate news, market data, policy changes, \"\n        \"and housing trends in India. Use specific queries with city names, \"\n        \"property types, and time context.\"\n    ),\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n            \"query\": {\"type\": \"string\", \"description\": \"Search query\"},\n            \"max_results\": {\"type\": \"integer\", \"default\": 5}\n        },\n        \"required\": [\"query\"]\n    }\n}",
+        "annotations": [
+          { "line": 8, "text": "llm_router() picks model based on tier — no hardcoded model names in agents" },
+          { "line": 9, "text": "log_llm_call() captures token usage and cost after every LLM response" }
+        ]
+      }
+    }
+  ]
+}

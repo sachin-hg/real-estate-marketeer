@@ -53,9 +53,9 @@ export default function DevMode() {
     refetchInterval: 2000,
   })
 
-  const inspectRunQ = useQuery({
+  const inspectRunQ = useQuery<Record<string, unknown>>({
     queryKey: ['run-inspect', selectedRunId],
-    queryFn: () => getRunStatus(selectedRunId!),
+    queryFn: () => getRunStatus(selectedRunId!) as unknown as Promise<Record<string, unknown>>,
     enabled: !!selectedRunId,
   })
 
@@ -240,14 +240,10 @@ export default function DevMode() {
               ) : inspectRun ? (
                 <div className="space-y-2">
                   <div className="flex justify-end">
-                    <CopyButton data={(inspectRun as unknown as Record<string, unknown>)[inspectStateKey] ?? null} />
+                    <CopyButton data={inspectRun[inspectStateKey] ?? null} />
                   </div>
                   <pre className="text-xs font-mono bg-slate-900 text-green-300 rounded-lg p-3 overflow-auto max-h-80 whitespace-pre-wrap">
-                    {JSON.stringify(
-                      (inspectRun as unknown as Record<string, unknown>)[inspectStateKey] ?? null,
-                      null,
-                      2
-                    )}
+                    {JSON.stringify(inspectRun[inspectStateKey] ?? null, null, 2)}
                   </pre>
                 </div>
               ) : null}

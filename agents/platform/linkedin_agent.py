@@ -405,7 +405,7 @@ DO NOT invent internal Housing.com figures (headcount, team sizes, individual ea
 CITY LINK RULE (if post is city-specific):
 If the trending topic or data point references a specific city, embed the housing.com
 city search link as a secondary reference link after the main careers CTA.
-Example: "...housing.com/careers | See {city} listings: {city_link}"
+Example: "...housing.com/careers | See {{city}} listings: {{city_link}}"
 
 HANDLE TAGGING:
 - For well-known companies and organisations (Microsoft, Google, TCS, Zomato, NASSCOM, etc.)
@@ -448,7 +448,14 @@ Return JSON:
   "content_pillar": "tech_layoffs | sales_career | work_culture | stability | ops_careers | gen_z | compensation | proptech_growth"
 }}
 
-Return ONLY the JSON."""
+Return ONLY the JSON.
+
+CREATIVE ANGLE INTEGRITY:
+The draft's `angle` field is the creative director's instruction. Your role is to
+EXPRESS that angle in platform-appropriate format — not replace or dilute it.
+If the angle says "Hyderabad metro expansion makes 3 localities the new hotspots",
+every line of output should reinforce that framing. Never drift into generic
+real estate copy unrelated to the angle."""
 
 
 async def run_linkedin_agent(draft: CreativeDraft, settings) -> PlatformPost:
@@ -518,10 +525,24 @@ Max 5 lines. English-forward. Include the trend hashtag in the body. Tag data so
     post_text = data.get("post_text", zomato_hook[:400])
 
     # Resolve any [LOOKUP: EntityName] placeholders the LLM left in the post
-    from tools.handle_resolver import resolve_handles_in_text
+    from tools.handle_resolver import resolve_handles_in_text, inject_known_mentions
     post_text, resolved = resolve_handles_in_text(post_text, platform="linkedin")
+
+    # Proactively inject @mentions for any brands the LLM mentioned but didn't tag
+    post_text, injected = inject_known_mentions(post_text, "linkedin", max_new=2)
+    if resolved or injected:
+        logger.info("LinkedIn agent: resolved=%s injected=%s", resolved, injected)
+
+    # Append city SRP URL as plain text — LinkedIn auto-links bare URLs
+    from tools.link_embedder import embed_city_links
     if resolved:
         logger.info("LinkedIn agent: resolved handles %s", resolved)
+    # Build city links list for the embedder (city SRP only, not careers)
+    _city_links_for_embed = [
+        {"url": city_link, "anchor_text": city_hint, "page_type": "city_srp"}
+    ] if city_link else []
+    post_text = embed_city_links(post_text, "linkedin", _city_links_for_embed)
+
     raw_tags = data.get("hashtags", ["#LifeAtHousing", "#HousingDotCom"])
     hashtags = _prioritise_trend_hashtag(raw_tags, trend_hashtag)
 

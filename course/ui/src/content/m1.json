@@ -1,0 +1,84 @@
+{
+  "id": "m1",
+  "title": "Why Single Calls Fail: The Mechanism",
+  "subtitle": "Token probability distributions, training data bias, and why few-shot examples outperform instructions. The technical foundation for everything that follows.",
+  "durationMin": 20,
+  "difficulty": "intermediate",
+  "tags": [
+    "token-probability",
+    "training-data-bias",
+    "few-shot",
+    "prompt-engineering-mechanics",
+    "llm-defaults"
+  ],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "The Probability Distribution Problem",
+      "durationMin": 20,
+      "concept": [
+        {
+          "heading": "What 'generic output' actually means",
+          "body": "When you ask an LLM to 'write a tweet about real estate,' the model doesn't search for good tweets. It generates tokens by sampling from a probability distribution over its vocabulary, conditioned on everything in the context window.\n\nThe distribution is shaped by training data. Real estate content in web crawls is dominated by: agency websites, property listings, market reports, legal disclosures. All corporate, formal, SEO-optimised. The token sequence 'Mumbai home prices rose 8%' has a much higher probability than 'Dilli mein ghar dhundhna? Bhai, ek ek percent ka farak pad sakta hai' — because the second pattern barely exists in training data.\n\nThis is not a reasoning failure. The model is doing exactly what it should: sampling from what it learned. The default distribution is a direct reflection of what that domain looks like on the internet.",
+          "callouts": [
+            {
+              "type": "insight",
+              "title": "Why system prompts alone don't fix this",
+              "body": "Adding 'write in Hinglish wit' to a system prompt shifts the distribution slightly but not dramatically. The model has seen millions of formal real estate texts and a handful of Hinglish social posts. Instructions compete with training data priors. Few-shot examples win because they provide direct in-context evidence of the target distribution — they're not instructions about style, they're instances of style."
+            },
+            {
+              "type": "insight",
+              "title": "Why this matters for multi-agent design",
+              "body": "If the creative agent has no examples, the planner's ContentBrief arrives and the model defaults to formal output. The hooks bank (Module 7), few-shot injection, and performance history (Module 11) are all mechanisms to shift the distribution toward high-engagement outputs. Understanding this mechanism is why the architecture looks the way it does."
+            }
+          ]
+        },
+        {
+          "heading": "Three failure modes that multi-agent design solves",
+          "body": "Single-call pipelines fail in three compounding ways:\n\n**1. No context about current reality.** Training data has a knowledge cutoff. 'Write a tweet about real estate' generates content from patterns learned months ago with no awareness of today's IPL season, this week's RBI announcement, or this morning's trending hashtag. The researcher agent (Module 2) solves this by fetching real-time context before the creative call.\n\n**2. No filtering of relevance.** Given 15 trending topics, a single call either ignores most or includes everything. The planner's OMIT instruction (Module 6) is the explicit filter. Without it, the creative agent receives 'Coldplay sold out' and generates forced housing content.\n\n**3. No quality enforcement.** A single call either gets it right or doesn't. There's no revision, no safety check, no engagement prediction. The QA system (Module 9) is the feedback loop that a single call has no equivalent of.\n\nEach subsequent module adds one fix to one failure mode. This is the map.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "The architecture is a distribution-shaping pipeline",
+              "body": "Every agent between the raw LLM call and the published post is either adding context (researcher, trend_researcher), filtering signal (planner), shifting style (creative with few-shot), enforcing constraints (platform agents), or validating quality (QA). Once you see it this way, the architecture choices become obvious."
+            }
+          ]
+        }
+      ],
+      "pyodideCode": "# The probability distribution problem — demonstrated\n\n# Simulating what happens with and without few-shot injection\n# (Real LLM calls would show this more dramatically — here we mock the output)\n\nBARE_OUTPUT = \"\"\"Mumbai real estate market shows promising trends in Q2 2025.\nProperty investors are encouraged to explore opportunities in the western suburbs.\nContact a qualified agent for personalized advice. #RealEstate #Mumbai #Investment\"\"\"\n\nINJECTED_OUTPUT = \"\"\"IPL ka fever aur ghar ki zaroorat — dono March mein peak karte hain 🏏\nWestern suburbs mein 2BHK ₹85L se shuru. Kab dekhna hai? #IPL2025 #MumbaiHomes #HousingCom\"\"\"\n\nprint(\"=== BARE PROMPT (no few-shot examples) ===\")\nprint(BARE_OUTPUT)\nprint()\nprint(\"=== WITH FEW-SHOT INJECTION (distribution shifted) ===\")\nprint(INJECTED_OUTPUT)\nprint()\n\n# Analyze the structural differences\ndef analyze(text):\n    has_hinglish = any(w in text for w in ['ka', 'mein', 'aur', 'hai', 'karte'])\n    has_specifics = any(c in text for c in ['₹', 'BHK', 'L'])\n    has_hook = text.split('\\n')[0].endswith('?') or '🏏' in text or '🏠' in text\n    char_count = len(text.split('\\n')[0])\n    return {\n        'hinglish': has_hinglish,\n        'specific_price': has_specifics,\n        'scroll_hook': has_hook,\n        'first_line_chars': char_count\n    }\n\nprint(\"Structural comparison:\")\nprint(f\"{'Metric':<20} {'Bare':^10} {'Injected':^10}\")\nprint(\"─\" * 42)\nfor key, (a, b) in zip(\n    ['Hinglish tone', 'Price specifics', 'Scroll hook', 'First line len'],\n    [(analyze(BARE_OUTPUT)[k], analyze(INJECTED_OUTPUT)[k]) \n     for k in ['hinglish', 'specific_price', 'scroll_hook', 'first_line_chars']]\n):\n    print(f\"{key:<20} {str(a):^10} {str(b):^10}\")\n\nprint()\nprint(\"Key insight: The few-shot examples didn't ADD instructions.\")\nprint(\"They SHIFTED the token probability distribution by providing\")\nprint(\"direct evidence of what the target output looks like.\")",
+      "pyodideExpected": "distribution",
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "A system prompt says 'write in witty Hinglish.' The model still produces formal English output. The most likely cause is:",
+          "options": [
+            "System prompt was too short",
+            "Training data for this domain is overwhelmingly formal English — the instruction competes with a much stronger prior",
+            "The model doesn't support Hinglish",
+            "Temperature is too low"
+          ],
+          "correctIndex": 1,
+          "explanation": "Instructions shift the distribution slightly. But if 99% of real estate content in training data is formal English, a single instruction can't overcome that prior. Few-shot examples provide in-context distribution evidence that's much stronger than instructions."
+        },
+        {
+          "type": "tf",
+          "stem": "True or False: Adding more specific instructions to a system prompt will always outperform few-shot examples for style transfer tasks.",
+          "answer": false,
+          "explanation": "False. Instructions describe the target distribution abstractly. Few-shot examples instantiate it concretely. For style transfer (switching from formal to Hinglish wit), examples provide direct evidence of the target token sequences — something instructions cannot replicate. This is why the hooks bank exists."
+        },
+        {
+          "type": "mcq",
+          "stem": "The multi-agent pipeline in this course is best described as:",
+          "options": [
+            "A sequence of LLM calls that each improve the output quality",
+            "A distribution-shaping pipeline: each agent adds context, filters signal, shifts style, or enforces constraints on the probability distribution of the final output",
+            "An expensive way to do what a single good prompt could do",
+            "A microservices architecture applied to LLM calls"
+          ],
+          "correctIndex": 1,
+          "explanation": "Each agent is a distribution intervention: researcher narrows the topic to current reality, planner filters to relevant topics, creative shifts style via few-shot, QA enforces quality constraints. Seeing it as distribution-shaping makes architectural decisions obvious."
+        }
+      ]
+    }
+  ]
+}

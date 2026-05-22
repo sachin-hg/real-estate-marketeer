@@ -1,0 +1,183 @@
+{
+  "id": "m8",
+  "title": "Platform Agents & Structured Output",
+  "subtitle": "Format creative drafts for Twitter, Instagram, and other platforms. Handle failures gracefully with return_exceptions.",
+  "durationMin": 90,
+  "pipelineVersion": "v7",
+  "difficulty": "intermediate",
+  "tags": ["platform-agents", "structured-output", "asyncio", "return_exceptions", "twitter", "instagram"],
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Platform Constraints Are Hard Rules",
+      "durationMin": 25,
+      "concept": [
+        {
+          "heading": "Why platform-specific agents?",
+          "body": "A creative draft is platform-agnostic. Twitter needs ≤280 chars and 2-4 hashtags. Instagram needs a hook in the first 2 lines and 15-20 hashtags. YouTube needs a thumbnail hook and chapter timestamps. LinkedIn needs professional tone.\n\nA single agent formatting for all platforms either compromises all of them or writes the lowest common denominator. Dedicated platform agents know exactly what their platform requires.",
+          "callouts": [
+            {
+              "type": "warning",
+              "title": "280 chars is a hard API limit",
+              "body": "Twitter's API rejects posts over 280 characters. It's not a style guideline — it's a hard constraint. A post that passes QA at 285 chars will fail at publish time. The platform agent must enforce this."
+            },
+            {
+              "type": "insight",
+              "title": "Platform agents produce structured output",
+              "body": "Each platform agent returns a specific JSON schema. Twitter returns {main_tweet, thread_tweets, hashtags, char_count}. Instagram returns {caption_hook, full_caption, hashtags, media_suggestion}. The QA agent knows exactly which fields to score."
+            }
+          ]
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "A creative draft is 320 characters. The Twitter platform agent receives it. What should it do?",
+          "options": [
+            "Truncate to 280 chars silently",
+            "Raise an exception and abort",
+            "Return the post with needs_revision=true and specific cut instructions",
+            "Publish it anyway — Twitter auto-truncates"
+          ],
+          "correctIndex": 2,
+          "explanation": "Return with a flag so QA catches it. Silent truncation destroys the punchline. Raising an exception fails the whole platform orchestrator. needs_revision=true with cut instructions lets QA trigger a targeted revision."
+        },
+        {
+          "type": "mcq",
+          "stem": "Why do Twitter and Instagram have different hashtag counts (2-4 vs 15-20)?",
+          "options": [
+            "Instagram has a higher character limit",
+            "Different discovery algorithms — Instagram surfaces posts to hashtag followers at scale; Twitter's hashtag impact plateaus after 4",
+            "It's just convention, no technical reason",
+            "Twitter's API rejects more than 4 hashtags"
+          ],
+          "correctIndex": 1,
+          "explanation": "Instagram's algorithm uses hashtags for discovery at scale — 15-20 maximises reach across topic communities. Twitter's algorithm de-emphasises posts with many hashtags after 4, treating them as spam-like."
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "The asyncio.gather Failure Problem",
+      "durationMin": 40,
+      "concept": [
+        {
+          "heading": "One failure kills all results",
+          "body": "The platform orchestrator runs 5 platform agents simultaneously via `asyncio.gather(*tasks)`. By default, if Instagram's agent raises an exception (rate limit, API error), `asyncio.gather` propagates that exception immediately — discarding ALL already-completed results.\n\nTwitter finished at second 1. Instagram failed at second 2. Default behaviour: you lose the Twitter result.",
+          "callouts": [
+            {
+              "type": "mistake",
+              "title": "asyncio.gather default: first exception kills all",
+              "body": "asyncio.gather(*tasks) propagates the first exception raised by any task. The 4 tasks that succeeded are gone. You get 0 results instead of 4."
+            },
+            {
+              "type": "insight",
+              "title": "return_exceptions=True: exceptions as values",
+              "body": "asyncio.gather(*tasks, return_exceptions=True) returns exceptions as regular values in the results list. You check isinstance(r, Exception) and handle each independently. The 4 successes survive the 1 failure."
+            }
+          ]
+        }
+      ],
+      "brokenCode": {
+        "code": "async def platform_orchestrator_node(state: PipelineState) -> dict:\n    tasks = [PLATFORM_AGENTS[p](d)\n             for d in state[\"creative_drafts\"]\n             for p in d.get(\"target_platforms\", [])\n             if p in PLATFORM_AGENTS]\n\n    results = await asyncio.gather(\n        *tasks,\n        ???   # ⚠ TODO: One argument prevents ONE failing agent from\n              # crashing the ENTIRE orchestrator.\n              # Hint: Instagram is rate-limited. Twitter works fine.\n              # Without this, asyncio.gather raises on the first exception —\n              # all other completed results are DISCARDED.\n    )\n\n    posts, errors = [], []\n    for r in results:\n        if isinstance(r, Exception):\n            errors.append(str(r))\n        else:\n            posts.extend(r)\n    if errors:\n        print(f\"Platform errors (non-fatal): {errors}\")\n    return {\"platform_posts\": posts}",
+        "todos": [
+          {
+            "marker": "???   # ⚠ TODO: One argument prevents ONE failing agent from\n              # crashing the ENTIRE orchestrator.\n              # Hint: Instagram is rate-limited. Twitter works fine.\n              # Without this, asyncio.gather raises on the first exception —\n              # all other completed results are DISCARDED.",
+            "lineHint": "return_exceptions=True",
+            "whyItMatters": "Without this, Instagram failing at second 2 discards Twitter results that finished at second 1. You get 0 posts instead of 4. return_exceptions=True makes failures first-class values you can inspect and handle per-platform.",
+            "correctCode": "return_exceptions=True",
+            "quizIndex": 0
+          }
+        ]
+      },
+      "midQuiz": [
+        {
+          "type": "mcq",
+          "stem": "asyncio.gather runs 5 tasks. Task 3 raises RateLimitError. Without return_exceptions=True, you get:",
+          "options": [
+            "Results from tasks 1, 2, 4, 5 plus the exception from task 3",
+            "RateLimitError raised — results from tasks 1, 2, 4, 5 are discarded",
+            "None — all tasks are cancelled",
+            "Results from tasks 1, 2 only (tasks before the failure)"
+          ],
+          "correctIndex": 1,
+          "explanation": "asyncio.gather propagates the first exception by default. Tasks that already completed have their results discarded. You get the exception, nothing else."
+        }
+      ],
+      "completeCode": {
+        "language": "python",
+        "filename": "pipeline.py — v7 (platform orchestrator)",
+        "code": "TWITTER_SYSTEM = \"\"\"\nFormat a creative draft for Twitter.\nConstraints:\n- main_tweet <= 280 characters (HARD LIMIT — Twitter API rejects otherwise)\n- 2-4 hashtags maximum\n- thread: 3-5 follow-up tweets if content warrants\nIf main_tweet > 280 chars: set needs_revision=True with specific cut instructions.\nOutput JSON: {main_tweet, thread_tweets, hashtags, char_count, needs_revision, revision_note}\n\"\"\"\n\nINSTAGRAM_SYSTEM = \"\"\"\nFormat a creative draft for Instagram.\nConstraints:\n- First line must be a hook (Instagram shows only first 1-2 lines)\n- 15-20 hashtags (algorithm benefit)\n- Media suggestion required\nOutput JSON: {caption_hook, full_caption, hashtags, media_suggestion}\n\"\"\"\n\nasync def twitter_agent(draft: dict) -> list[dict]:\n    resp = client.messages.create(\n        model=\"claude-sonnet-4-6\", max_tokens=1024,\n        system=TWITTER_SYSTEM,\n        messages=[{\"role\": \"user\", \"content\": f\"Format: {json.dumps(draft)}\"}]\n    )\n    post = json.loads(resp.content[0].text)\n    post[\"platform\"] = \"twitter\"\n    return [post]\n\nasync def instagram_agent(draft: dict) -> list[dict]:\n    resp = client.messages.create(\n        model=\"claude-sonnet-4-6\", max_tokens=1024,\n        system=INSTAGRAM_SYSTEM,\n        messages=[{\"role\": \"user\", \"content\": f\"Format: {json.dumps(draft)}\"}]\n    )\n    post = json.loads(resp.content[0].text)\n    post[\"platform\"] = \"instagram\"\n    return [post]\n\nPLATFORM_AGENTS = {\"twitter\": twitter_agent, \"instagram\": instagram_agent}\n\nasync def platform_orchestrator_node(state: PipelineState) -> dict:\n    tasks = [PLATFORM_AGENTS[p](d)\n             for d in state[\"creative_drafts\"]\n             for p in d.get(\"target_platforms\", [])\n             if p in PLATFORM_AGENTS]\n    \n    results = await asyncio.gather(*tasks, return_exceptions=True)\n    \n    posts, errors = [], []\n    for r in results:\n        if isinstance(r, Exception):\n            errors.append(str(r))\n        else:\n            posts.extend(r)\n    return {\"platform_posts\": posts}"
+      },
+      "productionRef": {
+        "file": "agents/platform_orchestrator.py",
+        "startLine": 35,
+        "endLine": 60,
+        "excerpt": "async def platform_orchestrator_node(state: AgentState) -> dict:\n    tasks = []\n    for draft in state[\"creative_drafts\"]:\n        for platform in draft.get(\"target_platforms\", []):\n            agent = PLATFORM_AGENTS.get(platform)\n            if agent:\n                tasks.append(agent(draft, state))\n\n    if not tasks:\n        logger.warning(\"No platform tasks generated\")\n        return {\"platform_posts\": []}\n\n    results = await asyncio.gather(*tasks, return_exceptions=True)\n\n    posts, errors = [], []\n    for i, result in enumerate(results):\n        if isinstance(result, Exception):\n            logger.error(f\"Platform agent {i} failed: {result}\")\n            errors.append(str(result))\n        else:\n            posts.extend(result)\n\n    if errors:\n        logger.warning(f\"{len(errors)} platform agent(s) failed (non-fatal)\")\n    return {\"platform_posts\": posts}",
+        "annotations": [
+          { "line": 47, "text": "return_exceptions=True — the production fix for partial failure" },
+          { "line": 51, "text": "isinstance(result, Exception) — check each result individually, not the batch" }
+        ]
+      },
+      "pyodideCode": "import asyncio\n\nasync def mock_twitter_agent(draft):\n    \"\"\"Succeeds — returns formatted tweet\"\"\"\n    return [{\"platform\": \"twitter\", \"main_tweet\": f\"IPL fever hits Mumbai homes! {draft.get('trend_hashtag', '#IPL2025')}\",\n             \"char_count\": 48, \"hashtags\": [\"#IPL2025\", \"#MumbaiHomes\"]}]\n\nasync def mock_instagram_agent(draft):\n    \"\"\"Simulates a rate limit failure\"\"\"\n    raise Exception(\"Instagram API: Rate limit exceeded (429)\")\n\nasync def mock_youtube_agent(draft):\n    return [{\"platform\": \"youtube\", \"title\": \"Mumbai Real Estate 2025: What You Need To Know\"}]\n\ndraft = {\"trend_hashtag\": \"#IPL2025\", \"content\": \"IPL fever hits Mumbai\",\n         \"target_platforms\": [\"twitter\", \"instagram\", \"youtube\"]}\n\nPLATFORM_AGENTS = {\n    \"twitter\": mock_twitter_agent,\n    \"instagram\": mock_instagram_agent,  # will fail\n    \"youtube\": mock_youtube_agent\n}\n\nasync def run_orchestrator(use_return_exceptions: bool):\n    tasks = [PLATFORM_AGENTS[p](draft) for p in draft[\"target_platforms\"]]\n    try:\n        if use_return_exceptions:\n            results = await asyncio.gather(*tasks, return_exceptions=True)\n            posts, errors = [], []\n            for r in results:\n                if isinstance(r, Exception):\n                    errors.append(str(r))\n                    print(f\"  Non-fatal error: {r}\")\n                else:\n                    posts.extend(r)\n            print(f\"  Result: {len(posts)} posts, {len(errors)} errors\")\n            return posts\n        else:\n            results = await asyncio.gather(*tasks)  # no return_exceptions\n            return [post for r in results for post in r]\n    except Exception as e:\n        print(f\"  FATAL: {e} — ALL results lost\")\n        return []\n\nprint(\"Without return_exceptions=True:\")\nresult1 = asyncio.run(run_orchestrator(False))\nprint(f\"  Posts saved: {len(result1)}\\n\")\n\nprint(\"With return_exceptions=True:\")\nresult2 = asyncio.run(run_orchestrator(True))\nprint(f\"  Posts saved: {len(result2)}\")",
+      "pyodideExpected": "Posts saved: 2",
+      "endQuiz": [
+        {
+          "type": "tf",
+          "stem": "True or False: `return_exceptions=True` silently swallows exceptions so your code never sees them.",
+          "answer": false,
+          "explanation": "False — return_exceptions=True returns exceptions as first-class values in the results list. Your code checks isinstance(r, Exception) to detect and log each one. Nothing is silently hidden — you get explicit per-task control."
+        },
+        {
+          "type": "mcq",
+          "stem": "The platform orchestrator has a 180s timeout and it fires. What should happen?",
+          "options": [
+            "Crash the entire pipeline run",
+            "Retry all platform agents immediately",
+            "Return whatever posts completed before the timeout, log the timeout as a non-fatal error",
+            "Ask the user what to do"
+          ],
+          "correctIndex": 2,
+          "explanation": "Partial success is better than total failure. Return completed posts, log the timeout. The RetryPolicy (Module 10) handles the orchestrator-level retry with exponential backoff."
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Structured Output Contracts",
+      "durationMin": 25,
+      "concept": [
+        {
+          "heading": "Every platform agent has a strict schema",
+          "body": "Platform agents must return JSON matching a specific schema. The QA agent knows this schema and scores against it. The publisher uses it to format the final post.\n\nIf twitter_agent returns `tweet_text` instead of `main_tweet`, the QA agent silently gets None for char_count and passes a post that may be too long.",
+          "callouts": [
+            {
+              "type": "tip",
+              "title": "Validate at the boundary",
+              "body": "In production, platform agents validate their JSON output against a Pydantic model before returning. This catches schema drift immediately rather than at QA or publish time."
+            }
+          ],
+          "codeExample": {
+            "language": "python",
+            "filename": "schema_validation.py",
+            "code": "from pydantic import BaseModel\nfrom typing import Optional\n\nclass TwitterPost(BaseModel):\n    main_tweet: str\n    thread_tweets: list[str] = []\n    hashtags: list[str]\n    char_count: int\n    needs_revision: bool = False\n    revision_note: Optional[str] = None\n\nasync def twitter_agent(draft: dict) -> list[dict]:\n    resp = client.messages.create(...)\n    raw = json.loads(resp.content[0].text)\n    post = TwitterPost(**raw)  # validates schema immediately\n    return [post.model_dump()]"
+          }
+        }
+      ],
+      "endQuiz": [
+        {
+          "type": "mcq",
+          "stem": "A platform agent returns {'tweet': 'text', 'tags': [...]} instead of {'main_tweet': 'text', 'hashtags': [...]}. When does this fail?",
+          "options": [
+            "Immediately — LangGraph validates schemas",
+            "At the QA agent — it reads main_tweet and gets None, silently",
+            "At publish time — Twitter API rejects the schema",
+            "Never — dicts accept any keys"
+          ],
+          "correctIndex": 1,
+          "explanation": "Without Pydantic validation, the wrong keys flow silently through the pipeline. QA reads main_tweet and gets None (KeyError or None), potentially passing or failing posts incorrectly. The bug manifests far from the source."
+        }
+      ]
+    }
+  ]
+}

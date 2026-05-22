@@ -27,11 +27,12 @@ CAPTION RULES:
 - End with a CTA: Housing.com link or "Link in bio 🔗"
 - No bullet points, no formal tone, no jargon
 
-HANDLE TAGGING:
-- For well-known accounts (SRK, Virat Kohli, RCB, Zomato, etc.) use their @handle directly
-- For any entity you want to tag but aren't certain of their exact handle, write [LOOKUP: EntityName]
-  The pipeline will resolve it to the correct @handle before publishing
-- Avoid tagging individual politicians
+HANDLE TAGGING (MANDATORY):
+- Every company, brand, startup, sports team, or public figure named in the caption MUST be tagged.
+- For well-known accounts (Zomato, Swiggy, HDFC, SRK, Virat Kohli, RCB, etc.) use their @handle directly.
+- For any entity you are not 100% sure of the handle, write [LOOKUP: EntityName] — the pipeline resolves it.
+- DO NOT skip tagging because you are unsure — always write [LOOKUP: Name] as a fallback.
+- DO NOT tag: sitting politicians, government ministers, bureaucrats, judges, or individual billionaires.
 
 HASHTAG RULES:
 - 15-20 tags total
@@ -46,7 +47,14 @@ Return JSON:
   "alt_text": "accessibility description of the image/video"
 }
 
-Return ONLY the JSON."""
+Return ONLY the JSON.
+
+CREATIVE ANGLE INTEGRITY:
+The draft's `angle` field is the creative director's instruction. Your role is to
+EXPRESS that angle in platform-appropriate format — not replace or dilute it.
+If the angle says "Hyderabad metro expansion makes 3 localities the new hotspots",
+every line of output should reinforce that framing. Never drift into generic
+real estate copy unrelated to the angle."""
 
 
 async def run_instagram_agent(draft: CreativeDraft, settings, run_id: str) -> PlatformPost:
@@ -104,10 +112,15 @@ Produce the final Instagram post now."""
     caption = data.get("caption") or draft.get("caption", zomato_hook[:150])
 
     # Resolve any [LOOKUP: EntityName] placeholders the LLM left in the caption
-    from tools.handle_resolver import resolve_handles_in_text
+    from tools.handle_resolver import resolve_handles_in_text, inject_known_mentions
     caption, resolved = resolve_handles_in_text(caption, platform="instagram")
     if resolved:
         logger.info("Instagram agent: resolved handles %s", resolved)
+
+    # Proactively inject @mentions for any brands the LLM mentioned but didn't tag
+    caption, injected = inject_known_mentions(caption, "instagram", max_new=2)
+    if injected:
+        logger.info("Instagram agent: injected mentions %s", injected)
 
     # ── Media: route by format ──────────────────────────────────────────────────
     media_urls: list[str] = []

@@ -10,21 +10,61 @@ const SECTION_ORDER = [
   'Trend Research',
   'Social Publishing',
   'Notifications / Bot',
+  'Pipeline Behaviour',
   'Infrastructure',
   'Other',
 ]
 
 interface SettingRowProps {
   envKey: string
-  meta: { value: string; is_set: boolean; desc: string; section: string }
+  meta: { value: string; is_set: boolean; desc: string; section: string; type?: string }
   onSave: (key: string, value: string) => void
   isSaving: boolean
+}
+
+function BooleanToggleRow({ envKey, meta, onSave, isSaving }: SettingRowProps) {
+  const isOn = meta.value === 'True' || meta.value === 'true' || meta.value === '1'
+
+  const toggle = () => {
+    onSave(envKey, isOn ? 'False' : 'True')
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0">
+      <div className="flex-1 min-w-0">
+        <code className="text-xs font-mono font-semibold text-slate-700">{envKey}</code>
+        {meta.desc && <p className="text-xs text-slate-400 mt-0.5">{meta.desc}</p>}
+      </div>
+      <button
+        onClick={toggle}
+        disabled={isSaving}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+          isOn ? 'bg-brand' : 'bg-slate-200'
+        }`}
+        role="switch"
+        aria-checked={isOn}
+      >
+        <span
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+            isOn ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </button>
+      <span className={`text-xs font-medium w-8 ${isOn ? 'text-brand' : 'text-slate-400'}`}>
+        {isOn ? 'ON' : 'OFF'}
+      </span>
+    </div>
+  )
 }
 
 function SettingRow({ envKey, meta, onSave, isSaving }: SettingRowProps) {
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState('')
   const [showValue, setShowValue] = useState(false)
+
+  if (meta.type === 'boolean') {
+    return <BooleanToggleRow envKey={envKey} meta={meta} onSave={onSave} isSaving={isSaving} />
+  }
 
   const handleEdit = () => {
     setInputVal('')
@@ -128,7 +168,7 @@ export default function Settings() {
   const qc = useQueryClient()
   const [savedKey, setSavedKey] = useState<string | null>(null)
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, isError } = useQuery({
     queryKey: ['settings'],
     queryFn: getSettings,
   })
@@ -145,6 +185,17 @@ export default function Settings() {
 
   if (isLoading) {
     return <div className="text-slate-400 text-sm">Loading settings...</div>
+  }
+  if (isError) {
+    return (
+      <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl p-5">
+        <AlertTriangle size={18} className="text-red-500 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-red-700">Failed to load settings</p>
+          <p className="text-xs text-red-600">The server may be down or unreachable. Check that the API is running.</p>
+        </div>
+      </div>
+    )
   }
 
   const settingsData = settings ?? {}

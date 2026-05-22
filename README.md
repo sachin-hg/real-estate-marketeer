@@ -41,20 +41,23 @@ python main.py run --platforms twitter,housing_news
 
 ```
 START
- ├─ Researcher Agent      → searches RERA, ET, PIB, builder news
- └─ Trend Researcher      → Google Trends + optional Twitter/Apify
-          ↓ (both in parallel, creative waits for both)
- Creative Marketeer       → social drafts (Opus 4.7) + news drafts (Sonnet 4.6)
+ ├─ researcher          → Tavily web search → 8 RE news stories (Sonnet 4.6)
+ └─ trend_researcher    → Google Trends + YouTube + Reddit + Serper → 15 trending topics (Sonnet 4.6)
+          ↓ (parallel — planner waits for both)
+ planner                → quality gate: filters topics with no RE angle, emits ≤8 ContentBriefs (Gemini Flash)
           ↓
- Internal Retriever       → adds housing.com SRP/locality/builder links
+ ├─ social_creative     → Zomato-style social drafts, Hinglish + trend hook (Opus 4.7)
+ └─ news_creative       → 700–1000 word SEO article (Sonnet 4.6)
+          ↓ (both merged into creative_drafts via operator.add)
+ internal_retriever     → extracts city/locality/budget RE signals → housing.com internal links (Gemini Flash)
           ↓
- Platform Agents          → Twitter, Instagram, YouTube, Housing News, LinkedIn (async parallel)
+ platform_agents        → Twitter, Instagram, YouTube, Housing News, LinkedIn — all async parallel (Sonnet 4.6)
           ↓
- QA Agent                 → Safety gate (Gemini Flash) → Quality score (Sonnet) → Engagement prediction (Sonnet)
+ qa_agent               → Pass 1: Safety gate (Gemini Flash) → Pass 2: Quality score (Sonnet) → Pass 3: Engagement prediction (Opus 4.7/Sonnet)
+          ↓               Revision loop: platform agent re-runs up to 2x if score below threshold
+ publisher              → dry-run: saves to output/<run_id>/ | live: posts via platform APIs
           ↓
- Publisher                → saves to output/<run_id>/ (dry-run) or posts live
-          ↓
- Slack Notifier           → posts summary to #content-published
+ notifier               → Slack thread summary per platform
 ```
 
 ## Output structure
@@ -102,6 +105,13 @@ python main.py history
 
 ~$0.85 per full run after model routing optimisations (Gemini Flash for fast tier, Sonnet instead of Opus for engagement prediction and news creative). 2 runs/day = ~$51/month LLM-only; ~$178/month all-in including infra and Apify.  
 See `COST_ESTIMATION.md` for the full breakdown.
+
+## Documentation
+
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — full architecture reference: agent details, prompt design, QA system, LangGraph topology, state machine, DB schema, API endpoints, UI dashboard, cost model
+- **[`docs/design_debates.md`](docs/design_debates.md)** — deferred architecture decisions (HITL, QA judge design, FireCrawl)
+- **[`COST_ESTIMATION.md`](COST_ESTIMATION.md)** — per-model token cost breakdown
+- **[`SETUP_KEYS.md`](SETUP_KEYS.md)** — step-by-step API key setup guide
 
 ## Architecture decisions
 
