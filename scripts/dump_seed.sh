@@ -1,10 +1,9 @@
 #!/bin/sh
 # Regenerate db/seed.sql from the local housing_content.db.
-# Includes schema for all tables + data for published_posts, runs,
-# api_calls, and llm_calls.
+# Dumps schema + data for ALL tables — no tables are excluded.
 # Run this from the project root whenever you want to update the seed.
 #
-# Usage: ./scripts/dump_seed.sh
+# Usage: ./scripts/dump_seed.sh [path/to/db]
 
 set -e
 
@@ -16,7 +15,8 @@ if [ ! -f "$DB" ]; then
   exit 1
 fi
 
-echo "Dumping schema + seed data from $DB → $OUT"
+TABLES=$(sqlite3 "$DB" "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
+echo "Dumping schema + data for tables: $(echo $TABLES | tr '\n' ' ')"
 
 {
   echo "PRAGMA journal_mode=WAL;"
@@ -24,18 +24,12 @@ echo "Dumping schema + seed data from $DB → $OUT"
   echo ""
   echo "-- Schema"
   sqlite3 "$DB" ".schema"
-  echo ""
-  echo "-- Data: published_posts"
-  sqlite3 "$DB" ".mode insert published_posts" "SELECT * FROM published_posts;"
-  echo ""
-  echo "-- Data: runs"
-  sqlite3 "$DB" ".mode insert runs" "SELECT * FROM runs;"
-  echo ""
-  echo "-- Data: api_calls"
-  sqlite3 "$DB" ".mode insert api_calls" "SELECT * FROM api_calls;"
-  echo ""
-  echo "-- Data: llm_calls"
-  sqlite3 "$DB" ".mode insert llm_calls" "SELECT * FROM llm_calls;"
+
+  for table in $TABLES; do
+    echo ""
+    echo "-- Data: $table"
+    sqlite3 "$DB" ".mode insert $table" "SELECT * FROM $table;"
+  done
 } > "$OUT"
 
 echo "Done. $(wc -l < "$OUT") lines written to $OUT"
