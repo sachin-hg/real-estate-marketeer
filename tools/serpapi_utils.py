@@ -19,14 +19,17 @@ logger = logging.getLogger(__name__)
 
 _BASE = "https://serpapi.com/search.json"
 
-# RE-specific query set for Google News
-_RE_NEWS_QUERIES = [
-    "RERA penalty builder India 2025",
-    "real estate property price India 2025",
-    "housing scheme government India 2025",
-    "builder broker news India property",
-    "PropTech NRI investment real estate India",
-]
+# RE-specific query set for Google News — year is injected at runtime
+def _re_news_queries() -> list[str]:
+    from datetime import datetime
+    year = datetime.now().year
+    return [
+        f"RERA penalty builder India {year}",
+        f"real estate property price India {year}",
+        f"housing scheme government India {year}",
+        "builder broker news India property",
+        "PropTech NRI investment real estate India",
+    ]
 
 
 async def _serpapi_get(params: dict[str, Any], use_case: str = "") -> dict:
@@ -97,7 +100,7 @@ async def get_serpapi_re_news(api_key: str) -> list[dict]:
             {"engine": "google_news", "q": q, "gl": "in", "hl": "en", "api_key": api_key},
             use_case=f"SerpAPI Google News (India RE): {q}",
         )
-        for q in _RE_NEWS_QUERIES
+        for q in _re_news_queries()
     ]
     responses = await asyncio.gather(*tasks, return_exceptions=True)
 
