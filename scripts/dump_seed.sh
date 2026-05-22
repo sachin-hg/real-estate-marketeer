@@ -1,7 +1,7 @@
 #!/bin/sh
 # Regenerate db/seed.sql from the local housing_content.db.
-# Includes schema for all tables + data for published_posts and runs.
-# Excludes api_calls and llm_calls (telemetry only).
+# Includes schema for all tables + data for published_posts, runs,
+# api_calls, and llm_calls.
 # Run this from the project root whenever you want to update the seed.
 #
 # Usage: ./scripts/dump_seed.sh
@@ -30,6 +30,12 @@ echo "Dumping schema + seed data from $DB → $OUT"
   echo ""
   echo "-- Data: runs"
   sqlite3 "$DB" ".mode insert runs" "SELECT * FROM runs;"
+  echo ""
+  echo "-- Data: api_calls"
+  sqlite3 "$DB" ".mode insert api_calls" "SELECT * FROM api_calls;"
+  echo ""
+  echo "-- Data: llm_calls"
+  sqlite3 "$DB" ".mode insert llm_calls" "SELECT * FROM llm_calls;"
 } > "$OUT"
 
 echo "Done. $(wc -l < "$OUT") lines written to $OUT"
