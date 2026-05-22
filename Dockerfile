@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libgl1 \
     fontconfig \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python dependencies
