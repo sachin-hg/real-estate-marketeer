@@ -183,7 +183,9 @@ def get_stats():
             .scalar() or 0
         ) if costed_run_ids else 0
 
-        avg_cost_per_post = total_cost / max(costed_non_rejected, 1)
+        # Divide by costed posts only (avoids diluting with zero-cost legacy posts),
+        # but fall back to total non-rejected when there's no cost data at all.
+        avg_cost_per_post = total_cost / max(costed_non_rejected, 1) if costed_non_rejected else 0.0
 
     return {
         "total": total,
@@ -197,7 +199,7 @@ def get_stats():
         "total_llm_cost": round(float(total_llm_cost), 4),
         "total_api_cost": round(total_api_cost, 4),
         "total_cost": round(total_cost, 4),
-        "non_rejected_count": costed_non_rejected,
+        "non_rejected_count": non_rejected_count,
         "avg_cost_per_post": round(avg_cost_per_post, 4),
     }
 
