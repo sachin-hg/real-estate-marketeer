@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     gcs_bucket: Optional[str] = None
     gcs_prefix: str = "housing-marketeer"
 
+    # ── Product identity ──────────────────────────────────────────────────────
+    app_name: str = "NAVA"   # Product name; set APP_NAME env var to override
+
     # ── Pipeline behaviour ────────────────────────────────────────────────────
     dry_run: bool = True
     human_in_the_loop: bool = False  # When True: posts saved as drafts, require human approval before publishing

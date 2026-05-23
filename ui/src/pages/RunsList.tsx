@@ -3,11 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getRuns } from '../lib/api'
 
-const STATUS_COLORS: Record<string, string> = {
-  running: 'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
-  taken_down: 'bg-red-100 text-red-700',
+const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
+  running:    { bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },
+  completed:  { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
+  failed:     { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
+  taken_down: { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
 }
 
 function timeAgo(dateStr?: string): string {
@@ -41,27 +41,61 @@ function Pagination({
   return (
     <div className="flex items-center gap-1.5 justify-center">
       <button disabled={page <= 1} onClick={() => onPage(page - 1)}
-        className="text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100 transition-colors">‹</button>
+        style={{
+          fontSize: 13,
+          padding: '6px 10px',
+          borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(255,255,255,0.04)',
+          color: '#94a3b8',
+          cursor: page <= 1 ? 'not-allowed' : 'pointer',
+          opacity: page <= 1 ? 0.4 : 1,
+        }}>‹</button>
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`e-${i}`} className="text-sm px-1.5 text-slate-400">…</span>
+          <span key={`e-${i}`} style={{ fontSize: 13, padding: '0 6px', color: '#64748b' }}>…</span>
         ) : (
           <button key={p} onClick={() => onPage(p as number)}
-            className={`text-sm min-w-[2rem] px-2 py-1.5 rounded-lg border transition-colors ${
-              p === page
-                ? 'bg-brand text-white border-brand font-semibold'
-                : 'border-slate-200 hover:bg-slate-100 text-slate-600'
-            }`}>{p}</button>
+            style={{
+              fontSize: 13,
+              minWidth: 32,
+              padding: '6px 8px',
+              borderRadius: 8,
+              border: p === page ? 'none' : '1px solid rgba(255,255,255,0.12)',
+              background: p === page ? 'linear-gradient(135deg,#8B5CF6,#6366F1)' : 'rgba(255,255,255,0.04)',
+              color: p === page ? '#fff' : '#94a3b8',
+              fontWeight: p === page ? 600 : 400,
+              cursor: 'pointer',
+            }}>{p}</button>
         )
       )}
       <button disabled={page >= totalPages} onClick={() => onPage(page + 1)}
-        className="text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100 transition-colors">›</button>
+        style={{
+          fontSize: 13,
+          padding: '6px 10px',
+          borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(255,255,255,0.04)',
+          color: '#94a3b8',
+          cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+          opacity: page >= totalPages ? 0.4 : 1,
+        }}>›</button>
     </div>
   )
 }
 
 const STATUSES = ['', 'running', 'completed', 'failed']
 const PAGE_SIZE = 15
+
+const inputStyle: React.CSSProperties = {
+  fontSize: 13,
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 8,
+  padding: '6px 12px',
+  background: 'rgba(255,255,255,0.06)',
+  color: '#f1f5f9',
+  outline: 'none',
+}
 
 export default function RunsList() {
   const navigate = useNavigate()
@@ -121,21 +155,25 @@ export default function RunsList() {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const hasFilters = statusFilter || dateFrom || dateTo || search
-
   const clearFilters = () => setSearchParams({})
 
   return (
     <div className="space-y-5">
       {/* Filter bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+      <div style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        borderRadius: 16,
+        padding: '14px 16px',
+      }}>
         <div className="flex flex-wrap gap-3 items-center">
           <select
             value={statusFilter}
             onChange={(e) => setParam('status', e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            style={{ ...inputStyle, cursor: 'pointer' }}
           >
             {STATUSES.map((s) => (
-              <option key={s} value={s}>{s || 'All Status'}</option>
+              <option key={s} value={s} style={{ background: '#0f172a' }}>{s || 'All Status'}</option>
             ))}
           </select>
           <input
@@ -143,79 +181,100 @@ export default function RunsList() {
             value={search}
             onChange={(e) => setParam('search', e.target.value)}
             placeholder="Search run ID..."
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand flex-1 min-w-40"
+            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
           />
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500">From</label>
+            <label style={{ fontSize: 12, color: '#64748b' }}>From</label>
             <input type="date" value={dateFrom} onChange={(e) => setParam('date_from', e.target.value)}
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand" />
+              style={inputStyle} />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500">To</label>
+            <label style={{ fontSize: 12, color: '#64748b' }}>To</label>
             <input type="date" value={dateTo} onChange={(e) => setParam('date_to', e.target.value)}
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand" />
+              style={inputStyle} />
           </div>
           {hasFilters && (
-            <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-slate-700 underline">
+            <button onClick={clearFilters}
+              style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>
               Clear all
             </button>
           )}
-          <span className="text-xs text-slate-400 ml-auto">
+          <span style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto' }}>
             {runsQ.isLoading ? 'Loading...' : `${filtered.length} run${filtered.length !== 1 ? 's' : ''}`}
           </span>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        borderRadius: 16,
+        overflow: 'hidden',
+      }}>
         {runsQ.isLoading ? (
-          <div className="p-6 text-slate-400 text-sm">Loading runs...</div>
+          <div style={{ padding: 24, color: '#64748b', fontSize: 14 }}>Loading runs...</div>
         ) : paginated.length === 0 ? (
-          <div className="p-6 text-slate-400 text-sm">No runs found.</div>
+          <div style={{ padding: 24, color: '#64748b', fontSize: 14 }}>No runs found.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full" style={{ fontSize: 13, borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 text-xs bg-slate-50">
-                  <th className="text-left px-5 py-3">Run ID</th>
-                  <th className="text-left px-3 py-3">Status</th>
-                  <th className="text-right px-3 py-3">Research</th>
-                  <th className="text-right px-3 py-3">Trends</th>
-                  <th className="text-right px-3 py-3">Drafts</th>
-                  <th className="text-right px-3 py-3">Approved</th>
-                  <th className="text-right px-5 py-3">Triggered</th>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)' }}>
+                  {['Run ID', 'Status', 'Research', 'Trends', 'Drafts', 'Approved', 'Triggered'].map((h, idx) => (
+                    <th key={h} style={{
+                      textAlign: idx > 1 ? 'right' : 'left',
+                      padding: idx === 0 || idx === 6 ? '10px 20px' : '10px 12px',
+                      color: '#64748b',
+                      fontWeight: 500,
+                      fontSize: 11,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {paginated.map((run) => (
-                  <tr
-                    key={run.run_id}
-                    onClick={() => navigate(`/runs/${run.run_id}`)}
-                    className="border-b border-slate-50 hover:bg-brand-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-5 py-3 font-mono text-xs text-slate-600">
-                      {run.run_id}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        STATUS_COLORS[run.status] ?? 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {run.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right text-slate-500">{run.research_count || '—'}</td>
-                    <td className="px-3 py-3 text-right text-slate-500">{run.trends_count || '—'}</td>
-                    <td className="px-3 py-3 text-right text-slate-500">{run.drafts_count || '—'}</td>
-                    <td className="px-3 py-3 text-right">
-                      <span className={`font-medium ${run.posts_approved > 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                        {run.posts_approved}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right text-slate-400 text-xs">
-                      {timeAgo(run.triggered_at)}
-                    </td>
-                  </tr>
-                ))}
+                {paginated.map((run) => {
+                  const st = STATUS_STYLE[run.status]
+                  return (
+                    <tr
+                      key={run.run_id}
+                      onClick={() => navigate(`/dashboard/runs/${run.run_id}`)}
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.1s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(139,92,246,0.06)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '10px 20px', fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>
+                        {run.run_id}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 500,
+                          background: st?.bg ?? 'rgba(255,255,255,0.08)',
+                          color: st?.color ?? '#94a3b8',
+                        }}>
+                          {run.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b' }}>{run.research_count || '—'}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b' }}>{run.trends_count || '—'}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b' }}>{run.drafts_count || '—'}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                        <span style={{ fontWeight: 600, color: run.posts_approved > 0 ? '#34d399' : '#64748b' }}>
+                          {run.posts_approved}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 20px', textAlign: 'right', color: '#64748b', fontSize: 12 }}>
+                        {timeAgo(run.triggered_at)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

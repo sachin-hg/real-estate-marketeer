@@ -7,7 +7,7 @@ import anthropic
 
 from config import get_settings
 from models.state import NewsItem, WorkflowState
-from tools.web_search import RE_CREDIBLE_DOMAINS, RE_SEARCH_QUERIES, web_search
+from tools.web_search import RE_CREDIBLE_DOMAINS, fetch_rera_circulars, web_search
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ TOOLS = [
                 },
                 "days_back": {
                     "type": "integer",
-                    "default": 7,
-                    "description": "Only return results from the last N days",
+                    "default": 2,
+                    "description": "Only return results from the last N days (default 2 for freshness)",
                 },
                 "max_results": {"type": "integer", "default": 5},
             },
@@ -41,10 +41,10 @@ TOOLS = [
 
 SYSTEM = f"""You are a senior real estate research analyst for Housing.com, India's \
 leading property platform. Your job is to find the most newsworthy and audience-relevant \
-real estate developments from the past 7 days.
+real estate developments from the LAST 48 HOURS — prioritise the freshest stories.
 
 Focus areas (in priority order):
-1. RERA orders, penalties, project registrations
+1. RERA orders, penalties, project registrations — including latest circulars from official portals
 2. Government policy: stamp duty changes, circle rates, PMAY, budget housing schemes
 3. Major builder activity: DLF, Godrej Properties, Prestige, Lodha, Sobha, Brigade, Puravankara
 4. Price movements in tier-1 cities: Mumbai, Delhi NCR, Bengaluru, Hyderabad, Pune, Chennai
@@ -53,6 +53,7 @@ Focus areas (in priority order):
 
 Preferred domains: {', '.join(RE_CREDIBLE_DOMAINS[:8])}
 
+FRESHNESS RULE: Always use days_back=2 unless a topic requires going back further.
 EFFICIENCY RULE: Stop searching as soon as you have 6 or more unique, high-quality stories.
 Do not search more than 5 times total.
 
@@ -81,38 +82,66 @@ def _fetch_serpapi_news_sync(api_key: str) -> list[dict]:
 
 def researcher_node(state: WorkflowState) -> dict:
     """LangGraph node: runs the real estate researcher agent."""
+    import concurrent.futures
     from tools.run_logger import Timer, log_llm_call, log_tool_call, log_agent_io
     settings = get_settings()
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     hint = state.get("topic_hint")
 
-    # Pre-fetch SerpAPI Google News for India RE (parallel signal, no extra LLM cost)
+    # Pre-fetch SerpAPI news + RERA circulars in parallel (no LLM cost)
     serpapi_news: list[dict] = []
-    if settings.serp_api_key:
+    rera_circulars: list[dict] = []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        fut_serp = pool.submit(_fetch_serpapi_news_sync, settings.serp_api_key) if settings.serp_api_key else None
+        fut_rera = pool.submit(fetch_rera_circulars, 3, 8)
+
+        if fut_serp:
+            try:
+                serpapi_news = fut_serp.result(timeout=30)
+                logger.info("Researcher: SerpAPI pre-fetched %d India RE articles", len(serpapi_news))
+            except Exception as exc:
+                logger.warning("Researcher: SerpAPI pre-fetch failed: %s", exc)
+
         try:
-            serpapi_news = _fetch_serpapi_news_sync(settings.serp_api_key)
-            logger.info("Researcher: SerpAPI pre-fetched %d India RE articles", len(serpapi_news))
+            rera_circulars = fut_rera.result(timeout=30)
+            logger.info("Researcher: RERA circulars pre-fetched %d items", len(rera_circulars))
         except Exception as exc:
-            logger.warning("Researcher: SerpAPI pre-fetch failed: %s", exc)
+            logger.warning("Researcher: RERA circulars pre-fetch failed: %s", exc)
 
     serpapi_context = ""
     if serpapi_news:
         lines = [f"  [{i+1}] {a['title']} ({a['source']}, {a['date']})\n      {a['snippet'][:200]}"
                  for i, a in enumerate(serpapi_news[:12])]
         serpapi_context = (
-            "\n\nPRE-FETCHED NEWS via SerpAPI Google News (use these as seed stories — "
-            "verify or expand with web_search):\n" + "\n".join(lines)
+            "\n\nPRE-FETCHED NEWS via SerpAPI Google News (last 48h — use as seed stories):\n"
+            + "\n".join(lines)
+        )
+
+    rera_context = ""
+    if rera_circulars:
+        lines = [f"  [{i+1}] {r.get('title', '')} — {r.get('url', '')}\n      {r.get('content', '')[:200]}"
+                 for i, r in enumerate(rera_circulars[:6])]
+        rera_context = (
+            "\n\nPRE-FETCHED RERA OFFICIAL CIRCULARS (from state RERA portals, last 3 days):\n"
+            + "\n".join(lines)
         )
 
     base_msg = (
         f"Research the latest Indian real estate developments. Focus especially on: {hint}. "
         if hint else "Research the latest Indian real estate developments. "
     )
-    user_msg = base_msg + "Use multiple searches. Cover RERA, policy, builders, and market trends." + serpapi_context
+    user_msg = (
+        base_msg
+        + "Prioritise stories from the last 48 hours. Use days_back=2 for searches. "
+        + "Cover RERA circulars, policy, builders, and market trends."
+        + serpapi_context
+        + rera_context
+    )
 
-    logger.info("Researcher: starting web search loop | model=%s | topic_hint=%s | serpapi=%d",
-                settings.model_balanced, hint or "none", len(serpapi_news))
+    logger.info("Researcher: starting web search loop | model=%s | topic_hint=%s | serpapi=%d | rera=%d",
+                settings.model_balanced, hint or "none", len(serpapi_news), len(rera_circulars))
 
     messages = [{"role": "user", "content": user_msg}]
     round_num = 0

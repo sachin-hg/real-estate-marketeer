@@ -13,11 +13,17 @@ function timeAgo(dateStr?: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  running: 'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
-  taken_down: 'bg-red-100 text-red-700',
+const STATUS_STYLE: Record<string, React.CSSProperties> = {
+  running: { background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' },
+  completed: { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' },
+  failed: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' },
+  taken_down: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' },
+}
+
+const glass: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 16,
 }
 
 export default function Dashboard() {
@@ -31,184 +37,187 @@ export default function Dashboard() {
   const pendingReview = runs.filter((r) => r.status === 'running').length
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
         <StatCard
           label="Total Posts"
-          value={statsQ.isLoading ? '...' : String(stats?.total ?? 0)}
-          color="text-brand"
-          onClick={() => navigate('/posts')}
+          value={statsQ.isLoading ? '…' : String(stats?.total ?? 0)}
+          valueColor="#C4B5FD"
+          onClick={() => navigate('/dashboard/posts')}
         />
         <StatCard
           label="Avg QA Score"
-          value={statsQ.isLoading ? '...' : `${(stats?.avg_qa ?? 0).toFixed(1)} / 10`}
-          color="text-emerald-600"
+          value={statsQ.isLoading ? '…' : `${(stats?.avg_qa ?? 0).toFixed(1)} / 10`}
+          valueColor="#34d399"
         />
         <StatCard
           label="Avg Predicted ER"
-          value={
-            statsQ.isLoading
-              ? '...'
-              : `${((stats?.avg_pred_er ?? 0) * 100).toFixed(2)}%`
-          }
-          color="text-sky-600"
+          value={statsQ.isLoading ? '…' : `${((stats?.avg_pred_er ?? 0) * 100).toFixed(2)}%`}
+          valueColor="#38BDF8"
         />
         <StatCard
           label="QA Rejection Rate"
-          value={
-            statsQ.isLoading
-              ? '...'
-              : `${((stats?.qa_rejection_rate ?? 0) * 100).toFixed(0)}%`
-          }
-          color={(stats?.qa_rejection_rate ?? 0) > 0.4 ? 'text-rose-600' : 'text-slate-600'}
-          onClick={() => navigate('/posts?post_status=qa_rejected')}
+          value={statsQ.isLoading ? '…' : `${((stats?.qa_rejection_rate ?? 0) * 100).toFixed(0)}%`}
+          valueColor={(stats?.qa_rejection_rate ?? 0) > 0.4 ? '#f87171' : '#94a3b8'}
+          onClick={() => navigate('/dashboard/posts?post_status=qa_rejected')}
         />
         <StatCard
           label="Avg Cost / Post"
-          value={
-            statsQ.isLoading
-              ? '...'
-              : stats?.avg_cost_per_post != null
-              ? `$${stats.avg_cost_per_post.toFixed(3)}`
-              : '—'
-          }
+          value={statsQ.isLoading ? '…' : stats?.avg_cost_per_post != null ? `$${stats.avg_cost_per_post.toFixed(3)}` : '—'}
           sub={stats?.non_rejected_count != null ? `${stats.non_rejected_count} posts` : undefined}
-          color="text-violet-600"
+          valueColor="#a78bfa"
         />
         <StatCard
           label="Active Runs"
-          value={runsQ.isLoading ? '...' : String(pendingReview)}
-          color="text-amber-600"
-          onClick={() => navigate('/runs')}
+          value={runsQ.isLoading ? '…' : String(pendingReview)}
+          valueColor="#fbbf24"
+          onClick={() => navigate('/dashboard/runs')}
         />
         <StatCard
           label="Analytics"
           value="View →"
-          color="text-indigo-600"
-          onClick={() => navigate('/analytics')}
+          valueColor="#818CF8"
+          onClick={() => navigate('/dashboard/analytics')}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent runs */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">Recent Runs</h2>
-            <Link to="/runs" className="text-xs text-brand hover:underline">View all →</Link>
-          </div>
-          {runsQ.isLoading ? (
-            <div className="p-6 text-slate-400 text-sm">Loading...</div>
-          ) : runs.length === 0 ? (
-            <div className="p-6 text-slate-400 text-sm">No runs yet. Trigger one from Generate.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 text-xs">
-                    <th className="text-left px-5 py-3">Run ID</th>
-                    <th className="text-left px-3 py-3">Status</th>
-                    <th className="text-right px-3 py-3">Posts</th>
-                    <th className="text-right px-5 py-3">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.slice(0, 12).map((run) => (
-                    <tr
-                      key={run.run_id}
-                      onClick={() => navigate(`/runs/${run.run_id}`)}
-                      className="border-b border-slate-50 hover:bg-brand-50 cursor-pointer transition-colors"
-                    >
-                      <td className="px-5 py-3 font-mono text-xs text-slate-600">
-                        {run.run_id}
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                            STATUS_COLORS[run.status] ?? 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {run.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right text-slate-600">
-                        {run.posts_approved}
-                      </td>
-                      <td className="px-5 py-3 text-right text-slate-400 text-xs">
-                        {timeAgo(run.triggered_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 24 }}>
+          {/* Recent runs */}
+          <div style={{ ...glass, overflow: 'hidden' }}>
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <h2 style={{ color: '#f1f5f9', fontWeight: 600, fontSize: 14, margin: 0 }}>Recent Runs</h2>
+              <Link to="/dashboard/runs" style={{ fontSize: 12, color: '#818CF8', textDecoration: 'none' }}>
+                View all →
+              </Link>
             </div>
-          )}
-        </div>
-
-        {/* Platform breakdown */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-700">By Platform</h2>
-            <p className="text-xs text-slate-400 mt-0.5">published vs. QA rejected</p>
-          </div>
-          <div className="p-5 space-y-3">
-            {statsQ.isLoading ? (
-              <div className="text-slate-400 text-sm">Loading...</div>
-            ) : !stats || Object.keys(stats.by_platform).length === 0 ? (
-              <div className="text-slate-400 text-sm">No data yet.</div>
+            {runsQ.isLoading ? (
+              <div style={{ padding: 24, color: '#64748b', fontSize: 13 }}>Loading…</div>
+            ) : runs.length === 0 ? (
+              <div style={{ padding: 24, color: '#64748b', fontSize: 13 }}>No runs yet. Trigger one from Generate.</div>
             ) : (
-              Object.entries(stats.by_platform).map(([platform, count]) => {
-                const total = stats.total || 1
-                const rejected = stats.qa_rejected_by_platform?.[platform] ?? 0
-                const rejPct = count > 0 ? Math.round((rejected / count) * 100) : 0
-                const publishedPct = Math.max(0, Math.round(((count - rejected) / total) * 100))
-                const rejectedPct = Math.max(0, Math.round((rejected / total) * 100))
-                return (
-                  <div key={platform}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-600 capitalize">{platform.replace('_', ' ')}</span>
-                      <span className="text-slate-500 font-medium">
-                        {count}
-                        {rejected > 0 && (
-                          <span className="ml-1 text-rose-400 text-xs">({rejPct}% rejected)</span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                      <div
-                        className="h-full bg-brand rounded-l-full"
-                        style={{ width: `${publishedPct}%` }}
-                      />
-                      {rejected > 0 && (
-                        <div
-                          className="h-full bg-rose-300"
-                          style={{ width: `${rejectedPct}%` }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )
-              })
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Run ID</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#64748b', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                      <th style={{ textAlign: 'right', padding: '10px 12px', color: '#64748b', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Posts</th>
+                      <th style={{ textAlign: 'right', padding: '10px 20px', color: '#64748b', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runs.slice(0, 12).map((run) => (
+                      <tr
+                        key={run.run_id}
+                        onClick={() => navigate(`/runs/${run.run_id}`)}
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(129,140,248,0.06)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <td style={{ padding: '11px 20px', fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>
+                          {run.run_id}
+                        </td>
+                        <td style={{ padding: '11px 12px' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 500,
+                            ...(STATUS_STYLE[run.status] ?? { background: 'rgba(148,163,184,0.12)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }),
+                          }}>
+                            {run.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#94a3b8' }}>
+                          {run.posts_approved}
+                        </td>
+                        <td style={{ padding: '11px 20px', textAlign: 'right', color: '#64748b', fontSize: 11 }}>
+                          {timeAgo(run.triggered_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-          {stats && (stats.by_post_status?.published || stats.by_post_status?.qa_rejected || stats.by_post_status?.draft) && (
-            <div className="px-5 pb-4 flex flex-wrap gap-4 text-xs text-slate-400">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-brand inline-block" />
-                Published: {stats.by_post_status.published ?? 0}
-              </span>
-              {(stats.by_post_status?.draft ?? 0) > 0 && (
-                <span className="flex items-center gap-1 cursor-pointer hover:text-amber-600" onClick={() => navigate('/posts?post_status=draft')}>
-                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                  Drafts: {stats.by_post_status.draft}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-rose-300 inline-block" />
-                QA Rejected: {stats.by_post_status.qa_rejected ?? 0}
-              </span>
+
+          {/* Platform breakdown */}
+          <div style={{ ...glass, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <h2 style={{ color: '#f1f5f9', fontWeight: 600, fontSize: 14, margin: 0 }}>By Platform</h2>
+              <p style={{ color: '#64748b', fontSize: 11, margin: '3px 0 0' }}>published vs. QA rejected</p>
             </div>
-          )}
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+              {statsQ.isLoading ? (
+                <div style={{ color: '#64748b', fontSize: 13 }}>Loading…</div>
+              ) : !stats || Object.keys(stats.by_platform).length === 0 ? (
+                <div style={{ color: '#64748b', fontSize: 13 }}>No data yet.</div>
+              ) : (
+                Object.entries(stats.by_platform).map(([platform, count]) => {
+                  const total = stats.total || 1
+                  const rejected = stats.qa_rejected_by_platform?.[platform] ?? 0
+                  const rejPct = count > 0 ? Math.round((rejected / count) * 100) : 0
+                  const publishedPct = Math.max(0, Math.round(((count - rejected) / total) * 100))
+                  const rejectedPct = Math.max(0, Math.round((rejected / total) * 100))
+                  return (
+                    <div key={platform}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+                        <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{platform.replace('_', ' ')}</span>
+                        <span style={{ color: '#f1f5f9', fontWeight: 500 }}>
+                          {count}
+                          {rejected > 0 && (
+                            <span style={{ marginLeft: 6, color: '#f87171', fontSize: 11 }}>({rejPct}% rejected)</span>
+                          )}
+                        </span>
+                      </div>
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden', display: 'flex' }}>
+                        <div style={{
+                          width: `${publishedPct}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg,#8B5CF6,#6366F1)',
+                          borderRadius: rejected > 0 ? '999px 0 0 999px' : 999,
+                        }} />
+                        {rejected > 0 && (
+                          <div style={{ width: `${rejectedPct}%`, height: '100%', background: '#f87171' }} />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+            {stats && (stats.by_post_status?.published || stats.by_post_status?.qa_rejected || stats.by_post_status?.draft) && (
+              <div style={{ padding: '0 20px 16px', display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8B5CF6', display: 'inline-block' }} />
+                  Published: {stats.by_post_status.published ?? 0}
+                </span>
+                {(stats.by_post_status?.draft ?? 0) > 0 && (
+                  <span
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b', cursor: 'pointer' }}
+                    onClick={() => navigate('/dashboard/posts?post_status=draft')}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fbbf24', display: 'inline-block' }} />
+                    Drafts: {stats.by_post_status.draft}
+                  </span>
+                )}
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />
+                  QA Rejected: {stats.by_post_status.qa_rejected ?? 0}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -218,24 +227,48 @@ export default function Dashboard() {
 function StatCard({
   label,
   value,
-  color,
+  valueColor,
   sub,
   onClick,
 }: {
   label: string
   value: string
-  color: string
+  valueColor: string
   sub?: string
   onClick?: () => void
 }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl border border-slate-200 shadow-sm p-5 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-slate-300 transition-all' : ''}`}
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        borderRadius: 16,
+        padding: '18px 20px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform 0.15s, border-color 0.15s, box-shadow 0.15s',
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => {
+        if (!onClick) return
+        const el = e.currentTarget as HTMLDivElement
+        el.style.transform = 'translateY(-2px)'
+        el.style.borderColor = 'rgba(139,92,246,0.4)'
+        el.style.boxShadow = '0 8px 24px rgba(139,92,246,0.12)'
+      }}
+      onMouseLeave={(e) => {
+        if (!onClick) return
+        const el = e.currentTarget as HTMLDivElement
+        el.style.transform = 'translateY(0)'
+        el.style.borderColor = 'rgba(255,255,255,0.09)'
+        el.style.boxShadow = 'none'
+      }}
     >
-      <div className="text-xs text-slate-500 font-medium mb-1">{label}</div>
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, lineHeight: 1.2 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{sub}</div>}
     </div>
   )
 }

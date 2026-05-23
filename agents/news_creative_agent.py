@@ -112,8 +112,13 @@ async def news_creative_node(state: WorkflowState) -> dict:
         return {"creative_drafts": []}
 
     history_ctx = get_performance_history()
-    n = settings.max_creative_drafts
-    n_news = max(1, n - max(1, round(n * 0.6)))
+    # When planner briefs are available, generate one draft per brief (already quality-gated).
+    # Fall back to config-derived count when running without planner.
+    if news_briefs:
+        n_news = min(len(news_briefs), 4)
+    else:
+        n = settings.max_creative_drafts
+        n_news = max(1, n - max(1, round(n * 0.6)))
 
     if news_briefs:
         source_section = f"""━━━ CONTENT BRIEFS (from planner) ━━━
@@ -125,7 +130,7 @@ async def news_creative_node(state: WorkflowState) -> dict:
         source_section = f"""━━━ REAL ESTATE NEWS (past 7 days) ━━━
 {json.dumps(research, indent=2)}"""
 
-    user_msg = f"""Generate {n_news} housing.com/news article brief(s).
+    user_msg = f"""Generate {n_news} housing.com/news article brief(s) — one per content brief provided.
 
 {source_section}
 
@@ -133,8 +138,9 @@ async def news_creative_node(state: WorkflowState) -> dict:
 {history_ctx}
 
 Rules:
+- One draft per brief — cover EVERY brief provided (do not skip any)
 - Focus on RERA, policy, builder launches, city price movements, infrastructure
-- Each brief covers a different news angle
+- Each draft covers a different news angle
 - Headlines must be curiosity-gap — not boring keyword dumps
 
 Generate {n_news} news draft(s) now."""

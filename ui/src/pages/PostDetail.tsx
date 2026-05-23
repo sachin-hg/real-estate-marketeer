@@ -3,20 +3,60 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPost, getRunDetail, submitFeedback, rejectPost, updatePost, uploadPostMedia, publishPost } from '../lib/api'
 
-const PLATFORM_BADGE: Record<string, string> = {
-  twitter: 'bg-sky-100 text-sky-700',
-  instagram: 'bg-pink-100 text-pink-700',
-  housing_news: 'bg-emerald-100 text-emerald-700',
-  youtube: 'bg-red-100 text-red-700',
-  linkedin: 'bg-blue-100 text-blue-700',
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const glass: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 16,
+}
+
+const glassEdit: React.CSSProperties = {
+  background: 'rgba(139,92,246,0.04)',
+  border: '2px solid rgba(139,92,246,0.35)',
+  borderRadius: 16,
+}
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 8,
+  color: '#f1f5f9',
+  fontSize: 13,
+  padding: '8px 12px',
+  outline: 'none',
+  width: '100%',
+  boxSizing: 'border-box',
+}
+
+const textareaStyle: React.CSSProperties = {
+  ...inputStyle,
+  resize: 'vertical',
+  lineHeight: 1.6,
+  fontFamily: 'monospace',
+}
+
+const PLATFORM_STYLE: Record<string, React.CSSProperties> = {
+  twitter:      { background: 'rgba(56,189,248,0.12)',  color: '#38BDF8',  border: '1px solid rgba(56,189,248,0.3)' },
+  instagram:    { background: 'rgba(244,114,182,0.12)', color: '#f472b6',  border: '1px solid rgba(244,114,182,0.3)' },
+  housing_news: { background: 'rgba(52,211,153,0.12)',  color: '#34d399',  border: '1px solid rgba(52,211,153,0.3)' },
+  youtube:      { background: 'rgba(248,113,113,0.12)', color: '#f87171',  border: '1px solid rgba(248,113,113,0.3)' },
+  linkedin:     { background: 'rgba(96,165,250,0.12)',  color: '#60a5fa',  border: '1px solid rgba(96,165,250,0.3)' },
 }
 
 const LEVEL_COLOR: Record<string, string> = {
-  DEBUG: 'text-slate-500',
-  INFO: 'text-emerald-400',
-  WARNING: 'text-amber-400',
-  ERROR: 'text-red-400',
-  CRITICAL: 'text-red-600',
+  DEBUG: '#64748b',
+  INFO: '#34d399',
+  WARNING: '#fbbf24',
+  ERROR: '#f87171',
+  CRITICAL: '#ef4444',
+}
+
+const badge: React.CSSProperties = {
+  display: 'inline-block',
+  fontSize: 13,
+  fontWeight: 500,
+  padding: '4px 10px',
+  borderRadius: 999,
 }
 
 function renderContent(content: string) {
@@ -26,7 +66,7 @@ function renderContent(content: string) {
       const safeSrc = /^https?:\/\//i.test(m[2]) ? m[2] : '#'
       return (
         <a key={i} href={safeSrc} target="_blank" rel="noopener noreferrer"
-          className="text-brand underline hover:text-brand-600">{m[1]}</a>
+          style={{ color: '#818CF8', textDecoration: 'underline' }}>{m[1]}</a>
       )
     }
     return <span key={i}>{part}</span>
@@ -36,15 +76,15 @@ function renderContent(content: string) {
 function ScoreBar({ label, value, max = 10 }: { label: string; value?: number; max?: number }) {
   if (value == null) return null
   const pct = Math.min(100, (value / max) * 100)
-  const color = value >= 7 ? 'bg-green-400' : value >= 5 ? 'bg-amber-400' : 'bg-red-400'
+  const barColor = value >= 7 ? '#34d399' : value >= 5 ? '#fbbf24' : '#f87171'
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-slate-600">{label}</span>
-        <span className="font-medium text-slate-800">{value.toFixed(1)}<span className="text-slate-400">/{max}</span></span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+        <span style={{ color: '#94a3b8' }}>{label}</span>
+        <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{value.toFixed(1)}<span style={{ color: '#64748b', fontWeight: 400 }}>/{max}</span></span>
       </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: barColor, transition: 'width 0.4s' }} />
       </div>
     </div>
   )
@@ -52,20 +92,27 @@ function ScoreBar({ label, value, max = 10 }: { label: string; value?: number; m
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-slate-50 rounded-lg p-3 text-center">
-      <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className="text-base font-semibold text-slate-800">{value}</p>
-      {sub && <p className="text-xs text-slate-400">{sub}</p>}
+    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+      <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+      <p style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>{sub}</p>}
     </div>
   )
 }
 
 function StarRating({ value, onChange }: { value?: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex gap-0.5">
+    <div style={{ display: 'flex', gap: 2 }}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button key={star} onClick={() => onChange(star)}
-          className={`text-xl ${star <= (value ?? 0) ? 'text-amber-400' : 'text-slate-200'} hover:text-amber-400 transition-colors`}>★</button>
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 22, padding: 0, transition: 'color 0.15s',
+            color: star <= (value ?? 0) ? '#fbbf24' : 'rgba(255,255,255,0.15)',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#fbbf24' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = star <= (value ?? 0) ? '#fbbf24' : 'rgba(255,255,255,0.15)' }}
+        >★</button>
       ))}
     </div>
   )
@@ -83,12 +130,19 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
     setInput('')
   }
   return (
-    <div className="flex flex-wrap gap-1.5 items-center min-h-8 border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus-within:border-brand">
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
+      minHeight: 36, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
+      padding: '6px 8px', background: 'rgba(255,255,255,0.03)',
+    }}>
       {tags.map((tag) => (
-        <span key={tag} className="flex items-center gap-1 text-xs bg-brand-50 text-brand rounded-full px-2 py-0.5">
+        <span key={tag} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, background: 'rgba(129,140,248,0.15)', color: '#818CF8', borderRadius: 999, padding: '2px 8px' }}>
           #{tag}
           <button onClick={() => onChange(tags.filter((t) => t !== tag))}
-            className="text-brand hover:text-red-500 leading-none">×</button>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#818CF8', fontSize: 14, lineHeight: 1, padding: 0 }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#818CF8' }}
+          >×</button>
         </span>
       ))}
       <input
@@ -97,7 +151,7 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add() } }}
         onBlur={add}
         placeholder="Add hashtag…"
-        className="text-xs outline-none flex-1 min-w-20 text-slate-700 placeholder:text-slate-300"
+        style={{ background: 'none', border: 'none', outline: 'none', fontSize: 12, color: '#f1f5f9', flex: 1, minWidth: 80 }}
       />
     </div>
   )
@@ -215,10 +269,10 @@ export default function PostDetail() {
     }
   }, [showLog, run?.events?.length])
 
-  if (postQ.isLoading) return <div className="text-slate-400 text-sm p-6">Loading post...</div>
+  if (postQ.isLoading) return <div style={{ color: '#64748b', fontSize: 13, padding: 24 }}>Loading post…</div>
   if (!post) return (
-    <div className="text-red-500 text-sm p-6">
-      Post not found. <Link to="/posts" className="text-brand hover:underline">← Back to Posts</Link>
+    <div style={{ color: '#f87171', fontSize: 13, padding: 24 }}>
+      Post not found. <Link to="/dashboard/posts" style={{ color: '#818CF8' }}>← Back to Posts</Link>
     </div>
   )
 
@@ -240,39 +294,43 @@ export default function PostDetail() {
   ] : []
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: '100%' }}>
       {/* Back + header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-xs text-slate-400 hover:text-brand">← Back</button>
-        <span className="text-slate-200">/</span>
-        <span className="text-xs text-slate-500 font-mono">{post.post_id.slice(0, 12)}…</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={() => navigate(-1)}
+          style={{ fontSize: 12, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.15s' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#818CF8' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#64748b' }}
+        >← Back</button>
+        <span style={{ color: 'rgba(255,255,255,0.15)' }}>/</span>
+        <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'monospace' }}>{post.post_id.slice(0, 12)}…</span>
       </div>
 
       {/* Title row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`text-sm font-medium px-2.5 py-1 rounded-full ${PLATFORM_BADGE[post.platform] ?? 'bg-slate-100 text-slate-600'}`}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+        <span style={{ ...badge, ...(PLATFORM_STYLE[post.platform] ?? { background: 'rgba(148,163,184,0.1)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }) }}>
           {post.platform}
         </span>
         {post.draft_type && (
-          <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">{post.draft_type}</span>
+          <span style={{ ...badge, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>{post.draft_type}</span>
         )}
         {post.post_status === 'published' && (
-          <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">Published</span>
+          <span style={{ ...badge, background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}>Published</span>
         )}
         {post.post_status === 'draft' && (
-          <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">Draft — Awaiting Review</span>
+          <span style={{ ...badge, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>Draft — Awaiting Review</span>
         )}
         {post.post_status === 'qa_rejected' && (
-          <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700">QA Rejected</span>
+          <span style={{ ...badge, background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }}>QA Rejected</span>
         )}
         {post.qa_decision === 'advisory' && (
-          <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-sky-100 text-sky-700" title="QA ran in advisory mode — quality scores are guidance only">QA Advisory</span>
+          <span style={{ ...badge, background: 'rgba(56,189,248,0.12)', color: '#38BDF8', border: '1px solid rgba(56,189,248,0.3)' }} title="QA ran in advisory mode — quality scores are guidance only">QA Advisory</span>
         )}
         {post.user_action && (
-          <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">✎ {post.user_action}</span>
+          <span style={{ ...badge, background: 'rgba(148,163,184,0.08)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }}>✎ {post.user_action}</span>
         )}
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-xs text-slate-400">
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 12, color: '#64748b' }}>
             {post.published_at
               ? new Date(post.published_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
               : ''}
@@ -281,27 +339,27 @@ export default function PostDetail() {
             <button
               onClick={() => { if (confirm('Publish this draft now?')) publishMut.mutate() }}
               disabled={publishMut.isPending}
-              className="text-sm font-medium bg-green-600 text-white rounded-lg px-3 py-1.5 hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              style={{ fontSize: 13, fontWeight: 500, background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: publishMut.isPending ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
             >
               {publishMut.isPending ? 'Publishing…' : '↑ Publish'}
             </button>
           )}
           {publishMut.isError && (
-            <span className="text-xs text-red-500">{(publishMut.error as Error).message}</span>
+            <span style={{ fontSize: 12, color: '#f87171' }}>{(publishMut.error as Error).message}</span>
           )}
           {!isEditing ? (
             <button onClick={enterEdit}
-              className="text-sm font-medium bg-slate-800 text-white rounded-lg px-3 py-1.5 hover:bg-slate-700 transition-colors flex items-center gap-1.5">
+              style={{ fontSize: 13, fontWeight: 500, background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               ✎ Edit
             </button>
           ) : (
-            <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={() => setIsEditing(false)}
-                className="text-sm font-medium bg-white text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
+                style={{ fontSize: 13, fontWeight: 500, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={saveEdit} disabled={updateMut.isPending}
-                className="text-sm font-medium bg-brand text-white rounded-lg px-3 py-1.5 hover:bg-brand-600 disabled:opacity-50 transition-colors">
+                style={{ fontSize: 13, fontWeight: 500, background: 'linear-gradient(135deg,#8B5CF6,#6366F1)', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: updateMut.isPending ? 0.5 : 1 }}>
                 {updateMut.isPending ? 'Saving…' : 'Save changes'}
               </button>
             </div>
@@ -310,30 +368,32 @@ export default function PostDetail() {
       </div>
 
       {/* 2-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) minmax(0,2fr)', gap: 24 }}>
 
-        {/* ── LEFT: Content + creative context ──────────────────── */}
-        <div className="lg:col-span-3 space-y-5">
+        {/* ── LEFT ─────────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* ── EDIT MODE ────────────────────────────────────────── */}
+          {/* ── EDIT MODE ─────────────────────────────────────────────── */}
           {isEditing ? (
-            <div className="bg-white rounded-xl border-2 border-brand shadow-sm p-5 space-y-5">
-              <h3 className="text-xs font-semibold text-brand uppercase tracking-wide">Editing Post</h3>
+            <div style={{ ...glassEdit, padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <h3 style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Editing Post</h3>
 
               {/* Image / media */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-600">Image / Media</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}>Image / Media</label>
 
-                {/* Current images */}
                 {editMediaUrls.length > 0 && (
-                  <div className="space-y-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {editMediaUrls.map((url, i) => (
-                      <div key={i} className="relative group">
+                      <div key={i} style={{ position: 'relative' }}
+                        onMouseEnter={(e) => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '1' }}
+                        onMouseLeave={(e) => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '0' }}
+                      >
                         <img src={`/${url}`} alt="media"
-                          className="w-full max-h-64 object-contain rounded-lg bg-slate-100" />
+                          style={{ width: '100%', maxHeight: 256, objectFit: 'contain', borderRadius: 10, background: 'rgba(255,255,255,0.03)' }} />
                         <button
                           onClick={() => setEditMediaUrls((prev) => prev.filter((_, j) => j !== i))}
-                          className="absolute top-2 right-2 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          style={{ position: 'absolute', top: 8, right: 8, background: '#dc2626', color: '#fff', border: 'none', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s', fontSize: 14 }}>
                           ×
                         </button>
                       </div>
@@ -343,8 +403,10 @@ export default function PostDetail() {
 
                 {/* Upload drop zone */}
                 <div
-                  className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:border-brand transition-colors cursor-pointer"
+                  style={{ border: '2px dashed rgba(255,255,255,0.12)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.15s' }}
                   onClick={() => fileInputRef.current?.click()}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.5)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault()
@@ -356,7 +418,7 @@ export default function PostDetail() {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*,video/mp4"
-                    className="hidden"
+                    style={{ display: 'none' }}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) handleFileUpload(file)
@@ -364,19 +426,17 @@ export default function PostDetail() {
                     }}
                   />
                   {isUploading ? (
-                    <p className="text-xs text-slate-400 animate-pulse">Uploading…</p>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Uploading…</p>
                   ) : (
-                    <p className="text-xs text-slate-400">
-                      Drop image here or <span className="text-brand underline">browse</span>
-                      <br />
-                      <span className="text-slate-300">JPG, PNG, GIF, WebP, MP4 — max 20 MB</span>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0, lineHeight: 1.6 }}>
+                      Drop image here or <span style={{ color: '#818CF8', textDecoration: 'underline' }}>browse</span><br />
+                      <span style={{ color: 'rgba(255,255,255,0.2)' }}>JPG, PNG, GIF, WebP, MP4 — max 20 MB</span>
                     </p>
                   )}
                 </div>
-                {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
+                {uploadError && <p style={{ fontSize: 12, color: '#f87171', margin: 0 }}>{uploadError}</p>}
 
-                {/* URL input for external images */}
-                <div className="flex gap-2">
+                <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     value={mediaUrlInput}
                     onChange={(e) => setMediaUrlInput(e.target.value)}
@@ -387,259 +447,228 @@ export default function PostDetail() {
                       }
                     }}
                     placeholder="Or paste image URL and press Enter"
-                    className="flex-1 text-xs border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
+                    style={inputStyle}
                   />
                 </div>
               </div>
 
               {/* Content */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}>
                   Post Content
-                  <span className="ml-2 text-slate-400 font-normal">{editContent.length} chars</span>
+                  <span style={{ marginLeft: 8, color: '#64748b', fontWeight: 400 }}>{editContent.length} chars</span>
                   {post.platform === 'twitter' && editContent.length > 280 && (
-                    <span className="ml-1 text-red-500">· over 280</span>
+                    <span style={{ marginLeft: 4, color: '#f87171' }}>· over 280</span>
                   )}
                 </label>
                 <textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   rows={8}
-                  className="w-full text-sm border border-slate-200 rounded-lg p-3 resize-y focus:outline-none focus:border-brand leading-relaxed font-mono"
+                  style={textareaStyle}
                 />
               </div>
 
               {/* Hashtags */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">Hashtags</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}>Hashtags</label>
                 <TagEditor tags={editHashtags} onChange={setEditHashtags} />
               </div>
 
-              {/* Image card text (zomato hook) */}
+              {/* Image card text */}
               {(post.zomato_hook || post.draft_type === 'social') && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-600">Image Card Text</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}>Image Card Text</label>
                   <textarea
                     value={editHook}
                     onChange={(e) => setEditHook(e.target.value)}
                     rows={2}
                     placeholder="Short punchy text for the visual card…"
-                    className="w-full text-sm border border-slate-200 rounded-lg p-3 resize-none focus:outline-none focus:border-brand"
+                    style={{ ...textareaStyle, resize: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
               )}
 
-              {/* Save error */}
               {updateMut.isError && (
-                <p className="text-xs text-red-500">
+                <p style={{ fontSize: 12, color: '#f87171', margin: 0 }}>
                   Save failed: {String(updateMut.error)}
                 </p>
               )}
 
-              <div className="flex gap-2 pt-1">
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={saveEdit} disabled={updateMut.isPending}
-                  className="flex-1 bg-brand text-white text-sm font-medium rounded-lg px-4 py-2 hover:bg-brand-600 disabled:opacity-50 transition-colors">
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8B5CF6,#6366F1)', color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', borderRadius: 10, padding: '10px 0', cursor: 'pointer', opacity: updateMut.isPending ? 0.5 : 1 }}>
                   {updateMut.isPending ? 'Saving…' : 'Save changes'}
                 </button>
                 <button onClick={() => setIsEditing(false)}
-                  className="flex-1 bg-white text-slate-600 border border-slate-200 text-sm font-medium rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors">
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', fontSize: 14, fontWeight: 500, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 0', cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
             <>
-
-          {/* Post output */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            {imageUrl && (
-              <div className="w-full bg-slate-100">
-                <img src={imageUrl} alt="Post creative" onError={() => setImgError(true)}
-                  className="w-full max-h-96 object-contain" />
-              </div>
-            )}
-            <div className="p-5 space-y-3">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Post Content</h3>
-              <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-                  {renderContent(post.content)}
-                </p>
-                {post.hashtags?.length > 0 && (
-                  <p className="text-sm text-brand leading-relaxed">
-                    {post.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
-                  </p>
+              {/* Post output */}
+              <div style={{ ...glass, overflow: 'hidden' }}>
+                {imageUrl && (
+                  <div style={{ width: '100%', background: 'rgba(255,255,255,0.03)' }}>
+                    <img src={imageUrl} alt="Post creative" onError={() => setImgError(true)}
+                      style={{ width: '100%', maxHeight: 384, objectFit: 'contain' }} />
+                  </div>
                 )}
-              </div>
-              {post.published_url && post.published_url !== 'dry_run' && (
-                <a href={post.published_url} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-brand hover:underline break-all">
-                  ↗ {post.published_url}
-                </a>
-              )}
-              {post.published_url === 'dry_run' && (
-                <span className="text-xs text-slate-400 italic">dry run — not published live</span>
-              )}
-            </div>
-          </div>
-
-          {/* Card text (zomato hook) */}
-          {post.zomato_hook && (
-            <div className="bg-slate-900 text-white rounded-xl p-5 space-y-1">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Image Card Text</p>
-              <p className="text-base font-semibold leading-snug">{post.zomato_hook}</p>
-            </div>
-          )}
-
-          {/* Creative context */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Creative Context</h3>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-              {post.source_topic && (
-                <>
-                  <dt className="text-xs text-slate-400">Source / Trigger</dt>
-                  <dd className="text-sm text-slate-800">{post.source_topic}</dd>
-                </>
-              )}
-              {post.creative_angle && (
-                <>
-                  <dt className="text-xs text-slate-400">Creative Angle</dt>
-                  <dd className="text-sm text-slate-800">{post.creative_angle}</dd>
-                </>
-              )}
-              {post.trend_hashtag && (
-                <>
-                  <dt className="text-xs text-slate-400">Trend Hashtag</dt>
-                  <dd className="text-sm font-medium text-brand">{post.trend_hashtag}</dd>
-                </>
-              )}
-              {post.trend_data && Object.keys(post.trend_data).length > 0 && (
-                <>
-                  <dt className="text-xs text-slate-400 col-span-2 mt-1 pt-2 border-t border-slate-100 font-semibold">Trend Signals</dt>
-                  {post.trend_data.platform && (
-                    <>
-                      <dt className="text-xs text-slate-400">Trending on</dt>
-                      <dd className="text-sm text-slate-700 capitalize">{post.trend_data.platform}</dd>
-                    </>
-                  )}
-                  {post.trend_data.volume && (
-                    <>
-                      <dt className="text-xs text-slate-400">Volume</dt>
-                      <dd className="text-sm text-slate-700">{String(post.trend_data.volume)}</dd>
-                    </>
-                  )}
-                  {post.trend_data.context && (
-                    <>
-                      <dt className="text-xs text-slate-400">Context</dt>
-                      <dd className="text-sm text-slate-700 col-span-1">{post.trend_data.context}</dd>
-                    </>
-                  )}
-                  {post.trend_data.city_hint && (
-                    <>
-                      <dt className="text-xs text-slate-400">City</dt>
-                      <dd className="text-sm text-slate-700">{post.trend_data.city_hint}</dd>
-                    </>
-                  )}
-                  {post.trend_data.creative_hook && (
-                    <>
-                      <dt className="text-xs text-slate-400">Creative Hook</dt>
-                      <dd className="text-sm text-slate-600 italic">"{post.trend_data.creative_hook}"</dd>
-                    </>
-                  )}
-                </>
-              )}
-              {post.media_format && (
-                <>
-                  <dt className="text-xs text-slate-400">Media Format</dt>
-                  <dd className="text-sm text-slate-800">{post.media_format}</dd>
-                </>
-              )}
-              {post.run_id && (
-                <>
-                  <dt className="text-xs text-slate-400">Run ID</dt>
-                  <dd className="text-sm font-mono">
-                    <Link to={`/runs/${post.run_id}`} className="text-brand hover:underline">
-                      {post.run_id.slice(0, 16)}…
-                    </Link>
-                  </dd>
-                </>
-              )}
-            </dl>
-          </div>
-
-          {/* Internal links */}
-          {post.internal_links && post.internal_links.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Internal Links</h3>
-              <ul className="space-y-2">
-                {post.internal_links.map((link, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <span className="text-xs bg-slate-100 text-slate-500 rounded px-1.5 py-0.5">
-                      {link.page_type ?? 'link'}
-                    </span>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer"
-                      className="text-brand hover:underline truncate">
-                      {link.anchor_text || link.url}
+                <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Post Content</h3>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ fontSize: 14, color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: 1.7, margin: 0 }}>
+                      {renderContent(post.content)}
+                    </p>
+                    {post.hashtags?.length > 0 && (
+                      <p style={{ fontSize: 14, color: '#818CF8', lineHeight: 1.7, margin: 0 }}>
+                        {post.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
+                      </p>
+                    )}
+                  </div>
+                  {post.published_url && post.published_url !== 'dry_run' && (
+                    <a href={post.published_url} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 12, color: '#818CF8', wordBreak: 'break-all' }}>
+                      ↗ {post.published_url}
                     </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                  )}
+                  {post.published_url === 'dry_run' && (
+                    <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>dry run — not published live</span>
+                  )}
+                </div>
+              </div>
 
+              {/* Card text */}
+              {post.zomato_hook && (
+                <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Image Card Text</p>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.4, margin: 0 }}>{post.zomato_hook}</p>
+                </div>
+              )}
+
+              {/* Creative context */}
+              <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Creative Context</h3>
+                <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', margin: 0 }}>
+                  {post.source_topic && (
+                    <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Source / Trigger</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{post.source_topic}</dd></>
+                  )}
+                  {post.creative_angle && (
+                    <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Creative Angle</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{post.creative_angle}</dd></>
+                  )}
+                  {post.trend_hashtag && (
+                    <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Trend Hashtag</dt><dd style={{ fontSize: 13, fontWeight: 500, color: '#818CF8', margin: 0, gridColumn: '2' }}>{post.trend_hashtag}</dd></>
+                  )}
+                  {post.trend_data && Object.keys(post.trend_data).length > 0 && (
+                    <>
+                      <dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1 / -1', marginTop: 4, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', fontWeight: 600 }}>Trend Signals</dt>
+                      {post.trend_data.platform && (
+                        <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Trending on</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, textTransform: 'capitalize', gridColumn: '2' }}>{post.trend_data.platform}</dd></>
+                      )}
+                      {post.trend_data.volume && (
+                        <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Volume</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{String(post.trend_data.volume)}</dd></>
+                      )}
+                      {post.trend_data.context && (
+                        <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Context</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{post.trend_data.context}</dd></>
+                      )}
+                      {post.trend_data.city_hint && (
+                        <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>City</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{post.trend_data.city_hint}</dd></>
+                      )}
+                      {post.trend_data.creative_hook && (
+                        <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Creative Hook</dt><dd style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic', margin: 0, gridColumn: '2' }}>"{post.trend_data.creative_hook}"</dd></>
+                      )}
+                    </>
+                  )}
+                  {post.media_format && (
+                    <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Media Format</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{post.media_format}</dd></>
+                  )}
+                  {post.run_id && (
+                    <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Run ID</dt><dd style={{ fontSize: 13, fontFamily: 'monospace', margin: 0, gridColumn: '2' }}>
+                      <Link to={`/dashboard/runs/${post.run_id}`} style={{ color: '#818CF8', textDecoration: 'none' }}>
+                        {post.run_id.slice(0, 16)}…
+                      </Link>
+                    </dd></>
+                  )}
+                </dl>
+              </div>
+
+              {/* Internal links */}
+              {post.internal_links && post.internal_links.length > 0 && (
+                <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Internal Links</h3>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {post.internal_links.map((link, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                        <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 6, padding: '2px 6px' }}>
+                          {link.page_type ?? 'link'}
+                        </span>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer"
+                          style={{ color: '#818CF8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {link.anchor_text || link.url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {/* ── RIGHT: QA + metrics + feedback ──────────────────────── */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* ── RIGHT ────────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* QA Analysis */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">QA Analysis</h3>
+          <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>QA Analysis</h3>
 
-            {/* Decision */}
-            <div className="flex items-center gap-3">
-              <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                post.qa_decision === 'publish' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{
+                fontSize: 13, fontWeight: 600, padding: '4px 12px', borderRadius: 999,
+                ...(post.qa_decision === 'publish'
+                  ? { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }
+                  : { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }),
+              }}>
                 {post.qa_decision === 'publish' ? '✓ Approved by QA' : '✕ Rejected by QA'}
               </span>
               {post.qa_safety_passed != null && (
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  post.qa_safety_passed ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                }`}>
+                <span style={{
+                  fontSize: 11, padding: '2px 8px', borderRadius: 999,
+                  ...(post.qa_safety_passed
+                    ? { background: 'rgba(52,211,153,0.08)', color: '#34d399' }
+                    : { background: 'rgba(248,113,113,0.08)', color: '#f87171' }),
+                }}>
                   Safety {post.qa_safety_passed ? 'pass' : 'FAIL'}
                 </span>
               )}
             </div>
 
-            {/* Rejection reasons */}
             {post.qa_rejection_reasons && post.qa_rejection_reasons.length > 0 && (
-              <div className="bg-red-50 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-semibold text-red-700">Rejection Reasons</p>
-                <ul className="space-y-0.5">
+              <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#f87171', margin: '0 0 6px' }}>Rejection Reasons</p>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {post.qa_rejection_reasons.map((r, i) => (
-                    <li key={i} className="text-xs text-red-600 flex gap-1">
-                      <span className="shrink-0">•</span><span>{r}</span>
+                    <li key={i} style={{ fontSize: 12, color: '#fca5a5', display: 'flex', gap: 4 }}>
+                      <span>•</span><span>{r}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Dimension scores — aggregate */}
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <ScoreBar label="Overall Quality" value={post.qa_overall} />
               <ScoreBar label="RE Relevance" value={post.qa_re_relevance} />
               <ScoreBar label="Brand Voice" value={post.qa_brand_voice} />
               <ScoreBar label="Backlink / CTA" value={post.qa_backlink_score} />
             </div>
 
-            {/* Per-platform dimension breakdown */}
             {post.qa_quality_dimensions && Object.keys(post.qa_quality_dimensions).length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Per-dimension</p>
-                <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Per-dimension</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {Object.entries(post.qa_quality_dimensions)
                     .sort(([, a], [, b]) => b - a)
                     .map(([dim, score]) => (
@@ -653,27 +682,26 @@ export default function PostDetail() {
               </div>
             )}
 
-            {/* QA critique */}
             {post.qa_critique && (
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-semibold text-amber-700">QA Critique</p>
-                <p className="text-xs text-amber-800 leading-relaxed">{post.qa_critique}</p>
+              <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', margin: '0 0 4px' }}>QA Critique</p>
+                <p style={{ fontSize: 12, color: '#fde68a', lineHeight: 1.6, margin: 0 }}>{post.qa_critique}</p>
               </div>
             )}
           </div>
 
           {/* Predicted Performance */}
           {post.pred_engagement_rate != null && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Predicted Performance</h3>
+            <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Predicted Performance</h3>
                 {post.pred_confidence != null && (
-                  <span className="text-xs text-slate-400">
+                  <span style={{ fontSize: 12, color: '#64748b' }}>
                     {(post.pred_confidence * 100).toFixed(0)}% confidence
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <MetricCard label="Engagement Rate"
                   value={`${((post.pred_engagement_rate ?? 0) * 100).toFixed(2)}%`} />
                 {post.pred_impressions != null && (
@@ -697,9 +725,9 @@ export default function PostDetail() {
                 )}
               </div>
               {post.engagement_reasoning && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-1">
-                  <p className="text-xs font-semibold text-blue-700">Why these numbers?</p>
-                  <p className="text-xs text-blue-800 leading-relaxed">{post.engagement_reasoning}</p>
+                <div style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 10, padding: '10px 12px' }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa', margin: '0 0 4px' }}>Why these numbers?</p>
+                  <p style={{ fontSize: 12, color: '#93c5fd', lineHeight: 1.6, margin: 0 }}>{post.engagement_reasoning}</p>
                 </div>
               )}
             </div>
@@ -707,14 +735,13 @@ export default function PostDetail() {
 
           {/* Actual Performance */}
           {hasActuals && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Actual Performance</h3>
+            <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Actual Performance</h3>
 
-              {/* 6h metrics */}
               {(post.actual_impressions_6h != null || post.actual_likes_6h != null) && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">6 hours</p>
-                  <div className="grid grid-cols-2 gap-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>6 hours</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {post.actual_impressions_6h != null && (
                       <MetricCard label="Impressions" value={post.actual_impressions_6h.toLocaleString()} />
                     )}
@@ -725,13 +752,12 @@ export default function PostDetail() {
                 </div>
               )}
 
-              {/* 24h metrics */}
               {(post.actual_impressions_24h != null || post.actual_likes_24h != null ||
                 post.actual_shares_24h != null || post.actual_comments_24h != null ||
                 post.actual_ctr_24h != null || post.actual_saves_24h != null) && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">24 hours</p>
-                  <div className="grid grid-cols-2 gap-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>24 hours</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {post.actual_impressions_24h != null && (
                       <MetricCard label="Impressions" value={post.actual_impressions_24h.toLocaleString()} />
                     )}
@@ -754,11 +780,10 @@ export default function PostDetail() {
                 </div>
               )}
 
-              {/* 7d metrics */}
               {(post.actual_impressions_7d != null || post.actual_engagement_7d != null) && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">7 days</p>
-                  <div className="grid grid-cols-2 gap-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>7 days</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {post.actual_impressions_7d != null && (
                       <MetricCard label="Impressions" value={post.actual_impressions_7d.toLocaleString()} />
                     )}
@@ -773,11 +798,12 @@ export default function PostDetail() {
                     )}
                   </div>
                   {post.actual_engagement_7d != null && post.pred_engagement_rate != null && (
-                    <div className={`text-xs font-medium px-3 py-2 rounded-lg ${
-                      post.actual_engagement_7d >= post.pred_engagement_rate
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-red-50 text-red-600'
-                    }`}>
+                    <div style={{
+                      fontSize: 12, fontWeight: 500, padding: '8px 12px', borderRadius: 10,
+                      ...(post.actual_engagement_7d >= post.pred_engagement_rate
+                        ? { background: 'rgba(52,211,153,0.08)', color: '#34d399', border: '1px solid rgba(52,211,153,0.2)' }
+                        : { background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }),
+                    }}>
                       {post.actual_engagement_7d >= post.pred_engagement_rate ? '▲ Beat prediction' : '▼ Below prediction'}{' '}
                       by {Math.abs((post.actual_engagement_7d - post.pred_engagement_rate) * 100).toFixed(2)}pp
                     </div>
@@ -785,19 +811,18 @@ export default function PostDetail() {
                 </div>
               )}
 
-              {/* Bonus metrics */}
               {(post.actual_housing_traffic != null || post.prediction_accuracy != null) && (
-                <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   {post.actual_housing_traffic != null && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Housing.com Traffic</span>
-                      <span className="font-medium">{post.actual_housing_traffic.toLocaleString()}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: '#94a3b8' }}>Platform Traffic</span>
+                      <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{post.actual_housing_traffic.toLocaleString()}</span>
                     </div>
                   )}
                   {post.prediction_accuracy != null && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Prediction Accuracy</span>
-                      <span className="font-medium">{(post.prediction_accuracy * 100).toFixed(0)}%</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: '#94a3b8' }}>Prediction Accuracy</span>
+                      <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{(post.prediction_accuracy * 100).toFixed(0)}%</span>
                     </div>
                   )}
                 </div>
@@ -806,17 +831,17 @@ export default function PostDetail() {
           )}
 
           {/* User Feedback */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your Feedback</h3>
+          <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Your Feedback</h3>
 
             <StarRating value={post.user_rating} onChange={(v) => feedbackMut.mutate({ rating: v })} />
 
             {/* Tags */}
-            <div className="flex flex-wrap gap-1.5 items-center">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
               {(post.user_tags ?? []).map((tag) => (
-                <span key={tag} className="text-xs bg-brand-50 text-brand px-2 py-0.5 rounded-full">{tag}</span>
+                <span key={tag} style={{ fontSize: 12, background: 'rgba(129,140,248,0.12)', color: '#818CF8', padding: '2px 8px', borderRadius: 999 }}>{tag}</span>
               ))}
-              <div className="flex gap-1">
+              <div style={{ display: 'flex', gap: 6 }}>
                 <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && tagInput.trim()) {
@@ -824,51 +849,55 @@ export default function PostDetail() {
                       setTagInput('')
                     }
                   }}
-                  placeholder="+ tag" className="text-xs border border-slate-200 rounded px-2 py-0.5 w-20 focus:outline-none focus:border-brand" />
+                  placeholder="+ tag"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#f1f5f9', fontSize: 12, padding: '2px 8px', outline: 'none', width: 64 }} />
               </div>
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2">
+            <div style={{ display: 'flex', gap: 8 }}>
               {(['approved', 'flagged'] as const).map((action) => (
                 <button key={action} onClick={() => feedbackMut.mutate({ action })}
-                  className={`flex-1 text-xs font-medium rounded-lg px-2 py-1.5 border transition-colors ${
-                    post.user_action === action
-                      ? action === 'approved' ? 'bg-green-600 text-white border-green-600'
-                        : 'bg-yellow-500 text-white border-yellow-500'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
-                  }`}>
+                  style={{
+                    flex: 1, fontSize: 12, fontWeight: 500, borderRadius: 8, padding: '7px 4px', cursor: 'pointer', border: '1px solid', transition: 'all 0.15s',
+                    ...(post.user_action === action
+                      ? action === 'approved'
+                        ? { background: 'rgba(52,211,153,0.2)', color: '#34d399', borderColor: 'rgba(52,211,153,0.4)' }
+                        : { background: 'rgba(251,191,36,0.2)', color: '#fbbf24', borderColor: 'rgba(251,191,36,0.4)' }
+                      : { background: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)' }),
+                  }}>
                   {action === 'approved' ? '✓ Approve' : '⚠ Flag'}
                 </button>
               ))}
               <button onClick={() => setShowReject((v) => !v)}
-                className={`flex-1 text-xs font-medium rounded-lg px-2 py-1.5 border transition-colors ${
-                  post.user_action === 'rejected'
-                    ? 'bg-red-600 text-white border-red-600'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
-                }`}>
+                style={{
+                  flex: 1, fontSize: 12, fontWeight: 500, borderRadius: 8, padding: '7px 4px', cursor: 'pointer', border: '1px solid', transition: 'all 0.15s',
+                  ...(post.user_action === 'rejected'
+                    ? { background: 'rgba(248,113,113,0.2)', color: '#f87171', borderColor: 'rgba(248,113,113,0.4)' }
+                    : { background: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)' }),
+                }}>
                 ✕ Reject
               </button>
             </div>
 
             {showReject && (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Rejection reason..." rows={2}
-                  className="w-full text-xs border border-slate-200 rounded-lg p-2 resize-none focus:outline-none focus:border-red-400" />
-                <div className="flex gap-2">
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 8, color: '#f1f5f9', fontSize: 12, padding: 8, resize: 'none', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => rejectMut.mutate(rejectReason)} disabled={!rejectReason.trim()}
-                    className="text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 disabled:opacity-50">
+                    style={{ fontSize: 12, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', opacity: rejectReason.trim() ? 1 : 0.5 }}>
                     Confirm
                   </button>
                   <button onClick={() => setShowReject(false)}
-                    className="text-xs bg-slate-100 text-slate-600 rounded-lg px-3 py-1.5">Cancel</button>
+                    style={{ fontSize: 12, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>Cancel</button>
                 </div>
               </div>
             )}
 
             {post.user_action === 'rejected' && post.rejection_reason && (
-              <p className="text-xs text-orange-600 italic bg-orange-50 rounded px-2 py-1.5">
+              <p style={{ fontSize: 12, color: '#fb923c', fontStyle: 'italic', background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.2)', borderRadius: 8, padding: '6px 10px', margin: 0 }}>
                 ✎ {post.rejection_reason}
               </p>
             )}
@@ -876,48 +905,51 @@ export default function PostDetail() {
         </div>
       </div>
 
-      {/* ── Run Details ─────────────────────────────────────────────────── */}
+      {/* ── Run Details ──────────────────────────────────────────────── */}
       {post.run_id && (
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-slate-700">Run Details</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', margin: 0 }}>Run Details</h2>
 
           {/* Run header */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <Link to={`/runs/${post.run_id}`}
-                className="font-mono text-sm text-brand hover:underline">{post.run_id}</Link>
+          <div style={{ ...glass, padding: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Link to={`/dashboard/runs/${post.run_id}`}
+                style={{ fontFamily: 'monospace', fontSize: 13, color: '#818CF8', textDecoration: 'none' }}>{post.run_id}</Link>
               {run?.status && (
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  run.status === 'completed' ? 'bg-green-100 text-green-700'
-                    : run.status === 'failed' ? 'bg-red-100 text-red-700'
-                    : 'bg-blue-100 text-blue-700'
-                }`}>{run.status}</span>
+                <span style={{
+                  fontSize: 12, fontWeight: 500, padding: '2px 8px', borderRadius: 999,
+                  ...(run.status === 'completed'
+                    ? { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }
+                    : run.status === 'failed'
+                    ? { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }
+                    : { background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }),
+                }}>{run.status}</span>
               )}
               {run?.dry_run && (
-                <span className="text-xs bg-slate-100 text-slate-500 rounded-full px-2 py-0.5">dry run</span>
+                <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 8px' }}>dry run</span>
               )}
               {run?.triggered_at && (
-                <span className="text-xs text-slate-400">
+                <span style={{ fontSize: 12, color: '#64748b' }}>
                   {new Date(run.triggered_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                 </span>
               )}
               {run?.topic_hint && (
-                <span className="text-sm text-slate-500 italic">"{run.topic_hint}"</span>
+                <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>"{run.topic_hint}"</span>
               )}
             </div>
 
-            {/* Pipeline steps */}
             {runQ.isLoading ? (
-              <p className="text-slate-400 text-sm">Loading run data…</p>
+              <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Loading run data…</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {PIPELINE_STEPS.map(({ label, val }) => (
-                  <div key={label} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs border ${
-                    val > 0
-                      ? 'bg-green-50 border-green-200 text-green-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}>
-                    <span className="font-semibold">{val > 0 ? val : '—'}</span>
+                  <div key={label} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, borderRadius: 10, padding: '8px 12px', fontSize: 12, border: '1px solid',
+                    ...(val > 0
+                      ? { background: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.25)', color: '#34d399' }
+                      : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)', color: '#64748b' }),
+                  }}>
+                    <span style={{ fontWeight: 700 }}>{val > 0 ? val : '—'}</span>
                     <span>{label}</span>
                   </div>
                 ))}
@@ -925,38 +957,40 @@ export default function PostDetail() {
             )}
 
             {run?.error && (
-              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
-                <span className="font-semibold">Error: </span>{run.error}
+              <div style={{ marginTop: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#f87171' }}>
+                <span style={{ fontWeight: 600 }}>Error: </span>{run.error}
               </div>
             )}
           </div>
 
           {/* Event log (collapsible) */}
-          <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+          <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, overflow: 'hidden' }}>
             <button
               onClick={() => setShowLog((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-3 text-slate-300 hover:bg-slate-800 transition-colors"
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', transition: 'background 0.15s' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
             >
-              <span className="text-xs font-semibold">
+              <span style={{ fontSize: 12, fontWeight: 600 }}>
                 Run Log
                 {run?.events?.length ? ` (${run.events.length} events)` : ''}
               </span>
-              <span className="text-slate-500 text-xs">{showLog ? '▲ collapse' : '▼ expand'}</span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>{showLog ? '▲ collapse' : '▼ expand'}</span>
             </button>
 
             {showLog && (
-              <div ref={logRef} className="h-80 overflow-y-auto font-mono text-xs p-4 space-y-0.5 border-t border-slate-700">
+              <div ref={logRef} style={{ height: 320, overflowY: 'auto', fontFamily: 'monospace', fontSize: 11, padding: 16, display: 'flex', flexDirection: 'column', gap: 2, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
                 {!run?.events?.length ? (
-                  <span className="text-slate-500">No events captured for this run.</span>
+                  <span style={{ color: '#64748b' }}>No events captured for this run.</span>
                 ) : (
                   run.events.map((ev, i) => (
-                    <div key={i} className="flex gap-2 leading-5">
-                      <span className="text-slate-600 flex-shrink-0 w-20">{formatTs(ev.ts)}</span>
-                      <span className={`flex-shrink-0 w-8 font-bold ${LEVEL_COLOR[ev.level] ?? 'text-slate-400'}`}>
+                    <div key={i} style={{ display: 'flex', gap: 8, lineHeight: 1.5 }}>
+                      <span style={{ color: '#475569', flexShrink: 0, width: 72 }}>{formatTs(ev.ts)}</span>
+                      <span style={{ flexShrink: 0, width: 12, fontWeight: 700, color: LEVEL_COLOR[ev.level] ?? '#64748b' }}>
                         {ev.level[0]}
                       </span>
-                      <span className="text-slate-500 flex-shrink-0 w-28 truncate">{ev.logger}</span>
-                      <span className="text-slate-200 break-all">{ev.msg}</span>
+                      <span style={{ color: '#475569', flexShrink: 0, width: 112, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.logger}</span>
+                      <span style={{ color: '#cbd5e1', wordBreak: 'break-all' }}>{ev.msg}</span>
                     </div>
                   ))
                 )}
@@ -966,29 +1000,31 @@ export default function PostDetail() {
         </div>
       )}
 
-      {/* ── Output File ─────────────────────────────────────────────────── */}
+      {/* ── Output File ──────────────────────────────────────────────── */}
       {post.output_path && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div style={{ ...glass, overflow: 'hidden' }}>
           <button
             onClick={() => setShowOutput((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
           >
             <div>
-              <span className="text-sm font-medium text-slate-700">Raw Output File</span>
-              <span className="ml-2 text-xs text-slate-400 font-mono">{post.output_path}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#f1f5f9' }}>Raw Output File</span>
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b', fontFamily: 'monospace' }}>{post.output_path}</span>
             </div>
-            <span className="text-slate-400 text-xs">{showOutput ? '▲ collapse' : '▼ expand'}</span>
+            <span style={{ fontSize: 11, color: '#64748b' }}>{showOutput ? '▲ collapse' : '▼ expand'}</span>
           </button>
 
           {showOutput && (
-            <div className="border-t border-slate-100 p-5">
-              {outputQ.isLoading && <p className="text-slate-400 text-sm">Loading…</p>}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: 20 }}>
+              {outputQ.isLoading && <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Loading…</p>}
               {outputQ.data ? (
-                <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed overflow-x-auto">
+                <pre style={{ fontSize: 12, fontFamily: 'monospace', color: '#94a3b8', whiteSpace: 'pre-wrap', lineHeight: 1.6, overflowX: 'auto', margin: 0 }}>
                   {outputQ.data}
                 </pre>
               ) : outputQ.isFetched && !outputQ.data ? (
-                <p className="text-slate-400 text-sm">File not available (server may have restarted).</p>
+                <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>File not available (server may have restarted).</p>
               ) : null}
             </div>
           )}

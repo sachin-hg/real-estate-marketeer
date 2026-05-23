@@ -155,8 +155,12 @@ async def social_creative_node(state: WorkflowState) -> dict:
     system = SOCIAL_SYSTEM_BASE.format(examples_block=examples_block)
     history_ctx = get_performance_history()
 
-    n = settings.max_creative_drafts
-    n_social = max(1, round(n * 0.6))
+    # When planner briefs are available, generate one draft per brief (they're already quality-gated).
+    # Fall back to config-derived count only when generating from raw trends.
+    if social_briefs:
+        n_social = len(social_briefs)   # one draft per brief; planner already enforces per-platform cap
+    else:
+        n_social = max(1, round(settings.max_creative_drafts * 0.6))
 
     def _compact_trends(items: list[dict]) -> list[dict]:
         return [
@@ -174,7 +178,7 @@ async def social_creative_node(state: WorkflowState) -> dict:
         source_section = f"""━━━ TRENDING TOPICS & VIRAL NEWS (India, today) ━━━
 {json.dumps(_compact_trends(trends), indent=2)}"""
 
-    user_msg = f"""Generate {n_social} social post ideas for Housing.com.
+    user_msg = f"""Generate {n_social} social post ideas for Housing.com — one per brief.
 
 {source_section}
 
@@ -182,11 +186,13 @@ async def social_creative_node(state: WorkflowState) -> dict:
 {history_ctx}
 
 Rules:
-- Each post must riff on a DIFFERENT trending topic (no repeats)
-- Prioritise high-volume / viral events over RE hashtags
+- One draft per brief — cover EVERY brief provided (do not skip any)
+- Set trend_hashtag = the brief's trend_hashtag field (first hashtag in the post)
+- Set target_platforms to match the brief's target_platforms (honour the planner's platform decision)
 - The real estate connection must feel NATURAL, not forced
 - Vary tones: witty, nostalgic, sarcastic, proud — not all the same
 - Embed city SRP links wherever a specific city is mentioned
+- Prioritise high-volume / viral events — they are our most important content
 
 Generate {n_social} social drafts now."""
 
@@ -196,7 +202,7 @@ Generate {n_social} social drafts now."""
     with Timer() as t_llm:
         result = await acall_message(
             client, settings.model_creative, system,
-            [{"role": "user", "content": user_msg}], 4000,
+            [{"role": "user", "content": user_msg}], 6000,
         )
 
     if isinstance(result, Exception):

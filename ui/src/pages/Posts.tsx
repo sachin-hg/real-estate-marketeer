@@ -18,30 +18,55 @@ function nextRunCountdown(): string {
   return `${Math.floor(ms / 3_600_000)}h ${Math.floor((ms % 3_600_000) / 60_000)}m`
 }
 
-const PLATFORM_BADGE: Record<string, string> = {
-  twitter: 'bg-sky-100 text-sky-700',
-  instagram: 'bg-pink-100 text-pink-700',
-  housing_news: 'bg-emerald-100 text-emerald-700',
-  youtube: 'bg-red-100 text-red-700',
-  linkedin: 'bg-blue-100 text-blue-700',
+// ── Design tokens ────────────────────────────────────────────────────────────
+const glass: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 16,
 }
 
-const ACTION_BADGE: Record<string, string> = {
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  flagged: 'bg-yellow-100 text-yellow-700',
+const PLATFORM_STYLE: Record<string, React.CSSProperties> = {
+  twitter:      { background: 'rgba(56,189,248,0.12)', color: '#38BDF8',  border: '1px solid rgba(56,189,248,0.25)' },
+  instagram:    { background: 'rgba(244,114,182,0.12)', color: '#f472b6', border: '1px solid rgba(244,114,182,0.25)' },
+  housing_news: { background: 'rgba(52,211,153,0.12)', color: '#34d399',  border: '1px solid rgba(52,211,153,0.25)' },
+  youtube:      { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' },
+  linkedin:     { background: 'rgba(96,165,250,0.12)',  color: '#60a5fa', border: '1px solid rgba(96,165,250,0.25)' },
 }
 
-const POST_STATUS_BADGE: Record<string, string> = {
-  published: 'bg-green-100 text-green-700',
-  qa_rejected: 'bg-red-100 text-red-700',
-  draft: 'bg-amber-100 text-amber-700',
+const ACTION_STYLE: Record<string, React.CSSProperties> = {
+  approved: { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' },
+  rejected: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' },
+  flagged:  { background: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' },
+}
+
+const POST_STATUS_STYLE: Record<string, React.CSSProperties> = {
+  published:   { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' },
+  qa_rejected: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' },
+  draft:       { background: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' },
 }
 
 const POST_STATUS_LABEL: Record<string, string> = {
   published: 'Published',
   qa_rejected: 'QA Rejected',
   draft: 'Draft',
+}
+
+const badge: React.CSSProperties = {
+  display: 'inline-block',
+  fontSize: 11,
+  fontWeight: 500,
+  padding: '2px 8px',
+  borderRadius: 999,
+}
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 8,
+  color: '#f1f5f9',
+  fontSize: 13,
+  padding: '6px 12px',
+  outline: 'none',
 }
 
 /** Render content with [text](url) markdown links as real <a> tags. */
@@ -58,7 +83,7 @@ function renderContent(content: string) {
           href={safeSrc}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-brand underline hover:text-brand-600"
+          style={{ color: '#818CF8', textDecoration: 'underline' }}
           onClick={(e) => e.stopPropagation()}
         >
           {m[1]}
@@ -82,12 +107,22 @@ function StarRating({
   onChange: (v: number) => void
 }) {
   return (
-    <div className="flex gap-0.5">
+    <div style={{ display: 'flex', gap: 2 }}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           onClick={() => onChange(star)}
-          className={`text-lg ${star <= (value ?? 0) ? 'text-amber-400' : 'text-slate-300'} hover:text-amber-400 transition-colors`}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 18,
+            color: star <= (value ?? 0) ? '#fbbf24' : 'rgba(255,255,255,0.2)',
+            padding: 0,
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#fbbf24' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = star <= (value ?? 0) ? '#fbbf24' : 'rgba(255,255,255,0.2)' }}
         >
           ★
         </button>
@@ -96,7 +131,7 @@ function StarRating({
   )
 }
 
-/** Numbered pagination bar: shows first, last, current ± 1, with ellipsis */
+/** Numbered pagination bar */
 function Pagination({
   page,
   totalPages,
@@ -119,27 +154,40 @@ function Pagination({
   if (page < totalPages - 2) pages.push('...')
   if (totalPages > 1) add(totalPages)
 
+  const btnBase: React.CSSProperties = {
+    fontSize: 13,
+    minWidth: 32,
+    padding: '4px 8px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(255,255,255,0.04)',
+    color: '#94a3b8',
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+  }
+
   return (
-    <div className="flex items-center gap-1.5 justify-center">
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', padding: '8px 0' }}>
       <button
         disabled={page <= 1}
         onClick={() => onPage(page - 1)}
-        className="text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100 transition-colors"
+        style={{ ...btnBase, opacity: page <= 1 ? 0.4 : 1 }}
       >
         ‹
       </button>
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`e-${i}`} className="text-sm px-1.5 text-slate-400">…</span>
+          <span key={`e-${i}`} style={{ fontSize: 13, padding: '0 4px', color: '#64748b' }}>…</span>
         ) : (
           <button
             key={p}
             onClick={() => onPage(p as number)}
-            className={`text-sm min-w-[2rem] px-2 py-1.5 rounded-lg border transition-colors ${
-              p === page
-                ? 'bg-brand text-white border-brand font-semibold'
-                : 'border-slate-200 hover:bg-slate-100 text-slate-600'
-            }`}
+            style={{
+              ...btnBase,
+              ...(p === page
+                ? { background: 'linear-gradient(135deg,#8B5CF6,#6366F1)', color: '#fff', border: '1px solid transparent', fontWeight: 600 }
+                : {}),
+            }}
           >
             {p}
           </button>
@@ -148,7 +196,7 @@ function Pagination({
       <button
         disabled={page >= totalPages}
         onClick={() => onPage(page + 1)}
-        className="text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100 transition-colors"
+        style={{ ...btnBase, opacity: page >= totalPages ? 0.4 : 1 }}
       >
         ›
       </button>
@@ -199,66 +247,71 @@ function PostCard({ post }: { post: Post }) {
     : null
 
   return (
-    // Link wrapping enables Cmd+click to open in new tab
     <Link
       to={`/posts/${post.post_id}`}
-      className="block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md hover:border-slate-300 transition-all"
+      style={{
+        display: 'block',
+        ...glass,
+        overflow: 'hidden',
+        textDecoration: 'none',
+        transition: 'transform 0.15s, border-color 0.15s, box-shadow 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLAnchorElement
+        el.style.transform = 'translateY(-2px)'
+        el.style.borderColor = 'rgba(129,140,248,0.3)'
+        el.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)'
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLAnchorElement
+        el.style.transform = 'translateY(0)'
+        el.style.borderColor = 'rgba(255,255,255,0.09)'
+        el.style.boxShadow = 'none'
+      }}
     >
       {/* Image */}
       {imageUrl && (
-        <div className="w-full aspect-square bg-slate-100 overflow-hidden">
+        <div style={{ width: '100%', aspectRatio: '1', background: 'rgba(255,255,255,0.03)', overflow: 'hidden' }}>
           <img
             src={imageUrl}
             alt="post creative"
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         </div>
       )}
 
-      <div className="p-4 flex flex-col gap-3">
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Top badges */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-wrap gap-1">
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                PLATFORM_BADGE[post.platform] ?? 'bg-slate-100 text-slate-600'
-              }`}
-            >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <span style={{ ...badge, ...(PLATFORM_STYLE[post.platform] ?? { background: 'rgba(148,163,184,0.1)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }) }}>
               {post.platform}
             </span>
             {post.draft_type && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+              <span style={{ ...badge, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.25)' }}>
                 {post.draft_type}
               </span>
             )}
             {post.post_status && (
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  POST_STATUS_BADGE[post.post_status] ?? 'bg-slate-100 text-slate-600'
-                }`}
-              >
+              <span style={{ ...badge, ...(POST_STATUS_STYLE[post.post_status] ?? { background: 'rgba(148,163,184,0.1)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }) }}>
                 {POST_STATUS_LABEL[post.post_status] ?? post.post_status}
               </span>
             )}
             {post.user_action && (
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                  ACTION_BADGE[post.user_action] ?? 'bg-slate-100 text-slate-600'
-                }`}
-              >
+              <span style={{ ...badge, ...(ACTION_STYLE[post.user_action] ?? { background: 'rgba(148,163,184,0.1)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }) }}>
                 ✎ {post.user_action}
               </span>
             )}
           </div>
-          <div className="flex gap-2 text-xs text-slate-400 flex-shrink-0">
+          <div style={{ display: 'flex', gap: 6, fontSize: 11, flexShrink: 0 }}>
             {post.qa_overall !== undefined && (
-              <span className="bg-slate-100 rounded px-1.5 py-0.5">
+              <span style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 6, padding: '2px 6px' }}>
                 QA {post.qa_overall.toFixed(1)}
               </span>
             )}
             {post.pred_engagement_rate !== undefined && (
-              <span className="bg-sky-50 text-sky-600 rounded px-1.5 py-0.5">
+              <span style={{ background: 'rgba(56,189,248,0.1)', color: '#38BDF8', borderRadius: 6, padding: '2px 6px' }}>
                 ER {(post.pred_engagement_rate * 100).toFixed(2)}%
               </span>
             )}
@@ -271,11 +324,11 @@ function PostCard({ post }: { post: Post }) {
           if (!src) return null
           const isManual = post.source_topic && !post.source_topic.startsWith('#') && !post.trend_hashtag
           return (
-            <div className="flex items-start gap-1.5">
-              <span className="text-slate-400 text-xs mt-0.5 shrink-0 select-none">
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <span style={{ color: '#64748b', fontSize: 11, marginTop: 2, flexShrink: 0 }}>
                 {isManual ? '✍' : '↗'}
               </span>
-              <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+              <p style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {src}
               </p>
             </div>
@@ -283,12 +336,12 @@ function PostCard({ post }: { post: Post }) {
         })()}
 
         {/* Full content */}
-        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-          <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: 13, color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: 1.6, margin: 0 }}>
             {renderContent(post.content)}
           </p>
           {post.hashtags && post.hashtags.length > 0 && (
-            <p className="text-sm text-brand leading-relaxed">
+            <p style={{ fontSize: 13, color: '#818CF8', lineHeight: 1.6, margin: 0 }}>
               {post.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
             </p>
           )}
@@ -296,13 +349,12 @@ function PostCard({ post }: { post: Post }) {
 
         {/* QA rejection reasons */}
         {post.post_status === 'qa_rejected' && post.qa_rejection_reasons && post.qa_rejection_reasons.length > 0 && (
-          <div className="bg-red-50 rounded-lg px-3 py-2 space-y-1">
-            <p className="text-xs font-medium text-red-700">QA Rejection Reasons:</p>
-            <ul className="space-y-0.5">
+          <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 10, padding: '8px 12px' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#f87171', margin: '0 0 4px' }}>QA Rejection Reasons:</p>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 2 }}>
               {post.qa_rejection_reasons.map((reason, i) => (
-                <li key={i} className="text-xs text-red-600 flex gap-1">
-                  <span className="shrink-0">•</span>
-                  <span>{reason}</span>
+                <li key={i} style={{ fontSize: 11, color: '#fca5a5', display: 'flex', gap: 4 }}>
+                  <span>•</span><span>{reason}</span>
                 </li>
               ))}
             </ul>
@@ -311,30 +363,24 @@ function PostCard({ post }: { post: Post }) {
 
         {/* Manual rejection reason */}
         {post.user_action === 'rejected' && post.rejection_reason && (
-          <p className="text-xs text-orange-600 italic bg-orange-50 rounded px-2 py-1">
+          <p style={{ fontSize: 11, color: '#fb923c', fontStyle: 'italic', background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.2)', borderRadius: 8, padding: '4px 8px', margin: 0 }}>
             ✎ Manually rejected: {post.rejection_reason}
           </p>
         )}
 
         {/* Zomato hook */}
         {post.zomato_hook && (
-          <div className="bg-slate-900 text-white rounded-lg px-3 py-2">
-            <p className="text-xs font-medium text-slate-400 mb-0.5">Card text</p>
-            <p className="text-sm font-semibold leading-snug">{post.zomato_hook}</p>
+          <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 12px' }}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#64748b', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Card text</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', lineHeight: 1.4, margin: 0 }}>{post.zomato_hook}</p>
           </div>
         )}
 
         {/* Actual vs predicted */}
         {post.actual_engagement_7d !== undefined && post.pred_engagement_rate !== undefined && (
-          <div className="text-xs flex gap-2">
-            <span className="text-slate-500">Actual 7d:</span>
-            <span
-              className={
-                post.actual_engagement_7d >= post.pred_engagement_rate
-                  ? 'text-green-600 font-medium'
-                  : 'text-red-500 font-medium'
-              }
-            >
+          <div style={{ fontSize: 11, display: 'flex', gap: 8 }}>
+            <span style={{ color: '#64748b' }}>Actual 7d:</span>
+            <span style={{ color: post.actual_engagement_7d >= post.pred_engagement_rate ? '#34d399' : '#f87171', fontWeight: 600 }}>
               {post.actual_engagement_7d >= post.pred_engagement_rate ? '▲' : '▼'}{' '}
               {(post.actual_engagement_7d * 100).toFixed(2)}%
             </span>
@@ -342,7 +388,7 @@ function PostCard({ post }: { post: Post }) {
         )}
 
         {/* Interactive section — stop propagation so clicks don't bubble to the Link */}
-        <div onClick={(e) => e.stopPropagation()} className="space-y-3">
+        <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* Star rating */}
           <StarRating
             value={post.user_rating}
@@ -350,59 +396,70 @@ function PostCard({ post }: { post: Post }) {
           />
 
           {/* Tags */}
-          <div className="flex flex-wrap gap-1 items-center">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
             {(post.user_tags ?? []).map((tag) => (
-              <span key={tag} className="text-xs bg-brand-50 text-brand px-2 py-0.5 rounded-full">{tag}</span>
+              <span key={tag} style={{ fontSize: 11, background: 'rgba(129,140,248,0.12)', color: '#818CF8', padding: '2px 8px', borderRadius: 999 }}>{tag}</span>
             ))}
-            <div className="flex gap-1">
+            <div style={{ display: 'flex', gap: 4 }}>
               <input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                 placeholder="+ tag"
-                className="text-xs border border-slate-200 rounded px-2 py-0.5 w-20 focus:outline-none focus:border-brand"
+                style={{ ...inputStyle, fontSize: 11, padding: '2px 8px', width: 64 }}
               />
               {tagInput && (
-                <button onClick={handleAddTag} className="text-xs bg-brand text-white rounded px-2 py-0.5">Add</button>
+                <button
+                  onClick={handleAddTag}
+                  style={{ fontSize: 11, background: 'linear-gradient(135deg,#8B5CF6,#6366F1)', color: '#fff', border: 'none', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}
+                >
+                  Add
+                </button>
               )}
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-2 pt-1 mt-auto">
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => handleAction('approved')}
-              className="flex-1 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors"
+              style={{ flex: 1, fontSize: 11, fontWeight: 500, background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.18)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.1)' }}
             >✓ Approve</button>
             <button
               onClick={() => handleAction('flagged')}
-              className="flex-1 text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg px-3 py-1.5 hover:bg-yellow-100 transition-colors"
+              style={{ flex: 1, fontSize: 11, fontWeight: 500, background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,191,36,0.18)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,191,36,0.1)' }}
             >⚠ Flag</button>
             <button
               onClick={() => handleAction('rejected')}
-              className="flex-1 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-100 transition-colors"
+              style={{ flex: 1, fontSize: 11, fontWeight: 500, background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,113,113,0.18)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,113,113,0.1)' }}
             >✕ Reject</button>
           </div>
 
           {/* Rejection reason */}
           {showReject && (
-            <div className="flex flex-col gap-2 pt-1 border-t border-slate-100">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Rejection reason..."
                 rows={2}
-                className="text-xs border border-slate-200 rounded-lg p-2 resize-none focus:outline-none focus:border-brand"
+                style={{ ...inputStyle, resize: 'none', fontSize: 11, padding: 8, lineHeight: 1.5 }}
               />
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => rejectMut.mutate({ reason: rejectReason })}
                   disabled={!rejectReason.trim()}
-                  className="text-xs font-medium bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  style={{ fontSize: 11, fontWeight: 500, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', opacity: rejectReason.trim() ? 1 : 0.5 }}
                 >Confirm Reject</button>
                 <button
                   onClick={() => setShowReject(false)}
-                  className="text-xs font-medium bg-slate-100 text-slate-600 rounded-lg px-3 py-1.5 hover:bg-slate-200 transition-colors"
+                  style={{ fontSize: 11, fontWeight: 500, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}
                 >Cancel</button>
               </div>
             </div>
@@ -485,11 +542,16 @@ export default function Posts() {
   const clearFilters = () => setSearchParams({})
   const hasFilters = live || platform || postStatus || userAction || draftType || runId || dateFrom || dateTo || search
 
+  const selectStyle: React.CSSProperties = {
+    ...inputStyle,
+    cursor: 'pointer',
+  }
+
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Filter bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
-        <div className="flex flex-wrap gap-3">
+      <div style={{ ...glass, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {/* Live toggle */}
           <button
             onClick={() => {
@@ -500,31 +562,41 @@ export default function Posts() {
                 return next
               })
             }}
-            className={`flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5 border transition-colors ${
-              live
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
-            }`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              borderRadius: 8,
+              padding: '6px 12px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              ...(live
+                ? { background: 'rgba(52,211,153,0.15)', color: '#34d399', outline: '1px solid rgba(52,211,153,0.35)' }
+                : { background: 'rgba(255,255,255,0.05)', color: '#94a3b8', outline: '1px solid rgba(255,255,255,0.1)' }),
+            }}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-white animate-pulse' : 'bg-slate-300'}`} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: live ? '#34d399' : '#64748b', ...(live ? { animation: 'pulse 2s infinite' } : {}) }} />
             Live
           </button>
           <select
             value={platform}
             onChange={(e) => setParam('platform', e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            style={selectStyle}
           >
             {PLATFORMS.map((p) => (
-              <option key={p} value={p}>{p ? p : 'All Platforms'}</option>
+              <option key={p} value={p} style={{ background: '#0f172a' }}>{p ? p : 'All Platforms'}</option>
             ))}
           </select>
           <select
             value={postStatus}
             onChange={(e) => setParam('post_status', e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            style={selectStyle}
           >
             {POST_STATUSES.map((s) => (
-              <option key={s} value={s}>
+              <option key={s} value={s} style={{ background: '#0f172a' }}>
                 {s === '' ? 'All QA Status' : s === 'published' ? 'QA Approved' : s === 'draft' ? 'Draft' : 'QA Rejected'}
               </option>
             ))}
@@ -532,19 +604,19 @@ export default function Posts() {
           <select
             value={userAction}
             onChange={(e) => setParam('user_action', e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            style={selectStyle}
           >
             {ACTIONS.map((a) => (
-              <option key={a} value={a}>{a ? `✎ ${a}` : 'All User Actions'}</option>
+              <option key={a} value={a} style={{ background: '#0f172a' }}>{a ? `✎ ${a}` : 'All User Actions'}</option>
             ))}
           </select>
           <select
             value={draftType}
             onChange={(e) => setParam('draft_type', e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            style={selectStyle}
           >
             {DRAFT_TYPES.map((d) => (
-              <option key={d} value={d}>{d ? d : 'All Types'}</option>
+              <option key={d} value={d} style={{ background: '#0f172a' }}>{d ? d : 'All Types'}</option>
             ))}
           </select>
           <input
@@ -552,19 +624,19 @@ export default function Posts() {
             value={search}
             onChange={(e) => setParam('search', e.target.value)}
             placeholder="Search content..."
-            className="flex-1 min-w-40 text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
           />
         </div>
 
         {/* Second row: run ID + date filters */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-52">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 210 }}>
             <input
               list="run-ids-list"
               value={runId}
               onChange={(e) => setParam('run_id', e.target.value)}
               placeholder="Filter by Run ID..."
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand font-mono"
+              style={{ ...inputStyle, width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
             />
             <datalist id="run-ids-list">
               {runIds.map((id) => <option key={id} value={id} />)}
@@ -572,43 +644,43 @@ export default function Posts() {
             {runId && (
               <button
                 onClick={() => setParam('run_id', '')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
               >✕</button>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500 whitespace-nowrap">From</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>From</label>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setParam('date_from', e.target.value)}
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+              style={{ ...inputStyle, colorScheme: 'dark' }}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500 whitespace-nowrap">To</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>To</label>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setParam('date_to', e.target.value)}
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+              style={{ ...inputStyle, colorScheme: 'dark' }}
             />
           </div>
 
           {hasFilters && (
             <button
               onClick={clearFilters}
-              className="text-xs text-slate-500 hover:text-slate-700 underline whitespace-nowrap"
+              style={{ fontSize: 11, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
             >
               Clear all
             </button>
           )}
 
-          <span className="text-xs text-slate-400 ml-auto">
-            {isLoading ? 'Loading...' : `${data?.total ?? 0} posts`}
+          <span style={{ fontSize: 11, color: '#64748b', marginLeft: 'auto' }}>
+            {isLoading ? 'Loading…' : `${data?.total ?? 0} posts`}
             {live && !isLoading && (
-              <span className="ml-2 text-green-600 font-medium">· next run in {countdown}</span>
+              <span style={{ marginLeft: 8, color: '#34d399', fontWeight: 500 }}>· next run in {countdown}</span>
             )}
           </span>
         </div>
@@ -616,9 +688,9 @@ export default function Posts() {
 
       {/* Results */}
       {isLoading ? (
-        <div className="text-slate-400 text-sm">Loading posts...</div>
+        <div style={{ color: '#64748b', fontSize: 13 }}>Loading posts…</div>
       ) : posts.length === 0 ? (
-        <div className="text-slate-400 text-sm">No posts found.</div>
+        <div style={{ color: '#64748b', fontSize: 13 }}>No posts found.</div>
       ) : (
         <div className="columns-1 md:columns-2 xl:columns-3 gap-4">
           {posts.map((post) => (

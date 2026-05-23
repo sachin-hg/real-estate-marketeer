@@ -97,8 +97,12 @@ async def get_serpapi_re_news(api_key: str) -> list[dict]:
 
     tasks = [
         _serpapi_get(
-            {"engine": "google_news", "q": q, "gl": "in", "hl": "en", "api_key": api_key},
-            use_case=f"SerpAPI Google News (India RE): {q}",
+            {
+                "engine": "google_news", "q": q, "gl": "in", "hl": "en",
+                "tbs": "qdr:2d",   # last 48 hours only
+                "api_key": api_key,
+            },
+            use_case=f"SerpAPI Google News (India RE, last 48h): {q}",
         )
         for q in _re_news_queries()
     ]

@@ -129,6 +129,8 @@ class ContentBrief(TypedDict):
     urgency: str
     seo_keywords: list[str]   # news only; [] for social
     source_summary: str       # 1-2 sentence context injected into creative prompt
+    trend_hashtag: str        # original trending hashtag driving this brief (e.g. "#FA9LA")
+    source_platform: str      # where the trend came from: twitter | instagram | google | research
 
 
 class WorkflowState(TypedDict):

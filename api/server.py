@@ -50,12 +50,16 @@ from api.routes.prompts import router as prompts_router
 from api.routes.trends import router as trends_router
 from api.routes.settings import router as settings_router
 from api.routes.analytics import router as analytics_router
+from api.routes.auth import router as auth_router
+from api.routes.investor import router as investor_router
 
 app.include_router(posts_router)
 app.include_router(prompts_router)
 app.include_router(trends_router)
 app.include_router(settings_router)
 app.include_router(analytics_router)
+app.include_router(auth_router)
+app.include_router(investor_router)
 
 # In-memory run registry (upgrade to Redis/DB for production)
 _runs: dict[str, dict] = {}
@@ -687,6 +691,11 @@ async def trigger_direct_run(req: DirectRunRequest, background_tasks: Background
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/config")
+async def get_config():
+    return {"app_name": get_settings().app_name}
 
 
 async def _execute_run(run_id: str, initial_state: dict):

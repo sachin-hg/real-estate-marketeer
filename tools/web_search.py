@@ -121,20 +121,79 @@ RE_CREDIBLE_DOMAINS = [
     "magicbricks.com",
     "pib.gov.in",
     "mhupa.gov.in",
-    "rera.maharashtra.gov.in",
-    "hrera.org.in",
     "proptigernews.com",
     "livemint.com",
     "businesstoday.in",
 ]
 
-RE_SEARCH_QUERIES = [
-    "India real estate news this week latest developments",
-    "RERA orders penalties builder India 2025",
-    "stamp duty circle rate changes India cities 2025",
-    "new housing project launch DLF Godrej Prestige Lodha Sobha",
-    "affordable housing PMAY scheme update 2025",
-    "luxury housing demand Mumbai Bangalore Delhi NCR",
-    "real estate price trends India top cities",
-    "NRI property investment India 2025",
+# Official state RERA portals — used for circulars / notifications scraping
+RERA_OFFICIAL_DOMAINS = [
+    "maharera.mahaonline.gov.in",
+    "up-rera.in",
+    "rera.telangana.gov.in",
+    "rera.karnataka.gov.in",
+    "hrera.org.in",
+    "rera.rajasthan.gov.in",
+    "gujrera.gujarat.gov.in",
+    "tnrera.in",
+    "rera.odisha.gov.in",
+    "rera.wb.gov.in",
+    "rera.mp.gov.in",
+    "rera.punjab.gov.in",
 ]
+
+
+def _re_search_queries() -> list[str]:
+    from datetime import datetime
+    year = datetime.now().year
+    return [
+        "India real estate news latest developments today",
+        f"RERA orders penalties builder India {year}",
+        f"stamp duty circle rate changes India cities {year}",
+        "new housing project launch DLF Godrej Prestige Lodha Sobha",
+        f"affordable housing PMAY scheme update {year}",
+        "luxury housing demand Mumbai Bangalore Delhi NCR",
+        "real estate price trends India top cities",
+        f"NRI property investment India {year}",
+    ]
+
+
+# Keep module-level list for backward compat (callers that import directly)
+RE_SEARCH_QUERIES = _re_search_queries()
+
+
+def fetch_rera_circulars(days_back: int = 3, max_results: int = 10) -> list[dict]:
+    """
+    Fetch latest circulars, notifications, and orders from official state RERA portals
+    via Tavily with domain restriction. Returns Tavily result dicts.
+    Falls back to [] if Tavily key is missing or search fails.
+    """
+    from datetime import datetime
+    year = datetime.now().year
+    queries = [
+        f"RERA circular notification order {year} site:maharera.mahaonline.gov.in OR site:up-rera.in OR site:hrera.org.in",
+        f"RERA new circular penalty registration {year}",
+    ]
+
+    all_results: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for q in queries:
+        results = web_search(
+            query=q,
+            include_domains=RERA_OFFICIAL_DOMAINS,
+            days_back=days_back,
+            max_results=max_results,
+            search_depth="basic",
+            _use_case=f"RERA official circulars ({year}): {q[:80]}",
+        )
+        for r in results:
+            url = r.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                all_results.append(r)
+        if len(all_results) >= max_results:
+            break
+
+    logger.info("fetch_rera_circulars: %d unique results from official portals", len(all_results))
+    return all_results[:max_results]
