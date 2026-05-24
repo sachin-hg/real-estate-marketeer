@@ -759,9 +759,41 @@ if _ui_dist.exists():
             return Response(data, media_type=ct, headers={'Cache-Control': cc, 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding'})
         return _FileResponse(str(path), media_type=ct, headers={'Cache-Control': cc})
 
+    from fastapi.responses import RedirectResponse as _RedirectResponse
+    from api.routes.auth import _decode_token as _auth_decode
+
+    def _is_authenticated(request: Request) -> bool:
+        """Return True if the request carries a valid JWT (cookie or Bearer header)."""
+        token = request.cookies.get("nava_token")
+        if not token:
+            auth_header = request.headers.get("authorization", "")
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header[7:]
+        if not token:
+            return False
+        try:
+            _auth_decode(token)
+            return True
+        except Exception:
+            return False
+
+    # Routes that require a valid session before the pre-rendered HTML is served.
+    # The server redirect keeps the auth gate server-side so the pre-rendered HTML
+    # is only delivered to authenticated users (no client-side hydration flash).
+    _AUTH_GATED_ROUTES = {"pitch"}
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str, request: Request):
         ae = request.headers.get('accept-encoding', '')
+
+        # Server-side auth gate for routes whose pre-rendered HTML should not
+        # be visible to unauthenticated users.
+        if full_path in _AUTH_GATED_ROUTES and not _is_authenticated(request):
+            return _RedirectResponse(
+                url=f"/login?next=%2F{full_path}",
+                status_code=302,
+            )
+
         candidate = _ui_dist / full_path
         if candidate.is_file():
             return _serve_file(candidate, 'no-cache', ae)

@@ -401,6 +401,13 @@ const ROUTES = [
     noIndex: true,
     schemas: [],
   },
+  {
+    path: '/pitch',
+    title: `${BRAND} — Investor Pitch Deck`,
+    description: `${BRAND} investor pitch deck. AI trend-jacking engine — 3.8× engagement lift, 200+ autonomous posts, proven at Housing.com. Raising seed.`,
+    noIndex: true,
+    schemas: [],
+  },
 ]
 
 // ── Build helpers ─────────────────────────────────────────────────────────────
@@ -444,7 +451,9 @@ function buildMetaBlock(route) {
     // Versioned icon links (CDN if configured, else plain paths from origin)
     `  <link rel="icon" type="image/svg+xml" href="${cdnAsset('favicon.svg')}" />`,
     `  <link rel="apple-touch-icon" href="${cdnAsset('apple-touch-icon.png')}" />`,
-    `  <link rel="manifest" href="${CDN_BASE ? `${CDN_BASE}/manifest.json` : '/manifest.json'}" />`,
+    // manifest.json is always served from origin (same-domain) — browsers fetch it with
+    // CORS mode and R2 has no CORS policy, so a CDN URL here would be blocked.
+    `  <link rel="manifest" href="/manifest.json" />`,
 
     // Preload OG image on the home page only
     route.path === '/' ? `  <link rel="preload" as="image" href="${OG_IMAGE}" fetchpriority="low" />` : '',
@@ -472,8 +481,9 @@ function writeManifest() {
     lang: 'en',
     dir: 'ltr',
     icons: [
-      { src: cdnAsset('favicon.svg'), type: 'image/svg+xml', sizes: 'any', purpose: 'any maskable' },
-      { src: cdnAsset('apple-touch-icon.png'), type: 'image/png', sizes: '180x180' },
+      // Use origin-relative paths so PWA icon fetches don't require R2 CORS headers.
+      { src: `/${ASSET_HASHES['favicon.svg'] || 'favicon.svg'}`, type: 'image/svg+xml', sizes: 'any', purpose: 'any maskable' },
+      { src: `/${ASSET_HASHES['apple-touch-icon.png'] || 'apple-touch-icon.png'}`, type: 'image/png', sizes: '180x180' },
     ],
     shortcuts: [
       { name: 'Dashboard', url: '/dashboard', description: 'Open your content dashboard' },

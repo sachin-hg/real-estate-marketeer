@@ -18,7 +18,7 @@ const CAR_H = 440
 const useAppName = useBrandName
 
 function useMobile() {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 768)
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>
     const h = () => { clearTimeout(t); t = setTimeout(() => setMobile(window.innerWidth < 768), 150) }

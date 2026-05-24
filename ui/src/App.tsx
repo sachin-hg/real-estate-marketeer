@@ -91,8 +91,10 @@ export default function App() {
       <Route path="/pricing" element={<Suspense fallback={<PageFallback />}><Pricing /></Suspense>} />
       <Route path="/demo" element={<Suspense fallback={<PageFallback />}><Demo /></Suspense>} />
 
-      {/* Protected: investor pitch */}
-      <Route element={<ProtectedRoute />}>
+      {/* Protected: investor pitch — server-auth-gated (FastAPI 302s unauthenticated
+          requests), so optimistic=true keeps the pre-rendered HTML visible while
+          the client-side auth check resolves. */}
+      <Route element={<ProtectedRoute optimistic />}>
         <Route path="/pitch" element={<Suspense fallback={<PageFallback />}><Pitch /></Suspense>} />
       </Route>
 
