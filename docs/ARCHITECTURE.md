@@ -845,24 +845,54 @@ Decision: publish | revise | reject
 | housing_news | 7.0 / 10 | 0.0% |
 | youtube | 6.0 / 10 | 0.0% |
 
+### Decision Logic (`_decide()`)
+
+```python
+# For each post after Pass 2 + 3:
+if any hard_dim score < 5.0:
+    → "revise" (if overall ≥ 4.0) or "reject"
+
+if overall_quality_score < platform_min_quality:
+    → "revise" (if overall ≥ 4.0) or "reject"
+
+if platform has min_er > 0 and pred_er < min_er:
+    → "revise" (if overall ≥ 4.0) or "reject"
+
+if no issues:
+    → "publish"
+```
+
+**Hard threshold:** `overall_quality_score < 4.0` = hard reject. No revision attempted — post is too far gone.
+
 ### Revision Loop
 
 ```
 QA → "revise" decision
   │
   ▼
-Revision instructions generated (per-platform):
-  LOCKED: trend hook, brand voice, factual claims
-  FIXABLE: character count, wit, internal links, hashtags
+Pass 2 critique injected into platform-specific revision system prompt
+  │
+  LOCKED (never change):
+    Twitter:       Cultural/trend hook, Hinglish voice, human emotion
+    Instagram:     Cultural hook, card concept theme
+    LinkedIn:      Professional trend hook
+    Housing News:  All factual claims — never change a stat
+    YouTube:       Trend or education angle
+  │
+  FIXABLE:
+    Twitter:       Trim to ≤280 chars, sharpen punchline, fix CTA
+    Instagram:     Trim caption to ≤150 chars, hashtag order, card strength
+    LinkedIn:      Employer brand CTA, length (150-400), dry wit, data attribution
+    Housing News:  Headline, SEO, article structure, internal links
+    YouTube:       Opening hook, script naturalness, CTA
+  │
+  HARD RULE: If trend hook was already swapped for RE data → reject, do not revise
   │
   ▼
-Platform agent re-runs with revision_instructions[]
+Revision agent produces revised content → full QA cycle repeats (Pass 1 + 2 + 3)
   │
-  ▼
-QA re-evaluates (qa_attempt incremented)
-  │
-  ├── Still fails → REJECT (after max_qa_retries=2)
-  └── Now passes → approved_posts[]
+  ├── Still fails after max_qa_retries (default 2) → REJECT
+  └── Passes → approved_posts[]
 ```
 
 ### Engagement Prediction Benchmarks
@@ -1490,3 +1520,16 @@ See `docs/design_debates.md` for:
 - Gemini Flash as fast tier is purely a cost optimisation — falls back to Haiku silently if no key
 - `checkpoints.db` is separate from `housing_content.db` — LangGraph state vs application data
 - Per-run `run.log` alongside global DB means full auditability even if DB is wiped
+
+---
+
+## Related Documents
+
+| Document | Covers |
+|---|---|
+| `docs/CONTENT_STRATEGY.md` | Zomato model, per-platform content pillars, LinkedIn employer brand strategy, QA decision logic with full thresholds, engagement feedback loop, anti-patterns catalogue |
+| `docs/PROMPTS.md` | All system prompts for every agent and QA pass, hooks bank structure, few-shot strategy, revision system prompts, prompting invariants |
+| `docs/API_INTEGRATIONS.md` | Complete API reference: auth methods, endpoints, rate limits, fallback chains, cost estimates per API |
+| `docs/TECHNICAL_DESIGN.md` | Design decisions, known pitfalls, production readiness checklist, infrastructure sizing, deployment guide |
+| `docs/design_debates.md` | Explicitly deferred architecture decisions with rationale |
+| `CLAUDE.md` | Product positioning and session instructions for AI assistants |
