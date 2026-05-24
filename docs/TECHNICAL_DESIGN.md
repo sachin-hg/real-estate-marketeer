@@ -74,7 +74,8 @@ The system eliminates the human bottleneck in content production while preservin
 │          │              QA AGENT                        │               │
 │          │  Pass 1: Safety Gate    (Gemini Flash/Haiku) │               │
 │          │  Pass 2: Quality Score  (Sonnet - balanced)  │               │
-│          │  Pass 3: Engagement Pred(Sonnet - structured) │              │
+│          │  Pass 3: Engagement     (Gemini Flash/Haiku) │               │
+│          │  [Pass 2 + 3 run in parallel]                │               │
 │          └──────────────────┬────────────────────────────┘              │
 │                    publish / revise / reject                             │
 │                             ▼                                            │
@@ -121,14 +122,15 @@ The system eliminates the human bottleneck in content production while preservin
 |---|---|---|---|---|
 | **Researcher** | Sonnet 4.6 | Web search for RE news via Tavily; multi-turn tool use; max 5 rounds | `topic_hint` | `List[NewsItem]` |
 | **Trend Researcher** | Sonnet 4.6 | Aggregates Google Trends + Apify Twitter; deduplicates vs last 48h published; adds creative hooks | Raw trend data | `List[TrendItem]` |
-| **Creative Marketeer** | Opus 4.7 (social) / Sonnet 4.6 (news) | Two-track generation: Zomato-style social drafts + SEO news drafts; reads top/bottom performers from DB | Research + Trends + History | `List[CreativeDraft]` |
+| **Social Creative** (`social_creative`) | Opus 4.7 | Zomato-style social drafts from ContentBriefs; reads top/bottom performers from DB; parallel with news_creative | Research + Trends + Briefs | `List[CreativeDraft]` |
+| **News Creative** (`news_creative`) | Sonnet 4.6 | SEO articles (700–1000 words) from news ContentBriefs; parallel with social_creative | Research + Briefs | `List[CreativeDraft]` |
 | **Internal Retriever** | Gemini 2.5 Flash (or Haiku 4.5) | Extracts city/builder/project mentions; generates housing.com URLs; routes `social_brand` intent separately | `CreativeDraft` body/zomato_hook | `List[InternalLink]` per draft |
 | **Twitter Agent** | Sonnet 4.6 | Hinglish punchy tweet ≤280 chars; optional branded card; trend hashtag first | `CreativeDraft` (social) | `PlatformPost` |
 | **Instagram Agent** | Sonnet 4.6 | Hinglish caption ≤150 chars; generates PIL branded card (1080×1080); meme_overlay placeholder | `CreativeDraft` (social) | `PlatformPost` + PNG |
 | **YouTube Agent** | Sonnet 4.6 | Shorts script (15–60s) + long-form outline; adapts tone to social vs news draft type | `CreativeDraft` (social+news) | `PlatformPost` |
 | **Housing News Agent** | Sonnet 4.6 | Full SEO article 700–1000 words; curiosity-gap headline; sparkly opener; internal links | `CreativeDraft` (news) | `PlatformPost` |
-| **LinkedIn Agent** | Sonnet 4.6 | Hinglish employer brand 150–350 chars; riffs on trending events (layoffs, AI, WFH) to showcase Housing.com work culture; careers CTA; social drafts only | `CreativeDraft` (social) | `PlatformPost` |
-| **QA Agent** | Gemini Flash / Sonnet 4.6 | 3-pass: safety gate (fast tier) → quality score (Sonnet) → engagement prediction (Sonnet); platform-aware thresholds | `PlatformPost` + sources | `QAResult` + decision |
+| **LinkedIn Agent** | Sonnet 4.6 | Employer brand post 150–400 chars; riffs on trending events (layoffs, AI, WFH) to showcase brand culture; careers CTA; social drafts only | `CreativeDraft` (social) | `PlatformPost` |
+| **QA Agent** | Gemini Flash / Haiku (Pass 1+3), Sonnet 4.6 (Pass 2) | 3-pass: Pass 1 safety gate (fast tier, serial) → Pass 2 quality + Pass 3 engagement in parallel (asyncio.gather); platform-aware thresholds | `PlatformPost` + sources | `QAResult` + decision |
 | **Publisher** | — | Routes to platform APIs or saves locally; writes to DB; schedules engagement tracker jobs | Approved posts | `List[PublishedPost]` |
 | **Notifier** | — | Posts Slack summary with kill-switch; sends error alert when all posts rejected | Published posts | Slack message |
 
@@ -142,7 +144,15 @@ START
                                         (barrier: both must complete)
                                                             │
                                                             ▼
-                                              creative_marketeer
+                                                        planner
+                                                            │
+                                          ┌─────────────────┴─────────────────┐
+                                          ▼                                   ▼
+                                   social_creative                    news_creative
+                                          │                                   │
+                                          └─────────────────┬─────────────────┘
+                                                            │
+                                               (operator.add merges both lists)
                                                             │
                                                             ▼
                                               internal_retriever
@@ -162,9 +172,11 @@ START
                                            END
 ```
 
-**Parallel execution:** `researcher` and `trend_researcher` run in the same LangGraph super-step (concurrently). `creative_marketeer` has incoming edges from both — it won't start until both complete (barrier synchronization, built into LangGraph's execution model).
+**Parallel execution:** `researcher` and `trend_researcher` run in the same LangGraph super-step (concurrently). `planner` has incoming edges from both — it won't start until both complete (barrier synchronization, built into LangGraph's execution model).
 
-**Platform agent parallelism:** The `platform_agents` node is a single LangGraph node that internally uses `asyncio.gather` to run all 4 platform agents concurrently. This is simpler than fan-out/fan-in Send API while achieving the same effect.
+**Creative parallelism:** `social_creative` and `news_creative` also run in parallel after `planner` completes. Both write to `creative_drafts` — LangGraph's `Annotated[list, operator.add]` reducer merges the results atomically at `internal_retriever`.
+
+**Platform agent parallelism:** The `platform_agents` node is a single LangGraph node that internally uses `asyncio.gather` to run all 5 platform agents (Twitter, Instagram, YouTube, Housing News, LinkedIn) concurrently. This is simpler than fan-out/fan-in Send API while achieving the same effect.
 
 ### 2.3 Tool Layer
 
@@ -269,19 +281,19 @@ published_posts
 
 | Tier | Provider + Model | Cost (Input/Output per MTok) | Where Used |
 |---|---|---|---|
-| Fast | Gemini 2.5 Flash (preferred) | $0.30 / $2.50 | Safety gate, entity/signal extraction |
-| Fast (fallback) | Claude Haiku 4.5 | $1.00 / $5.00 | Same tasks when `GEMINI_API_KEY` not set |
-| Balanced | Claude Sonnet 4.6 | $3.00 / $15.00 | Research, all platform agents, QA quality + engagement, news creative |
-| Creative | Claude Opus 4.7 | $5.00 / $25.00 | Social creative content generation (Zomato-style hooks) |
+| Fast | Gemini 2.5 Flash (preferred) | $0.30 / $2.50 | Safety gate, engagement prediction, internal link extraction |
+| Fast (fallback) | Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) | $1.00 / $5.00 | Same tasks when `GEMINI_API_KEY` not set |
+| Balanced | Claude Sonnet 4.6 | $3.00 / $15.00 | Research, planner, all 5 platform agents, QA quality scoring, news creative |
+| Creative | Claude Opus 4.7 | $5.00 / $25.00 | Social creative content generation (Zomato-style hooks) only |
 
 **Provider selection logic** (`llm_router.py`): For the `fast` tier, the router checks for `GEMINI_API_KEY` at call time. If set, routes to Gemini 2.5 Flash; otherwise falls back to Haiku. Balanced and Creative tiers always use Anthropic.
 
 **Key routing decisions:**
-- **Engagement predictor** was downgraded from Opus → Sonnet: structured prediction on defined schema doesn't require Opus's creative depth; saves ~$0.060/run
+- **Engagement predictor** was downgraded from Opus → Sonnet → fast tier: the task is schema-bound (inject platform benchmarks, output structured JSON) — fast tier handles it accurately at minimal cost; saves ~$0.15/run vs Opus
 - **News creative** was downgraded from Opus → Sonnet: news drafts follow a defined schema (not free-form creativity); saves ~$0.070/run
 - **Gemini 2.5 Flash** replaces Haiku for fast-tier calls: 53% cheaper ($0.30 vs $1.00 input), structured JSON output via `response_mime_type="application/json"`
 
-**Cost impact:** Gemini Flash for safety/extraction saves ~65% on those steps vs Haiku. Sonnet for engagement/news instead of Opus saves ~60% on those calls. Combined: ~20% reduction in total per-run LLM cost vs original design.
+**Cost impact:** Gemini Flash for safety/engagement/extraction saves ~65% on those steps vs Haiku. Sonnet for news/platform/quality instead of Opus saves ~60% on those calls. Combined: ~25% reduction in total per-run LLM cost vs original design.
 
 ---
 
@@ -297,11 +309,11 @@ published_posts
 
 ### 3.4 Async Platform Agent Execution
 
-**Decision:** The `platform_agents` node uses `asyncio.gather` internally to run all 4 platform agents concurrently rather than using LangGraph's `Send` fan-out API.
+**Decision:** The `platform_agents` node uses `asyncio.gather` internally to run all 5 platform agents (Twitter, Instagram, YouTube, Housing News, LinkedIn) concurrently rather than using LangGraph's `Send` fan-out API.
 
 **Rationale:** LangGraph's Send API requires each sub-agent to write to an `Annotated[list, operator.add]` field, and the join logic adds complexity when some agents fail. `asyncio.gather(return_exceptions=True)` achieves the same concurrency, handles individual failures without aborting all agents, and keeps the graph topology simpler (one node instead of 5).
 
-**Tradeoff:** LangGraph cannot individually checkpoint each platform agent's output. If the node partially fails mid-gather, all 4 re-run on retry. Acceptable for a ~10-second operation.
+**Tradeoff:** LangGraph cannot individually checkpoint each platform agent's output. If the node partially fails mid-gather, all 5 re-run on retry. Acceptable for a ~10-second operation.
 
 ---
 
@@ -330,15 +342,16 @@ published_posts
 **Decision:** Split QA into three sequential passes with different models rather than one combined pass.
 
 ```
-Pass 1: Safety     (Gemini Flash / Haiku)  → binary PASS/FAIL, fast, cheap
-Pass 2: Quality    (Sonnet 4.6)            → multi-dimensional scoring, fixable issues
-Pass 3: Engagement (Sonnet 4.6)            → structured prediction + platform-aware threshold
+Pass 1: Safety     (model_fast: Gemini Flash / Haiku)   → binary PASS/FAIL, fast, cheap
+Pass 2: Quality    (model_balanced: Sonnet 4.6)          → multi-dimensional scoring, fixable issues
+Pass 3: Engagement (model_fast: Gemini Flash / Haiku)    → heuristic prediction, platform benchmarks
+                    ↑ Passes 2 + 3 run in parallel via asyncio.gather
 ```
 
 **Rationale:**
 - **Early exit saves money:** If Pass 1 fails (safety violation), Passes 2 and 3 never run. Safety violations are rare but cheap to catch early.
-- **Right model for each task:** Safety is pattern-matching (is this content in a forbidden category?) — Gemini Flash or Haiku is sufficient. Engagement prediction uses a defined schema with platform-specific reference data; Sonnet handles this accurately without Opus-level reasoning.
-- **Opus removed from QA:** Opus was used for engagement prediction in the original design; downgraded to Sonnet after analysis showed the task is schema-bound (not open-ended creative reasoning). Saves ~$0.060/run.
+- **Right model for each task:** Safety is pattern-matching — Gemini Flash or Haiku is sufficient. Quality scoring requires nuanced per-platform evaluation — Sonnet. Engagement prediction is a schema-bound heuristic (not open-ended reasoning) — fast tier is sufficient.
+- **Opus removed from QA entirely:** Opus was considered for engagement prediction but rejected — the task is schema-bound with platform benchmarks injected as context, not requiring creative depth. Engagement uses fast tier, saving ~$0.15/run vs Opus.
 - **Platform-aware thresholds:** Pass 3 applies different minimum engagement rate thresholds per platform (Twitter 0.5%, Instagram 2.0%, YouTube/Housing News/LinkedIn 0.0% — these are not ER-driven).
 
 **Platform engagement thresholds:**
@@ -591,9 +604,9 @@ tools = [{"name": "submit_content", "input_schema": CreativeDraftSchema}]
 
 | Item | Status | Notes |
 |---|---|---|
-| Structured logging | ⚠️ Basic | Upgrade to JSON logs with `run_id`, `node`, `model`, `tokens`, `cost` fields |
+| Structured logging | ✅ Implemented | `run_logger.py` writes per-run `run.log` with agent/model/tokens/cost/elapsed_ms |
 | Distributed tracing | ❌ None | Add OpenTelemetry spans around each agent call |
-| Cost tracking | ❌ None | Log token counts per call; aggregate cost per run to DB |
+| Cost tracking | ✅ Implemented | `llm_calls` + `api_calls` DB tables record every LLM/API call with token counts and `cost_usd`; `/api/analytics` exposes cost per run |
 | Error tracking | ❌ None | Integrate Sentry for exception capture and alerting |
 | Dashboards | ❌ None | See §9 for recommended dashboards |
 
@@ -601,11 +614,11 @@ tools = [{"name": "submit_content", "input_schema": CreativeDraftSchema}]
 
 | Item | Status | Action |
 |---|---|---|
-| Tests | ❌ None | Add pytest unit tests for URL generation, QA decision logic, JSON parsers |
+| Tests | ⚠️ Minimal | `tools/test_housing_urls.py` + course exercises exist; add full pytest suite for QA decision logic and JSON parsers |
 | Integration tests | ❌ None | Mock Claude + Tavily; test full graph execution with fixed inputs |
 | Linting | ❌ None | Add `ruff` + `mypy` to pre-commit hooks |
-| Docker image | ❌ None | See §10 for Dockerfile |
-| Deployment pipeline | ❌ None | GitHub Actions → build → push to registry → deploy to Cloud Run / ECS |
+| Docker image | ✅ Exists | `Dockerfile` at project root; used by Railway (`railway.toml`). See §10 for docker-compose |
+| Deployment pipeline | ⚠️ Railway | Auto-deploys on push to `main` via Railway GitHub integration; no explicit CI/CD pipeline for staging/prod |
 
 ### 6.6 Social API Management
 
@@ -637,18 +650,18 @@ Each LangGraph node catches its own exceptions and returns a partial/empty resul
 
 ### 7.2 LangGraph Checkpointing (Resumable Runs)
 
-**Current state:** In-memory `MemorySaver` checkpointer. State is lost if the process crashes mid-run.
+**Current state:** `AsyncSqliteSaver` (separate `checkpoints.db` file, enabled when `ENABLE_CHECKPOINTING=True`). State survives process restarts — runs can be resumed from the last completed node.
 
-**Production upgrade:**
+**Production upgrade (when moving to Postgres):**
 ```python
 # workflow/graph.py
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-checkpointer = PostgresSaver.from_conn_string(settings.database_url)
+checkpointer = AsyncPostgresSaver.from_conn_string(settings.database_url)
 graph = builder.compile(checkpointer=checkpointer)
 ```
 
-With a persistent checkpointer, a crashed run can be resumed from the last completed node:
+With any persistent checkpointer, a crashed run can be resumed:
 ```python
 # Resume a run that failed at platform_agents
 graph.invoke(None, config={"configurable": {"thread_id": run_id}})
@@ -1075,24 +1088,50 @@ pgloader sqlite:///./housing_content.db postgresql://user:pass@localhost/housing
 | `ANTHROPIC_API_KEY` | **Yes** | — | Claude API key (Haiku/Sonnet/Opus) |
 | `TAVILY_API_KEY` | **Yes** | — | Web search for researcher agent |
 | `GEMINI_API_KEY` | Recommended | — | Google Gemini 2.5 Flash for fast-tier calls; 53% cheaper than Haiku |
-| `SLACK_BOT_TOKEN` | No | — | Slack notifications |
-| `SLACK_CHANNEL_ID` | No | — | Target Slack channel |
-| `APIFY_API_TOKEN` | No | — | Twitter trend scraping |
-| `TWITTER_*` (5 vars) | No | — | Live Twitter posting |
-| `INSTAGRAM_ACCESS_TOKEN` | No | — | Live Instagram posting |
+| `OPENAI_API_KEY` | No | — | DALL-E 3 image generation (Twitter/YouTube thumbnails) |
+| `SLACK_BOT_TOKEN` | No | — | Slack notifications + bot posting |
+| `SLACK_APP_TOKEN` | No | — | Socket Mode — required for `python main.py slack-bot` |
+| `SLACK_SIGNING_SECRET` | No | — | Verify Slack webhook requests |
+| `SLACK_CHANNEL_ID` | No | — | Target Slack channel for run summaries |
+| `SERPER_API_KEY` | No | — | Serper.dev Google News (fast; falls back to Tavily if absent) |
+| `SERP_API_KEY` | No | — | SerpAPI Google News + Trends India (supplement) |
+| `RAPIDAPI_KEY` | No | — | Twitter Trends via RapidAPI (3rd fallback in trend chain) |
+| `REDDIT_CLIENT_ID` | No | — | Reddit PRAW app client ID |
+| `REDDIT_CLIENT_SECRET` | No | — | Reddit PRAW app client secret |
+| `APIFY_API_TOKEN` | No | — | Twitter/X trend scraping via Apify (2nd fallback) |
+| `TWITTER_API_KEY` | No | — | Twitter v2 OAuth consumer key |
+| `TWITTER_API_SECRET` | No | — | Twitter v2 OAuth consumer secret |
+| `TWITTER_ACCESS_TOKEN` | No | — | Twitter v2 access token |
+| `TWITTER_ACCESS_TOKEN_SECRET` | No | — | Twitter v2 access token secret |
+| `TWITTER_BEARER_TOKEN` | No | — | Twitter bearer token (also used for trend fetching, 1st fallback) |
+| `INSTAGRAM_ACCESS_TOKEN` | No | — | Instagram Graph API long-lived token |
 | `INSTAGRAM_ACCOUNT_ID` | No | — | IG Business Account ID |
 | `LINKEDIN_ACCESS_TOKEN` | No | — | Live LinkedIn posting |
-| `LINKEDIN_PERSON_URN` | No | — | LinkedIn person/org URN for posting |
-| `YOUTUBE_API_KEY` | No | — | YouTube channel metadata |
+| `YOUTUBE_API_KEY` | No | — | YouTube Data API v3 (trending + publishing) |
 | `YOUTUBE_CHANNEL_ID` | No | — | Target YouTube channel |
-| `HOUSING_CMS_API_KEY` | No | — | Housing.com News CMS |
-| `DATABASE_URL` | No | SQLite | Database connection string |
+| `HOUSING_CMS_API_KEY` | No | — | Housing.com News CMS API |
+| `HOUSING_CMS_BASE_URL` | No | `https://cms.housing.com/api/v1` | CMS endpoint override |
+| `APP_NAME` | No | `NAVA` | Brand/product name (white-label override) |
+| `DATABASE_URL` | No | `sqlite+aiosqlite:///./housing_content.db` | Database connection string |
+| `CHECKPOINT_DB_PATH` | No | `checkpoints.db` | LangGraph AsyncSqliteSaver checkpoint file |
+| `ASSETS_DIR` | No | `assets` | Path for fonts and logo (PIL image generation) |
+| `ASSET_STORAGE_BACKEND` | No | `local` | `local` / `s3` / `gcs` — where generated images are stored |
+| `AWS_S3_BUCKET` | No | — | S3 bucket (required when `ASSET_STORAGE_BACKEND=s3`) |
+| `GCS_BUCKET` | No | — | GCS bucket (required when `ASSET_STORAGE_BACKEND=gcs`) |
 | `DRY_RUN` | No | `true` | Skip live social posting |
+| `HUMAN_IN_THE_LOOP` | No | `false` | Save posts as drafts awaiting human publish approval |
 | `MAX_CREATIVE_DRAFTS` | No | `3` | Content ideas per run |
 | `TARGET_PLATFORMS` | No | all 5 | Comma-separated platform list |
-| `MAX_QA_RETRIES` | No | `1` | QA revision attempts |
+| `MAX_QA_RETRIES` | No | `2` | QA revision attempts per post |
+| `ENABLE_CHECKPOINTING` | No | `true` | LangGraph run resumability via AsyncSqliteSaver |
+| `ENABLE_PLANNER` | No | `true` | Planner quality-gate node |
+| `ENABLE_IMAGE_GENERATION` | No | `true` | PIL branded cards + DALL-E if `OPENAI_API_KEY` set |
+| `ENABLE_FILE_OUTPUTS` | No | `true` | Write `output/<run_id>/` files |
+| `PLATFORM_AGENT_TIMEOUT` | No | `180` | Seconds for asyncio.gather timeout on platform agents |
+| `LLM_TIMEOUT` | No | `60.0` | Seconds per individual LLM call |
+| `LLM_RETRIES` | No | `2` | LLM-level retry attempts |
+| `TAVILY_SEARCH_DEPTH` | No | `basic` | `basic` (1 credit) or `advanced` (5 credits) |
 | `LOG_LEVEL` | No | `INFO` | Python logging level |
-| `ASSETS_DIR` | No | `assets` | Path for cached fonts and logo (PIL image generation) |
 
 ## Appendix B: Housing.com URL Patterns
 
@@ -1110,10 +1149,10 @@ pgloader sqlite:///./housing_content.db postgresql://user:pass@localhost/housing
 
 | Model | Input | Output | Used For |
 |---|---|---|---|
-| gemini-2.5-flash | $0.30/MTok | $2.50/MTok | Safety gate, entity/signal extraction (fast tier, preferred) |
-| claude-haiku-4-5 | $1.00/MTok | $5.00/MTok | Fast-tier fallback when `GEMINI_API_KEY` not set |
-| claude-sonnet-4-6 | $3.00/MTok | $15.00/MTok | Research, all 5 platform agents, QA quality + engagement, news creative |
-| claude-opus-4-7 | $5.00/MTok | $25.00/MTok | Social creative content generation (Zomato-style hooks) |
+| gemini-2.5-flash | $0.30/MTok | $2.50/MTok | Safety gate, engagement prediction, internal link extraction (fast tier, preferred) |
+| claude-haiku-4-5-20251001 | $1.00/MTok | $5.00/MTok | Fast-tier fallback when `GEMINI_API_KEY` not set |
+| claude-sonnet-4-6 | $3.00/MTok | $15.00/MTok | Research, planner, all 5 platform agents, QA quality scoring, news creative |
+| claude-opus-4-7 | $5.00/MTok | $25.00/MTok | Social creative content generation (Zomato-style hooks) only |
 
 Estimated cost per run: **~$0.85** (base with Gemini Flash) / **~$0.98** (with 15% buffer).  
 Original design was ~$1.07 before model routing optimisations.  

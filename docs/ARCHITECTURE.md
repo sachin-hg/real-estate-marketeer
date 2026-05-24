@@ -98,7 +98,7 @@ Input sources → Research (parallel) → Planner → Creative (parallel) → Pl
 │                    │    qa_agent      │  3-pass evaluation              │
 │                    │  Pass 1: Safety  │  ← Gemini Flash / Haiku         │
 │                    │  Pass 2: Quality │  ← Sonnet 4.6                   │
-│                    │  Pass 3: Engmnt  │  ← Opus 4.7 (social)           │
+│                    │  Pass 3: Engmnt  │  ← Gemini Flash / Haiku        │
 │                    └────────┬─────────┘       Sonnet (news)            │
 │                             │                                           │
 │                    ┌────────┴──────────┐                                │
@@ -256,7 +256,7 @@ START
 | **Runs** | Parallel with trend_researcher |
 | **Input state** | `topic_hint` (optional) |
 | **Output state** | `research: list[NewsItem]` |
-| **External APIs** | Tavily (`web_search`) |
+| **External APIs** | Tavily (`web_search`) + SerpAPI (`SERP_API_KEY`, optional) |
 | **Preferred domains** | economictimes, hindustantimes, housing.com, anarock, jll, credai, 99acres, magicbricks, PIB, MHUPA, RERA state portals |
 | **Search strategy** | Up to 5 rounds; stops early when ≥6 quality stories found |
 | **Output size** | 8 NewsItems: headline, source, url, summary, relevance |
@@ -272,7 +272,7 @@ START
 | **Runs** | Parallel with researcher |
 | **Input state** | None (pulls from live sources) |
 | **Output state** | `trends: list[TrendItem]` |
-| **External APIs** | Google Trends (pytrends), YouTube Data API v3, Reddit (PRAW), Serper News (optional), Apify (optional) |
+| **External APIs** | Google Trends (pytrends), YouTube Data API v3, Reddit (PRAW), Serper News (optional), SerpAPI (optional), Twitter bearer token → Apify → RapidAPI (3-way fallback chain) |
 | **Output size** | 15 TrendItems with Hinglish creative_hook |
 | **Deduplication** | Checks DB: skips hashtags published in last 48h |
 | **Key rule** | Trend hook = hero; RE = punchline (Zomato style) |
@@ -421,6 +421,16 @@ BUT "The City Nobody Expected to Beat Mumbai — Pune's Quiet Property Surge in 
 ---
 
 ### qa_agent
+| Property | Value |
+|---|---|
+| **File** | `agents/qa_agent.py` |
+| **Pass 1 model** | `model_fast` (Gemini Flash / Haiku) — safety gate, temperature=0 |
+| **Pass 2 model** | `model_balanced` (Sonnet 4.6) — per-platform quality scoring |
+| **Pass 3 model** | `model_fast` (Gemini Flash / Haiku) — engagement heuristic prediction |
+| **Concurrency** | Pass 1 runs first (fast-fail on safety); Passes 2+3 run **in parallel** via `asyncio.gather` |
+| **Input state** | `platform_posts[]` |
+| **Output state** | `qa_results[]`, `approved_posts[]` |
+
 See [Section 7](#7-qa-system-3-pass) for full detail.
 
 ---
@@ -570,7 +580,7 @@ All sources fail gracefully — `fetch_all_trends()` returns whatever is availab
 | Function | Purpose |
 |---|---|
 | `resolve_handles_in_text(text, platform)` | Replaces `[LOOKUP: EntityName]` with actual @handles |
-| `inject_known_mentions(text, platform, max_new)` | Auto-tags brands/teams mentioned but not yet tagged |
+| `inject_known_mentions(text, mentions, platform)` | Auto-tags brands/teams mentioned but not yet tagged |
 
 Known handles: Zomato, Swiggy, HDFC, RCB, SRK, Virat Kohli, etc. (extensible dict).
 
@@ -586,12 +596,103 @@ Known handles: Zomato, Swiggy, HDFC, RCB, SRK, Virat Kohli, etc. (extensible dic
 
 ---
 
+### Housing Retriever (`tools/housing_retriever.py`)
+
+| Function | Purpose |
+|---|---|
+| `fetch_links_for_signals(signals)` | Takes extracted RE signals dict → returns list of internal housing.com links |
+
+Complements `housing_urls.py` — this layer takes structured signals (cities, localities, filters, intent) and orchestrates URL construction across city, builder, and project types.
+
+---
+
+### Link Embedder (`tools/link_embedder.py`)
+
+| Function | Purpose |
+|---|---|
+| `embed_city_links(content, platform, links)` | Embeds internal links into Markdown or LinkedIn post body (platform-aware formatting) |
+
+---
+
+### Image Generator (`tools/image_generator.py`)
+
+DALL-E 3 image generation for Twitter and YouTube thumbnails (when `enable_image_generation=True` and `OPENAI_API_KEY` is set).
+
+| Function | Purpose |
+|---|---|
+| `generate_image(media_format, platform, prompt, output_path)` | Calls DALL-E 3 with Housing-style suffix to generate platform images |
+
+DALL-E failures return `None` — post is published text-only without aborting.
+
+---
+
+### SerpAPI Utils (`tools/serpapi_utils.py`)
+
+| Function | Purpose |
+|---|---|
+| `get_serpapi_re_news(api_key)` | Fetch India RE news headlines via SerpAPI Google News |
+| `get_serpapi_google_trends_india(api_key)` | Fetch Google Trends India via SerpAPI (async) |
+
+Optional supplement to pytrends when `SERP_API_KEY` is set.
+
+---
+
+### Asset Storage (`tools/asset_storage.py`)
+
+| Function | Purpose |
+|---|---|
+| `upload_asset(local_path, run_id, filename)` | Uploads media to configured backend (local / S3 / GCS / R2) |
+
+Backend selected by `ASSET_STORAGE_BACKEND` env var. Returns a public URL or local path.
+
+---
+
+### Run Context (`tools/run_context.py`)
+
+Thread-safe `run_id` propagation via Python `ContextVar`.
+
+| Function | Purpose |
+|---|---|
+| `set_run_id(run_id)` | Set current run ID in async context |
+| `get_run_id()` | Retrieve run ID from any coroutine without passing it explicitly |
+| `reset_run_id(token)` | Reset context variable after run completes |
+
+---
+
+### JSON Utils (`tools/json_utils.py`)
+
+| Function | Purpose |
+|---|---|
+| `extract_json(text)` | Safe JSON extraction from LLM output — strips fences, prose, fixes common malformations via `json-repair` |
+
+---
+
+### RE Signals Utils (`tools/re_signals_utils.py`)
+
+| Function | Purpose |
+|---|---|
+| `safe_signals(draft)` | Normalizes and validates RE signals dict from a CreativeDraft |
+
+---
+
+### Slack Bot (`tools/slack_bot.py`)
+
+| Function | Purpose |
+|---|---|
+| `run_socket_mode_bot()` | Starts Slack Socket Mode listener — DMs or @mentions trigger `direct_graph` runs |
+
+Invoked by `python main.py slack-bot`.
+
+---
+
 ### Run Logger (`tools/run_logger.py`)
 
-Structured per-run logging to `output/<run_id>/run.log`:
-- `log_llm_call()` — agent, model, prompt preview, token counts, cost estimate
-- `log_tool_call()` — tool name, inputs, outputs, elapsed_ms
+Structured per-run logging to `output/<run_id>/run.log` and DB (`llm_calls`, `api_calls` tables):
+- `log_llm_call()` — agent, model, tokens, cost_usd, elapsed_ms (also writes `LlmCallRecord` to DB)
+- `log_api_call()` — tool, api_name, endpoint, params, result_count, status (also writes `ApiCallRecord`)
+- `log_tool_call()` — generic tool logging
 - `log_agent_io()` — agent name, input/output summaries
+- `Timer` — context manager for elapsed_ms tracking
 
 ---
 
@@ -679,8 +780,8 @@ PASS 2: Quality Scoring
   Below threshold → REVISE (up to 2 retries)
      │ above threshold
      ▼
-PASS 3: Engagement Prediction
-  Model: Opus 4.7 (social) / Sonnet 4.6 (news)
+PASS 3: Engagement Prediction   ← runs in parallel with Pass 2 via asyncio.gather
+  Model: model_fast (Gemini Flash / Haiku)
   Output: {pred_impressions, pred_likes, pred_shares, pred_comments,
            pred_ctr, pred_engagement_rate, pred_confidence,
            engagement_reasoning, top_element, weak_element}
@@ -1011,30 +1112,129 @@ class RESignals(TypedDict, total=False):
 
 ---
 
+### `runs` table
+
+| Column | Type | Description |
+|---|---|---|
+| `run_id` | VARCHAR(36) unique | UUID |
+| `status` | VARCHAR(32) | `running` / `completed` / `failed` |
+| `triggered_at` | DATETIME | |
+| `completed_at` | DATETIME | |
+| `dry_run` | BOOLEAN | |
+| `topic_hint` | TEXT | |
+| `target_platforms` | TEXT | JSON array |
+| `research_count` | INTEGER | Stories found |
+| `trends_count` | INTEGER | Trends found |
+| `briefs_count` | INTEGER | Content briefs emitted |
+| `drafts_count` | INTEGER | Creative drafts produced |
+| `posts_attempted` | INTEGER | Posts sent to QA |
+| `posts_approved` | INTEGER | Posts that passed QA |
+| `posts_published` | INTEGER | Posts actually posted/saved |
+| `error` | TEXT | Error message if failed |
+| `summary_json` | TEXT | Full `summary.json` content |
+
+---
+
+### `users` table
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `username` | VARCHAR(64) unique | Login username |
+| `password_hash` | VARCHAR(128) | bcrypt hash |
+| `role` | VARCHAR(32) | `admin` / `investor` |
+| `created_at` | DATETIME | |
+| `is_active` | BOOLEAN | |
+
+Pre-seeded via `_migrate()` on first startup (backfill when table is empty).
+
+---
+
+### `llm_calls` table
+
+Full record of every LLM call made during runs — used for cost analytics and debugging.
+
+| Column | Type | Description |
+|---|---|---|
+| `run_id` | VARCHAR(36) | |
+| `called_at` | DATETIME | |
+| `agent` | VARCHAR(128) | e.g. `qa/safety/twitter/abc123` |
+| `model` | VARCHAR(64) | |
+| `system_prompt` | TEXT | Full system prompt |
+| `user_message` | TEXT | Full user message |
+| `response_text` | TEXT | Full LLM response |
+| `stop_reason` | VARCHAR(32) | |
+| `input_tokens` | INTEGER | |
+| `output_tokens` | INTEGER | |
+| `cost_usd` | FLOAT | Calculated at call time |
+| `elapsed_ms` | INTEGER | |
+
+---
+
+### `api_calls` table
+
+Full record of every external API call (Tavily, SerpAPI, Apify, YouTube, Reddit).
+
+| Column | Type | Description |
+|---|---|---|
+| `run_id` | VARCHAR(36) | |
+| `called_at` | DATETIME | |
+| `agent` | VARCHAR(64) | |
+| `api_name` | VARCHAR(64) | e.g. `tavily_search`, `serpapi_news`, `youtube_trending` |
+| `endpoint` | VARCHAR(512) | URL or method name |
+| `params_json` | TEXT | Full request params |
+| `response_json` | TEXT | Full response |
+| `result_count` | INTEGER | Items returned |
+| `status` | VARCHAR(16) | `ok` / `error` |
+| `http_status` | INTEGER | |
+| `error` | TEXT | |
+| `elapsed_ms` | INTEGER | |
+| `use_case` | TEXT | Human description e.g. `Tavily: Karnataka RERA 2026` |
+
+---
+
 ## 11. API Endpoints
 
 **Base URL:** `http://localhost:8000`
 
-### Pipeline
+### Core / Health
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/run` | Trigger async scheduled-style run (returns run_id) |
-| `POST` | `/api/runs/direct` | Trigger direct run with `slack_topic` |
-| `GET` | `/runs/{run_id}` | Run status + summary |
-| `GET` | `/api/runs/{run_id}` | Full run detail (state + events log) |
-| `GET` | `/api/runs` | List recent 50 runs |
+| `GET` | `/health` | Health check (used by Railway healthcheck) |
+| `GET` | `/api/config` | Runtime config snapshot (models, platforms, feature flags) |
+| `GET` | `/{path}` | SPA fallback — serves the React UI for all unmatched paths |
+
+### Pipeline (Runs)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/run` | Trigger async scheduled-style run (returns `run_id`) |
+| `POST` | `/api/run` | Alias for `/run` |
+| `POST` | `/api/runs/direct` | Trigger direct run with `slack_topic` body field |
+| `GET` | `/api/runs/{run_id}/status` | Lightweight status poll: `running` / `completed` / `failed` |
+| `GET` | `/api/runs/{run_id}` | Full run detail: state, LLM call logs, events |
+| `GET` | `/api/runs/{run_id}/calls` | LLM + API call log for a specific run |
+| `GET` | `/api/runs` | List recent runs (newest first, limit 50) |
 
 ### Posts
 
 | Method | Path | Description |
 |---|---|---|
+| `GET` | `/api/posts/stats` | Aggregate stats (total, avg QA scores, by platform) |
+| `GET` | `/api/posts/top` | Top N posts by predicted engagement |
 | `GET` | `/api/posts` | List posts (filter by platform, status, action, date) |
-| `GET` | `/api/posts/{post_id}` | Get single post with full QA + engagement |
-| `PATCH` | `/api/posts/{post_id}/feedback` | Submit user rating / tags / action |
-| `POST` | `/api/posts/{post_id}/publish` | Publish a draft post manually |
-| `DELETE` | `/api/posts/{post_id}` | Delete a post record |
-| `GET` | `/api/posts/stats` | Aggregate stats (total, avg QA, by platform) |
+| `GET` | `/api/posts/{post_id}` | Single post with full QA scores + engagement |
+| `POST` | `/api/posts/{post_id}/feedback` | Submit user rating / tags / free-text action |
+| `POST` | `/api/posts/{post_id}/publish` | Manually publish a draft post |
+| `POST` | `/api/posts/{post_id}/reject` | Archive / reject a post |
+| `POST` | `/api/posts/{post_id}/media` | Upload custom media for a post |
+
+### Analytics
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/analytics` | Dashboard data: posts over time, cost per run, predicted vs actual engagement |
 
 ### Prompts
 
@@ -1042,13 +1242,14 @@ class RESignals(TypedDict, total=False):
 |---|---|---|
 | `GET` | `/api/prompts` | List hooks_bank.json examples |
 | `POST` | `/api/prompts` | Add new example to hooks bank |
+| `PUT` | `/api/prompts/{id}` | Update an existing example |
 | `DELETE` | `/api/prompts/{id}` | Remove example |
 
 ### Trends
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/trends/live` | Fetch live Google Trends + YouTube + Reddit |
+| `GET` | `/api/trends/live` | Fetch live Google Trends + YouTube + Reddit (5-min cache) |
 | `POST` | `/api/trends/search` | Tavily search for a topic |
 
 ### Settings
@@ -1056,13 +1257,27 @@ class RESignals(TypedDict, total=False):
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/settings` | List all .env settings (masked) with section + type |
-| `PATCH` | `/api/settings` | Update a setting (writes to .env) |
+| `POST` | `/api/settings` | Update a setting (writes to .env) |
+
+### Auth
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/auth/login` | OAuth2 password login — returns JWT bearer token |
+| `GET` | `/api/auth/me` | Get current authenticated user (requires bearer token) |
+
+### Investor
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/investor/interest` | Log investor interest form submission |
 
 ### Slack
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/slack/action` | Interactive button handler (Approve/Reject for HITL) |
+| `POST` | `/slack/action` | Interactive button handler (Approve/Reject for HITL, kill-switch) |
+| `POST` | `/slack/events` | Slack Event API webhook (slash commands, mentions) |
 
 ---
 
@@ -1109,7 +1324,7 @@ class RESignals(TypedDict, total=False):
 | platform_agents (×5) | Sonnet 4.6 | 5 calls | ~$0.15 |
 | qa_agent (safety) | Gemini Flash | 5 calls | ~$0.01 |
 | qa_agent (quality) | Sonnet 4.6 | 5 calls | ~$0.10 |
-| qa_agent (engagement) | Opus 4.7 / Sonnet | 5 calls | ~$0.15 |
+| qa_agent (engagement) | Gemini Flash / Haiku | 5 calls | ~$0.005 |
 | **Total (no revision)** | | | **~$0.77** |
 | **Total (1 revision loop)** | | | **~$1.10** |
 
@@ -1149,49 +1364,74 @@ Every LLM call logs token counts + cost to `output/<run_id>/run.log` and `summar
 
 | Key | Description |
 |---|---|
-| `SERPER_API_KEY` | Serper News (faster India-localised trending news) |
-| `YOUTUBE_API_KEY` | YouTube Trending (separate from publishing key) |
-| `APIFY_API_TOKEN` | Twitter real-time signals |
+| `SERPER_API_KEY` | Serper.dev (fast Google News; falls back to Tavily if absent) |
+| `SERP_API_KEY` | SerpAPI (Google News + Google Trends India; optional supplement) |
+| `RAPIDAPI_KEY` | RapidAPI Twitter Trends (3rd fallback after bearer token + Apify) |
+| `YOUTUBE_API_KEY` | YouTube Data API v3 for Trending India |
+| `APIFY_API_TOKEN` | Apify Twitter/X trend scraping (2nd fallback after bearer token) |
+| `REDDIT_CLIENT_ID` | Reddit PRAW app client ID |
+| `REDDIT_CLIENT_SECRET` | Reddit PRAW app client secret |
+| `REDDIT_USER_AGENT` | Reddit user-agent string (default: `housing-marketeer/1.0`) |
 
 ### Optional — Notifications
 
 | Key | Description |
 |---|---|
 | `SLACK_BOT_TOKEN` | Bot token (for posting + receiving commands) |
-| `SLACK_APP_TOKEN` | App-level token (Socket Mode) |
-| `SLACK_SIGNING_SECRET` | Request verification |
+| `SLACK_APP_TOKEN` | App-level token (Socket Mode — required for `python main.py slack-bot`) |
+| `SLACK_SIGNING_SECRET` | Request verification for `/slack/action` + `/slack/events` |
 | `SLACK_CHANNEL_ID` | Channel for run summaries |
+
+### Product Identity
+
+| Key | Default | Description |
+|---|---|---|
+| `APP_NAME` | `"NAVA"` | Brand/product name — used by the UI (`VITE_APP_NAME`) and backend; override to white-label |
 
 ### Pipeline Behaviour
 
 | Key | Default | Description |
 |---|---|---|
 | `DRY_RUN` | `True` | Save locally; never post live |
-| `TARGET_PLATFORMS` | `"twitter,instagram,youtube,housing_news"` | Comma-separated |
+| `HUMAN_IN_THE_LOOP` | `False` | When `True`: posts saved as drafts, require manual publish via UI |
+| `TARGET_PLATFORMS` | `"twitter,instagram,youtube,housing_news,linkedin"` | Comma-separated |
 | `MAX_CREATIVE_DRAFTS` | `3` | Max drafts per run |
-| `PLATFORM_AGENT_TIMEOUT` | `180` | Seconds before platform agent times out |
-| `LLM_TIMEOUT` | `60` | Seconds per LLM call |
-| `LLM_RETRIES` | `2` | LLM-level retry attempts |
-| `MAX_QA_RETRIES` | `2` | QA revision loop max attempts |
-| `ENABLE_PLANNER` | `True` | Toggle planner quality gate |
-| `ENABLE_IMAGE_GENERATION` | `True` | Generate PIL branded cards |
-| `TAVILY_SEARCH_DEPTH` | `"basic"` | "basic" (1 credit) or "advanced" (5 credits) |
+| `PLATFORM_AGENT_TIMEOUT` | `180` | Seconds before platform agent asyncio.gather times out |
+| `LLM_TIMEOUT` | `60.0` | Seconds per individual LLM call |
+| `LLM_RETRIES` | `2` | LLM-level retry attempts (backoff: 1s → 2s) |
+| `MAX_QA_RETRIES` | `2` | QA revision loop max attempts per post |
+| `ENABLE_PLANNER` | `True` | Toggle planner quality-gate node |
+| `ENABLE_IMAGE_GENERATION` | `True` | Generate PIL branded cards (and DALL-E if `OPENAI_API_KEY` set) |
+| `ENABLE_FILE_OUTPUTS` | `True` | Write `output/<run_id>/` files; set `False` when using cloud asset storage |
+| `TAVILY_SEARCH_DEPTH` | `"basic"` | `"basic"` (1 credit) or `"advanced"` (5 credits) |
 
 ### Infrastructure
 
 | Key | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./housing_content.db` | App database |
-| `CHECKPOINT_DB_PATH` | `"checkpoints.db"` | LangGraph checkpoint SQLite |
-| `ENABLE_CHECKPOINTING` | `True` | LangGraph run resumability |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./housing_content.db` | App database (use `postgresql://...` for Postgres) |
+| `CHECKPOINT_DB_PATH` | `"checkpoints.db"` | LangGraph AsyncSqliteSaver checkpoint DB |
+| `ENABLE_CHECKPOINTING` | `True` | LangGraph run resumability via SQLite checkpointer |
+| `ASSETS_DIR` | `"assets"` | Local path for fonts + logo used in PIL branded card generation |
+
+### Asset Storage (Cloud Media)
+
+| Key | Default | Description |
+|---|---|---|
+| `ASSET_STORAGE_BACKEND` | `"local"` | `"local"` / `"s3"` / `"gcs"` — where generated images are stored |
+| `AWS_S3_BUCKET` | — | S3 bucket name (required when `ASSET_STORAGE_BACKEND=s3`) |
+| `AWS_S3_REGION` | `"us-east-1"` | S3 region |
+| `AWS_S3_PREFIX` | `"housing-marketeer"` | S3 key prefix |
+| `GCS_BUCKET` | — | GCS bucket name (required when `ASSET_STORAGE_BACKEND=gcs`) |
+| `GCS_PREFIX` | `"housing-marketeer"` | GCS object prefix |
 
 ### Model routing (internal)
 
-| Property | Value |
-|---|---|
-| `model_fast` | Gemini 2.5 Flash if GEMINI_API_KEY else `claude-haiku-4-5-20251001` |
-| `model_balanced` | `claude-sonnet-4-6` |
-| `model_creative` | `claude-opus-4-7` |
+| Property | Value | Used for |
+|---|---|---|
+| `model_fast` | Gemini 2.5 Flash (if `GEMINI_API_KEY` set) else `claude-haiku-4-5-20251001` | Planner, QA safety gate, QA engagement prediction, internal link extraction |
+| `model_balanced` | `claude-sonnet-4-6` | Research agents, QA quality scoring, all platform agents, news creative |
+| `model_creative` | `claude-opus-4-7` | Social creative agent (Zomato-style hooks) |
 
 ---
 
@@ -1201,20 +1441,21 @@ Every LLM call logs token counts + cost to `output/<run_id>/run.log` and `summar
 Single end-to-end run using `workflow/graph.py`. Outputs to `output/<run_id>/`.
 
 ```bash
-python main.py run                                    # standard
-python main.py run --topic "Mumbai stamp duty"        # topic-focused
-python main.py run --platforms twitter,instagram      # specific platforms
-python main.py run --dry-run                          # force dry-run (default)
+python main.py run                                    # dry-run (default)
+python main.py run --live                             # live posting (overrides DRY_RUN)
+python main.py run --dry-run                          # explicit dry-run
+python main.py run --topic "Mumbai stamp duty"        # topic-focused run
+python main.py run --platforms twitter,instagram      # override TARGET_PLATFORMS
 ```
 
 ### `python main.py serve`
-FastAPI server + APScheduler: 9 AM IST + 6 PM IST daily cron jobs.
+FastAPI server + APScheduler (9 AM + 6 PM IST daily cron via `scheduler/jobs.py`). Both the API and the scheduler run in the same process.
 
 ### `python main.py slack-bot`
-Socket Mode Slack bot. DMs or @mentions trigger `direct_graph.py` runs.
+Socket Mode Slack bot (`tools/slack_bot.py`). DMs or @mentions trigger `direct_graph.py` runs. Requires `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN`.
 
 ### `python main.py ui`
-Starts both API (`:8000`) and frontend dev server (`:5173`).
+Starts the API server on `:8000`. The UI is served as a pre-built SPA from `ui/dist/` — run `cd ui && npm run build` first if not already built.
 
 ### `python main.py history`
 Prints engagement history from DB — predicted vs actual performance over time.

@@ -43,7 +43,7 @@ that scores all dimensions in one shot.
 - Pass 3 (engagement) is a heuristic estimate and benefits from a different mental frame
   than quality scoring — separating them reduces cross-contamination.
 
-**Decision:** Keep 3-pass design: fast tier for safety + engagement, balanced for quality.
+**Decision:** Keep 3-pass design: fast tier for safety + engagement prediction, balanced (Sonnet) for quality scoring. Passes 2 and 3 run in parallel via `asyncio.gather` after Pass 1 clears the safety gate.
 All three passes use `temperature=0.0` for deterministic scoring.
 
 ---
