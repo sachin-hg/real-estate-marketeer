@@ -74,28 +74,24 @@ def _migrate(engine) -> None:
             if col_name not in existing_runs:
                 conn.execute(sa.text(f"ALTER TABLE runs ADD COLUMN {col_name} {col_type}"))
 
-        conn.commit()
+        # ── users backfill ────────────────────────────────────────────────────
+        # One-time migration for DBs created before the auth feature was added.
+        # Runs only when the users table is empty; becomes a no-op after that.
+        user_count = conn.execute(sa.text("SELECT COUNT(*) FROM users")).scalar()
+        if user_count == 0:
+            _users = [
+                ('sachin.ag',  '$2b$10$ZbzruRJ.5pn/MkpBPgmKaO0f11ejvBlEMVnBIFagq1qh/J5UUpK4.', 'admin'),
+                ('mohan.mr',   '$2b$10$nqGtiPTO6ygqah.7jYNG3uDx5IpYL0XxFGOuAgRjQyqjBoQboswcq', 'investor'),
+                ('shubh.gp',   '$2b$10$xZ/jEqa02XE18Q.SjB8raeAf2fc3JMOqjRGbOF8jb1uOT7THVlUZG', 'investor'),
+                ('rohan.ag',   '$2b$10$QTCtjuc3TPOPM.77lxONnO2kSuntXt6AjKcmcDL/2unIcrO8Dq8kO', 'investor'),
+                ('monika.ag',  '$2b$10$hGqknK9maHf49lNJ3RDJ3eYgTHriEyp17gjmH5QD1K9JFwj.pImfu', 'investor'),
+            ]
+            for username, password_hash, role in _users:
+                conn.execute(sa.text(
+                    "INSERT OR IGNORE INTO users (username, password_hash, role, created_at, is_active) "
+                    "VALUES (:u, :p, :r, datetime('now'), 1)"
+                ), {'u': username, 'p': password_hash, 'r': role})
 
-    # ── users seed (idempotent — INSERT OR IGNORE) ────────────────────────────
-    # Ensures login credentials exist even on DBs created before auth was added.
-    _seed_users(engine)
-
-
-def _seed_users(engine) -> None:
-    import sqlalchemy as sa
-    users = [
-        ('sachin.ag',  '$2b$10$ZbzruRJ.5pn/MkpBPgmKaO0f11ejvBlEMVnBIFagq1qh/J5UUpK4.', 'admin'),
-        ('mohan.mr',   '$2b$10$nqGtiPTO6ygqah.7jYNG3uDx5IpYL0XxFGOuAgRjQyqjBoQboswcq', 'investor'),
-        ('shubh.gp',   '$2b$10$xZ/jEqa02XE18Q.SjB8raeAf2fc3JMOqjRGbOF8jb1uOT7THVlUZG', 'investor'),
-        ('rohan.ag',   '$2b$10$QTCtjuc3TPOPM.77lxONnO2kSuntXt6AjKcmcDL/2unIcrO8Dq8kO', 'investor'),
-        ('monika.ag',  '$2b$10$hGqknK9maHf49lNJ3RDJ3eYgTHriEyp17gjmH5QD1K9JFwj.pImfu', 'investor'),
-    ]
-    with engine.connect() as conn:
-        for username, password_hash, role in users:
-            conn.execute(sa.text(
-                "INSERT OR IGNORE INTO users (username, password_hash, role, created_at, is_active) "
-                "VALUES (:u, :p, :r, datetime('now'), 1)"
-            ), {'u': username, 'p': password_hash, 'r': role})
         conn.commit()
 
 
