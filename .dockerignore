@@ -9,6 +9,8 @@ venv
 *.db-wal
 output/
 ui/node_modules
+ui/dist/
+ui/dist-ssr/
 course/ui/node_modules
 .git
 .gitignore

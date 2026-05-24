@@ -24,7 +24,9 @@ ENV VITE_CONTACT_EMAIL=$VITE_CONTACT_EMAIL
 COPY ui/package*.json ./
 RUN npm ci --silent
 COPY ui/ ./
-# Full SSG build: generate OG images → tsc+vite bundle → prerender HTML pages
+# Full SSR+SSG build:
+#   generate-assets → tsc+vite build (client) → vite build --ssr (server bundle)
+#   → prerender.mjs (SEO <head>) → ssr-render.mjs (full body injection) → dist/
 RUN npm run build:ssg
 
 # ── Stage 2: Python runtime ───────────────────────────────────────────────────
