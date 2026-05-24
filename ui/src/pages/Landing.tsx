@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
+import { CardMarqueeBg } from '../components/CardMarqueeBg'
 import {
   Radio, Search, Layers, Sparkles, Send,
   Zap, Bot, Target, Clock, DollarSign,
-  TrendingUp, BarChart3, Users, ArrowRight,
-  ExternalLink, Mail,
+  TrendingUp, Users, ArrowRight,
+  Mail,
 } from 'lucide-react'
 
 const GRAD = 'linear-gradient(90deg,#C4B5FD 0%,#818CF8 38%,#38BDF8 72%,#67E8F9 100%)'
-const SECTION_COUNT = 8
+const SECTION_COUNT = 9
 const CAR_W = 420
 const CAR_H = 440
 
@@ -533,9 +534,9 @@ export default function Landing() {
         <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: mobile ? '14px 20px' : '18px 52px', background: 'rgba(7,7,26,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <span style={{ fontWeight: 900, fontSize: mobile ? 24 : 32, letterSpacing: '0.01em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{appName}</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-g nav-btn-secondary" onClick={() => navigate('/dashboard')} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#cbd5e1', background: 'transparent' }}>Dashboard</button>
-            <button className="btn-p nav-btn-secondary" onClick={() => navigate('/invest')} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#fff', border: 'none' }}>Investors</button>
-            <button className="nav-btn-secondary" onClick={() => window.open('/pricing', '_blank')} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', border: '1px solid rgba(139,92,246,.35)' }}>Pricing</button>
+            <button className="btn-g" onClick={() => navigate('/dashboard')} style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 500, cursor: 'pointer', color: '#cbd5e1', background: 'transparent' }}>Dashboard</button>
+            <button className="btn-p nav-btn-secondary" onClick={() => navigate('/invest')} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#fff', border: 'none' }}>Invest</button>
+            <button onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', border: '1px solid rgba(139,92,246,.35)' }}>Pricing</button>
             <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
               <button className="btn-g" style={{ padding: mobile ? '8px 14px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Mail size={14} />{!mobile && "Let's Talk"}
@@ -559,6 +560,7 @@ export default function Landing() {
 
           {/* ── S1 · HERO ───────────────────────────────────────────── */}
           <div ref={ref(0)} style={S}>
+            <CardMarqueeBg />
             {visible && (
               <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', maxWidth: 860, width: '100%' }}>
                 <div className="anim-up" style={{ marginBottom: mobile ? 20 : 28 }}>
@@ -577,27 +579,19 @@ export default function Landing() {
                   Trend detected → AI-crafted post → published. In 90 seconds.
                 </p>
                 <div className="anim-up d4" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <button className="btn-p" onClick={() => window.open('/demo', '_blank')} style={{ padding: mobile ? '13px 28px' : '16px 38px', borderRadius: 12, fontSize: mobile ? 14 : 16, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    Watch It Happen <ArrowRight size={16} />
+                  <button className="btn-p" onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '13px 28px' : '16px 38px', borderRadius: 12, fontSize: mobile ? 14 : 16, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    Get Started <ArrowRight size={16} />
                   </button>
-                  <button className="btn-g" onClick={() => navigate('/invest')} style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
-                    <BarChart3 size={15} /> For Investors
+                  <button className="btn-g" onClick={() => window.open('/demo', '_blank')} style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
+                    Watch It Happen
                   </button>
-                  <button className="btn-g" onClick={() => navigate('/dashboard')} style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ExternalLink size={15} /> Enter Dashboard
-                  </button>
-                  <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
-                    <button className="btn-g" style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(255,255,255,0.18)' }}>
-                      <Mail size={15} /> Let's Talk
-                    </button>
-                  </a>
                 </div>
               </section>
             )}
             {/* Bottom stat bar — hidden on mobile to save space */}
             {!mobile && (
               <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '24px 52px', display: 'flex', justifyContent: 'center', gap: 56, flexWrap: 'wrap', background: 'rgba(7,7,26,0.5)', backdropFilter: 'blur(10px)' }}>
-                {[['15+','Trend sources'],['5','AI agents'],['<90s','Trend to post'],['5','Platforms'],['3.8×','Engagement lift']].map(([v,l]) => (
+                {[['15+','Trend sources'],['10+','AI agents'],['<90s','Trend to post'],['5+','Platforms'],['3.8×','Engagement lift']].map(([v,l]) => (
                   <div key={l} style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{v}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</div>
@@ -670,7 +664,7 @@ export default function Landing() {
             <section style={{ width: '100%', maxWidth: 1160, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
                 <h2 style={{ fontSize: mobile ? 'clamp(22px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 10 }}>
-                  Five agents. <GradText>One unstoppable pipeline.</GradText>
+                 Multi AI agents. <GradText>One unstoppable pipeline.</GradText>
                 </h2>
                 <p style={{ color: '#94a3b8', fontSize: mobile ? 13 : 17 }}>Trend to published post. Fully autonomous. Under 90 seconds.</p>
               </div>
@@ -786,13 +780,13 @@ export default function Landing() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 100, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', fontSize: 11, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.06em', marginBottom: 16 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    INVESTOR OPPORTUNITY
+                    EARLY ACCESS
                   </div>
                   <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(28px,3.5vw,44px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 14, lineHeight: 1.1 }}>
-                    Built for the future of<br /><GradText>real estate publishing.</GradText>
+                    Built for the future of<br /><GradText>AI-First #TrendJacking.</GradText>
                   </h2>
                   <p style={{ color: '#94a3b8', fontSize: mobile ? 14 : 16, lineHeight: 1.7, maxWidth: 480, marginBottom: 24 }}>
-                    A $2B+ addressable market. AI-native infrastructure. Recurring revenue from Day 1. We're raising a pre-seed round to scale across India's top real estate brands.
+                    A $15B+ addressable market. AI-native infrastructure. Recurring revenue from Day 1. Starting with real estate — expanding to every vertical that publishes.
                   </p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <button className="btn-p" onClick={() => navigate('/invest')} style={{ padding: mobile ? '12px 24px' : '14px 32px', borderRadius: 12, fontSize: mobile ? 14 : 15, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -823,38 +817,36 @@ export default function Landing() {
                 <h3 style={{ fontSize: mobile ? 'clamp(22px,5.5vw,32px)' : 'clamp(26px,3vw,40px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 20 }}>
                   Loved it? <GradText>Spread the word.</GradText>
                 </h3>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
                   {/* Twitter/X */}
-                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Just saw this AI content engine that goes from trend → published post in 90 seconds. Real estate marketing will never be the same.')}&url=${encodeURIComponent(window.location.origin)}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: mobile ? '11px 18px' : '12px 22px', borderRadius: 10, background: '#000', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', fontSize: mobile ? 13 : 14, fontWeight: 600, transition: 'transform .15s,box-shadow .15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' }}
+                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('This AI goes from trending topic → published post across Twitter, Instagram & LinkedIn in under 90 seconds.\n\n3.8× engagement lift. 170× cheaper than agencies. Zero human in the loop.\n\nContent marketing just changed. 🔥 #AI #ContentMarketing #TrendJacking')}&url=${encodeURIComponent(window.location.origin)}`} target="_blank" rel="noreferrer" title="Share on X" style={{ textDecoration: 'none' }}>
+                    <button style={{ width: 48, height: 48, borderRadius: '50%', background: '#000', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,box-shadow .15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}>
-                      <TwitterIcon size={15} /> Share on X
+                      <TwitterIcon size={18} />
                     </button>
                   </a>
                   {/* LinkedIn */}
-                  <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: mobile ? '11px 18px' : '12px 22px', borderRadius: 10, background: '#0077b5', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', fontSize: mobile ? 13 : 14, fontWeight: 600, transition: 'transform .15s,box-shadow .15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,119,181,0.4)' }}
+                  <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&summary=${encodeURIComponent('NAVA publishes trend-jacked social posts autonomously in under 90 seconds — 3.8× higher engagement, 170× cheaper than agencies. Built for real estate brands scaling content without scaling headcount.')}`} target="_blank" rel="noreferrer" title="Share on LinkedIn" style={{ textDecoration: 'none' }}>
+                    <button style={{ width: 48, height: 48, borderRadius: '50%', background: '#0077b5', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,box-shadow .15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(0,119,181,0.45)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}>
-                      <LinkedInIcon size={15} /> Share on LinkedIn
+                      <LinkedInIcon size={18} />
                     </button>
                   </a>
                   {/* WhatsApp */}
-                  <a href={`https://wa.me/?text=${encodeURIComponent('Check this out — AI that goes from trending topic to published social post in 90 seconds: ' + window.location.origin)}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: mobile ? '11px 18px' : '12px 22px', borderRadius: 10, background: '#25d366', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', fontSize: mobile ? 13 : 14, fontWeight: 600, transition: 'transform .15s,box-shadow .15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,211,102,0.4)' }}
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`Bhai dekh yeh — AI jo kisi bhi trending topic se 90 seconds mein Twitter, Instagram aur LinkedIn pe post publish kar deta hai. 🤯\n\n3.8× engagement lift. Agency se 170× sasta. Zero manual work.\n\nYeh content marketing ka future hai 👇\n${window.location.origin}`)}`} target="_blank" rel="noreferrer" title="Share on WhatsApp" style={{ textDecoration: 'none' }}>
+                    <button style={{ width: 48, height: 48, borderRadius: '50%', background: '#25d366', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,box-shadow .15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(37,211,102,0.45)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.545-1.367A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.523-5.197-1.432l-.371-.222-3.864.807.826-3.748-.243-.386A9.944 9.944 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                      WhatsApp
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.545-1.367A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.523-5.197-1.432l-.371-.222-3.864.807.826-3.748-.243-.386A9.944 9.944 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
                     </button>
                   </a>
                   {/* Copy link */}
-                  <button onClick={() => { navigator.clipboard.writeText(window.location.origin); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: mobile ? '11px 18px' : '12px 22px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer', color: '#e2e8f0', fontSize: mobile ? 13 : 14, fontWeight: 600, transition: 'transform .15s,background .15s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)' }}
+                  <button title="Copy link" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}\n\nNAVA — AI that publishes trend-jacked social posts in under 90 seconds. 3.8× engagement lift, 170× cheaper than agencies. Zero manual work.`); }} style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,background .15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.12)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Copy Link
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   </button>
                 </div>
               </div>
@@ -862,31 +854,54 @@ export default function Landing() {
             </section>
           </div>
 
-          {/* ── S8 · CTA + FOOTER ───────────────────────────────────── */}
-          <div ref={ref(7)} style={{ ...S, justifyContent: 'space-between' }}>
+          {/* ── S8 · WORK WITH US ───────────────────────────────────── */}
+          <div ref={ref(7)} style={S}>
+            <section style={{ width: '100%', maxWidth: 1100, padding: mobile ? '0 20px' : '0 48px' }}>
+              <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 40 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 14px 5px 10px', borderRadius: 100, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)', fontSize: 11, fontWeight: 700, color: '#6ee7b7', letterSpacing: '0.06em', marginBottom: 16 }}>
+                  <span className="pdot" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#6ee7b7' }} />
+                  #WeAreHiring
+                </span>
+                <h2 style={{ fontSize: mobile ? 'clamp(26px,7vw,40px)' : 'clamp(34px,4vw,54px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12, lineHeight: 1.1 }}>
+                  Come build the <GradText>future of content.</GradText>
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: mobile ? 13 : 16, maxWidth: 540, margin: '0 auto', lineHeight: 1.7 }}>
+                  Small team. Huge mission. We're growing fast and hiring across every discipline. If the intersection of AI and content excites you — we want to hear from you.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mobile ? 24 : 32 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                  {['Engineering', 'Design', 'Growth', 'Operations', 'Partnerships', 'Sales'].map(dept => (
+                    <span key={dept} style={{ padding: '7px 18px', borderRadius: 100, border: '1px solid rgba(139,92,246,0.28)', background: 'rgba(139,92,246,0.07)', fontSize: mobile ? 12 : 13, color: '#c4b5fd', fontWeight: 600 }}>
+                      {dept}
+                    </span>
+                  ))}
+                </div>
+                <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
+                  <button className="btn-p" style={{ padding: mobile ? '13px 32px' : '16px 44px', borderRadius: 12, fontSize: mobile ? 14 : 15, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Mail size={15} /> Reach Out
+                  </button>
+                </a>
+                <div style={{ fontSize: mobile ? 12 : 13, color: '#475569' }}>No formal process. Just say hi.</div>
+              </div>
+            </section>
+          </div>
+
+          {/* ── S9 · CTA + FOOTER ───────────────────────────────────── */}
+          <div ref={ref(8)} style={{ ...S, justifyContent: 'space-between' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: mobile ? '0 20px' : '0 24px' }}>
               <h2 style={{ fontSize: mobile ? 'clamp(32px,8vw,56px)' : 'clamp(40px,6vw,72px)', fontWeight: 900, letterSpacing: '-0.035em', marginBottom: 16, color: '#fff' }}>
                 Ready to <GradText>#TrendJack?</GradText>
               </h2>
               <p style={{ color: '#94a3b8', fontSize: mobile ? 15 : 18, marginBottom: mobile ? 32 : 48 }}>See it working live — right now.</p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="btn-p" onClick={() => window.open('/demo', '_blank')} style={{ padding: mobile ? '14px 28px' : '18px 44px', borderRadius: 14, fontSize: mobile ? 15 : 17, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  Watch It Happen <ArrowRight size={18} />
+                <button className="btn-p" onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '14px 28px' : '18px 44px', borderRadius: 14, fontSize: mobile ? 15 : 17, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Get Started <ArrowRight size={18} />
                 </button>
-                <button className="btn-g" onClick={() => navigate('/invest')} style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
-                  <BarChart3 size={16} /> Investor Brief
+                <button className="btn-g" onClick={() => window.open('/demo', '_blank')} style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
+                  Watch It Happen
                 </button>
-                <button className="btn-g" onClick={() => navigate('/dashboard')} style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ExternalLink size={16} /> Enter Dashboard
-                </button>
-                <button className="btn-g" onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
-                  <DollarSign size={16} /> View Pricing
-                </button>
-                <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
-                  <button className="btn-g" style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(255,255,255,0.18)' }}>
-                    <Mail size={16} /> Let's Talk
-                  </button>
-                </a>
               </div>
               {!mobile && (
                 <div style={{ marginTop: 52, display: 'flex', gap: 48, color: '#64748b', fontSize: 13 }}>
@@ -906,7 +921,7 @@ export default function Landing() {
               </div>
               {!mobile && (
                 <div style={{ display: 'flex', gap: 28 }}>
-                  {[['Dashboard','/dashboard',false],['Investors','/invest',false],['Demo','/demo',true],['Pricing','/pricing',true]].map(([label,path,blank]) => (
+                  {[['Dashboard','/dashboard',false],['Invest','/invest',false],['Watch It Happen','/demo',true],['Pricing','/pricing',true]].map(([label,path,blank]) => (
                     <a key={label as string} href={path as string} target={blank ? '_blank' : undefined} rel="noreferrer"
                       style={{ color: '#64748b', fontSize: 13, textDecoration: 'none', fontWeight: 500 }}
                       onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}

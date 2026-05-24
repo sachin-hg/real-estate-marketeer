@@ -26,6 +26,20 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const TOKEN_KEY = 'nava_token'
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(value)};max-age=${COOKIE_MAX_AGE};path=/;SameSite=Strict`
+}
+
+function removeCookie(name: string) {
+  document.cookie = `${name}=;max-age=0;path=/`
+}
 
 // ─── provider ─────────────────────────────────────────────────────────────────
 
@@ -34,13 +48,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // On mount, rehydrate from localStorage and validate with the server
+  // On mount, rehydrate from cookie (with localStorage fallback) and validate with the server
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY)
+    const stored = getCookie(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY)
     if (!stored) {
       setIsLoading(false)
       return
     }
+    // Migrate from localStorage to cookie if needed
+    if (!getCookie(TOKEN_KEY) && stored) setCookie(TOKEN_KEY, stored)
 
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${stored}` },
@@ -52,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser({ username: data.username, role: data.role })
       })
       .catch(() => {
+        removeCookie(TOKEN_KEY)
         localStorage.removeItem(TOKEN_KEY)
       })
       .finally(() => setIsLoading(false))
@@ -76,12 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role: string
     }
 
-    localStorage.setItem(TOKEN_KEY, data.access_token)
+    setCookie(TOKEN_KEY, data.access_token)
+    localStorage.removeItem(TOKEN_KEY) // clear any legacy localStorage token
     setToken(data.access_token)
     setUser({ username: data.username, role: data.role })
   }, [])
 
   const logout = useCallback(() => {
+    removeCookie(TOKEN_KEY)
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import { } from 'react'
 import { Link } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
 
@@ -334,7 +334,7 @@ const CSS = `
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  font-size: 24px;
+  color: #a78bfa;
 }
 
 .invest-root .why-title {
@@ -697,149 +697,6 @@ const CSS = `
 }
 `
 
-// ─── interest form ────────────────────────────────────────────────────────────
-
-interface InterestFields {
-  name: string
-  email: string
-  company: string
-  message: string
-}
-
-function InterestForm({ brand }: { brand: string }) {
-  const [fields, setFields] = useState<InterestFields>({
-    name: '', email: '', company: '', message: '',
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [formError, setFormError] = useState('')
-
-  function set(key: keyof InterestFields) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setFields(f => ({ ...f, [key]: e.target.value }))
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (submitting) return
-    setFormError('')
-    setSubmitting(true)
-
-    try {
-      const res = await fetch('/api/investor/interest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { detail?: string }
-        throw new Error(err.detail ?? 'Submission failed. Please try again.')
-      }
-      setSubmitted(true)
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Something went wrong.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (submitted) {
-    return (
-      <div className="form-success">
-        <div className="check-circle">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <h3>We got your note.</h3>
-        <p>
-          Thank you for your interest in {brand}.<br />
-          We'll be in touch with more details shortly.
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <form onSubmit={handleSubmit} noValidate>
-      {formError && (
-        <div className="form-error">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          {formError}
-        </div>
-      )}
-
-      <div className="form-field">
-        <label htmlFor="iv-name">Name *</label>
-        <input
-          id="iv-name"
-          type="text"
-          placeholder="Jane Smith"
-          value={fields.name}
-          onChange={set('name')}
-          required
-          disabled={submitting}
-        />
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="iv-email">Email *</label>
-        <input
-          id="iv-email"
-          type="email"
-          placeholder="jane@fund.com"
-          value={fields.email}
-          onChange={set('email')}
-          required
-          disabled={submitting}
-        />
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="iv-company">Company <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-        <input
-          id="iv-company"
-          type="text"
-          placeholder="Sequoia Capital"
-          value={fields.company}
-          onChange={set('company')}
-          disabled={submitting}
-        />
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="iv-message">Message <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-        <textarea
-          id="iv-message"
-          rows={4}
-          placeholder="Tell us about yourself or what you'd like to know…"
-          value={fields.message}
-          onChange={set('message')}
-          disabled={submitting}
-        />
-      </div>
-
-      <button
-        type="submit"
-        className="form-submit"
-        disabled={submitting || !fields.name || !fields.email}
-      >
-        {submitting ? (
-          <><span className="form-spinner" />Sending…</>
-        ) : (
-          <>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-            Show Interest
-          </>
-        )}
-      </button>
-    </form>
-  )
-}
 
 // ─── main component ───────────────────────────────────────────────────────────
 
@@ -848,19 +705,39 @@ export default function InvestorLanding() {
 
   const whyCards = [
     {
-      icon: '⚡',
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      ),
       title: 'Speed',
       body: 'From a trending topic to a live, platform-ready post in 90 seconds. While competitors are still briefing their content team, you\'re already published.',
       stat: 'Trend → live in 90s',
     },
     {
-      icon: '📡',
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+          <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+          <line x1="12" y1="20" x2="12.01" y2="20"/>
+        </svg>
+      ),
       title: 'Scale',
       body: 'Publish across five platforms simultaneously — each post crafted natively for its audience, tone, and format. One workflow, five channels, zero overhead.',
       stat: '5 platforms at once',
     },
     {
-      icon: '🧠',
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <rect x="9" y="9" width="6" height="6"/>
+          <line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/>
+          <line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/>
+          <line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="15" x2="4" y2="15"/>
+          <line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/>
+        </svg>
+      ),
       title: 'Intelligence',
       body: 'Every published post feeds real engagement signals back into the system. The more it runs, the sharper its hooks, angles, and timing become.',
       stat: 'Learns from engagement',
@@ -889,25 +766,74 @@ export default function InvestorLanding() {
         <section className="hero">
           <div className="hero-badge">
             <span className="live-dot" />
-            Early Access
+            Seed Stage · Scouting Early Believers
           </div>
 
           <h1 className="hero-title">
-            Built for the future of{' '}
-            <span className="grad-text">real estate publishing.</span>
+            The rocketship is{' '}
+            <span className="grad-text">boarding.</span>
           </h1>
 
-          <p className="hero-sub">
-            Content that moves as fast as the market. Automated, intelligent,
-            and live across every platform before your competition has opened their laptop.
-          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 52 }}>
+            {([
+              {
+                icon: (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                  </svg>
+                ),
+                text: 'Working product', color: 'rgba(139,92,246,0.18)', border: 'rgba(139,92,246,0.35)', fg: '#c4b5fd',
+              },
+              {
+                icon: (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                ),
+                text: 'Pilot live at Housing.com', color: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.32)', fg: '#6ee7b7',
+              },
+              {
+                icon: (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                ),
+                text: '$15B problem', color: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.32)', fg: '#67e8f9',
+              },
+              {
+                icon: (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                  </svg>
+                ),
+                text: 'Compounding moat', color: 'rgba(99,102,241,0.14)', border: 'rgba(99,102,241,0.32)', fg: '#a5b4fc',
+              },
+              {
+                icon: (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                  </svg>
+                ),
+                text: 'Tiny team, big mission', color: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', fg: '#fcd34d',
+              },
+            ] as { icon: React.ReactNode; text: string; color: string; border: string; fg: string }[]).map(({ icon, text, color, border, fg }) => (
+              <span key={text} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                padding: '8px 16px', borderRadius: 100,
+                background: color, border: `1px solid ${border}`,
+                fontSize: 13, fontWeight: 700, color: fg,
+              }}>
+                {icon}{text}
+              </span>
+            ))}
+          </div>
 
           <div className="hero-ctas">
             <a href="#interest" className="btn-primary">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                <path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>
               </svg>
-              Show Interest
+              Get on the Rocketship
             </a>
             <Link to="/login" className="btn-secondary">
               Already have access? Login
@@ -981,36 +907,37 @@ export default function InvestorLanding() {
             <div>
               <span className="section-tag">The Opportunity</span>
               <h2 className="section-title">
-                A $2B+ industry ripe for{' '}
-                <span className="grad-text">disruption.</span>
+                A $15B+ market still running{' '}
+                <span className="grad-text">on manual.</span>
               </h2>
               <p className="opp-body">
-                Real estate content publishing is a <strong>$2B+ manual process</strong> —
-                briefing, writing, reviewing, scheduling, posting. Every day.
+                Content publishing is a <strong>$15B+ bottleneck</strong> that every business
+                hits — real estate, retail, fintech, healthcare, media, and beyond.
+                Briefing, writing, reviewing, scheduling, posting. Every day.
                 Every platform. Every market.
                 <br /><br />
-                Most property brands still rely on slow agency pipelines or
+                Most brands still rely on slow agency pipelines or
                 over-stretched in-house teams that can't keep pace with
-                real-time market signals, regulatory news, or viral cultural moments.
+                real-time trends, breaking news, or viral cultural moments.
                 <br /><br />
                 <strong>{brand} automates the entire workflow.</strong> Intelligent agents
-                monitor the market, draft platform-native content, run quality checks,
+                monitor the web, draft platform-native content, run quality checks,
                 and publish — all without a single human touchpoint.
               </p>
             </div>
 
             <div className="opp-callout">
-              <div className="opp-callout-value grad-text">$2B+</div>
-              <div className="opp-callout-label">Real estate content publishing market</div>
+              <div className="opp-callout-value grad-text">$15B+</div>
+              <div className="opp-callout-label">Content publishing & marketing market</div>
               <p className="opp-callout-body">
-                An industry running on manual processes, agency dependence, and
-                content that's always a step behind the market. {brand} changes
-                that — permanently.
+                Every business chasing buzz, a viral moment, or a content breakthrough is still
+                briefing agencies, waiting on writers, and missing the window.
+                {brand} changes that — permanently.
               </p>
               <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  ['Market timing', 'Trend-driven content is the highest-converting format in real estate.'],
-                  ['No incumbents', 'No dominant player owns automated RE content publishing at scale.'],
+                  ['Universal problem', 'Every business that publishes content needs this — not just real estate.'],
+                  ['No incumbents', 'No dominant player owns automated, intelligent content publishing at scale.'],
                   ['Compounding moat', 'Engagement feedback makes the system more valuable over time.'],
                 ].map(([label, desc]) => (
                   <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -1029,12 +956,35 @@ export default function InvestorLanding() {
         {/* ── Interest Form ─────────────────────────────────────────────── */}
         <div className="form-section" id="interest">
           <div className="form-card">
-            <h2 className="form-title">Get early access.</h2>
+            <h2 className="form-title">Board early. It's closing.</h2>
             <p className="form-sub">
-              We're opening up investor briefings on a selective basis.
-              Leave your details and we'll be in touch.
+              We respond within 4 hours. Come with conviction — seats are selective.
             </p>
-            <InterestForm brand={brand} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+              <a
+                href={`mailto:a.sachin533@gmail.com?subject=${encodeURIComponent('Investor Briefing Request — Early Access')}&body=${encodeURIComponent('Hi Sachin,\n\nI came across your platform and I\'m interested in learning more about the investment opportunity.\n\nName: \nCompany / Fund: \nStage: \n\n')}`}
+                className="form-submit"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                Email Us Directly
+              </a>
+              <a
+                href="https://wa.me/919811785389?text=Hi%20Sachin%2C%20I%27d%20like%20to%20learn%20more%20about%20investing%20in%20your%20AI%20content%20platform."
+                target="_blank"
+                rel="noreferrer"
+                className="form-submit"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'linear-gradient(135deg,#25D366,#128C7E)', boxShadow: '0 6px 28px rgba(37,211,102,0.3)' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.545-1.367A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.523-5.197-1.432l-.371-.222-3.864.807.826-3.748-.243-.386A9.944 9.944 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                </svg>
+                WhatsApp +91 98117 85389
+              </a>
+            </div>
           </div>
         </div>
 
@@ -1042,7 +992,7 @@ export default function InvestorLanding() {
         <footer className="footer">
           <span className="footer-brand">{brand}</span>
           <span className="footer-note">
-            Confidential — for prospective investors only
+            Private · Limited Early Access
           </span>
         </footer>
 

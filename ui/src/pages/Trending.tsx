@@ -405,11 +405,12 @@ export default function Trending() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-100 px-5">
+        <div className="flex border-b border-slate-100 px-5" style={{ overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' as const }}>
           {(Object.keys(TAB_LABELS) as TrendTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
+              style={{ flexShrink: 0 }}
               className={`text-sm font-medium px-3 py-3 border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-brand text-brand'

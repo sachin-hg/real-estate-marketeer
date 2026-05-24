@@ -4,10 +4,10 @@ import { useQuery } from '@tanstack/react-query'
 import { getRuns } from '../lib/api'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  running:    { bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },
-  completed:  { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-  failed:     { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
-  taken_down: { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
+  running:    { bg: 'rgba(59,130,246,0.08)',  color: '#93c5fd' },
+  completed:  { bg: 'rgba(16,185,129,0.08)',  color: '#6ee7b7' },
+  failed:     { bg: 'rgba(239,68,68,0.08)',   color: '#fca5a5' },
+  taken_down: { bg: 'rgba(239,68,68,0.08)',   color: '#fca5a5' },
 }
 
 function timeAgo(dateStr?: string): string {
@@ -265,7 +265,7 @@ export default function RunsList() {
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b' }}>{run.trends_count || '—'}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b' }}>{run.drafts_count || '—'}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                        <span style={{ fontWeight: 600, color: run.posts_approved > 0 ? '#34d399' : '#64748b' }}>
+                        <span style={{ fontWeight: 600, color: run.posts_approved > 0 ? '#6ee7b7' : '#64748b' }}>
                           {run.posts_approved}
                         </span>
                       </td>

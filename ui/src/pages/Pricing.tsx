@@ -78,13 +78,13 @@ const CSS = `
 .pricing-root .plan-card.featured{background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.35);box-shadow:0 0 40px rgba(139,92,246,.15),0 20px 60px rgba(0,0,0,.5);overflow:hidden}
 .pricing-root .plan-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
 .pricing-root .plan-card.featured:hover{transform:translateY(-8px);box-shadow:0 0 60px rgba(139,92,246,.25),0 30px 80px rgba(0,0,0,.55)}
-.pricing-root .plan-badge{display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.08em;margin-bottom:16px}
+.pricing-root .plan-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:12px}
+.pricing-root .plan-badge{display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.08em}
 .pricing-root .plan-badge.popular{background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.35);color:#a5b4fc}
 .pricing-root .plan-badge.most-popular{background:linear-gradient(90deg,rgba(196,181,253,.18),rgba(103,232,249,.18));border:1px solid rgba(196,181,253,.4);color:#c4b5fd}
 .pricing-root .plan-badge.enterprise{background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
-.pricing-root .plan-badge.hidden{visibility:hidden}
 .pricing-root .plan-name{font-size:24px;font-weight:900;letter-spacing:-.02em;color:#fff;margin-bottom:8px}
-.pricing-root .plan-tier-tag{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 9px;border-radius:10px;display:inline-block;margin-bottom:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45)}
+.pricing-root .plan-tier-tag{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 9px;border-radius:10px;display:inline-flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45)}
 .pricing-root .plan-desc{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:20px;min-height:60px}
 .pricing-root .plan-price-wrap{margin-bottom:8px}
 .pricing-root .plan-price{display:flex;align-items:baseline;gap:4px}
@@ -97,7 +97,7 @@ const CSS = `
 .pricing-root .per-post-chip.hidden{visibility:hidden}
 /* SPACER pushes CTA to same vertical position across all cards */
 .pricing-root .plan-spacer{flex:1;min-height:0}
-.pricing-root .plan-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px 20px;border-radius:11px;border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .25s;margin-bottom:28px}
+.pricing-root .plan-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px 20px;border-radius:11px;border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .25s;margin-top:20px}
 .pricing-root .cta-outline{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--text)}
 .pricing-root .cta-outline:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.32)}
 .pricing-root .cta-gradient{background:linear-gradient(135deg,#8B5CF6,#6366F1);color:#fff;box-shadow:0 6px 24px rgba(139,92,246,.35)}
@@ -122,7 +122,7 @@ const CSS = `
 .pricing-root .vl-name{font-size:13px;font-weight:800;margin-bottom:6px}
 .pricing-root .vl-items{font-size:11px;color:rgba(255,255,255,.45);line-height:1.6}
 .pricing-root .vl-arrow{font-size:18px;color:rgba(255,255,255,.2);font-weight:300;text-align:center}
-.pricing-root .value-ladder-footer{text-align:center;margin-top:14px;font-size:11px;color:rgba(255,255,255,.25)}
+.pricing-root .value-ladder-footer{text-align:center;margin-top:14px;font-size:11px;color:rgba(255,255,255,.52)}
 /* COMPARISON */
 .pricing-root .comparison-section{padding:0 0 0}
 .pricing-root .comp-toggle-btn{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 auto;padding:13px 32px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .25s;backdrop-filter:blur(8px)}
@@ -151,7 +151,7 @@ const CSS = `
 .pricing-root .wallet-hero p{font-size:15px;color:var(--muted);max-width:480px;margin:0 auto 20px}
 .pricing-root .wallet-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:20px;font-size:12px;font-weight:700;color:#34d399}
 .pricing-root .recharge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:56px}
-.pricing-root .recharge-card{border-radius:16px;padding:22px 16px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);text-align:center;position:relative;cursor:pointer;transition:all .25s;opacity:0;transform:translateY(20px)}
+.pricing-root .recharge-card{border-radius:16px;padding:22px 16px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);text-align:center;position:relative;cursor:pointer;transition:all .25s;opacity:0;transform:translateY(20px);display:flex;flex-direction:column}
 .pricing-root .recharge-card.animated{opacity:1;transform:translateY(0)}
 .pricing-root .recharge-card:hover{border-color:rgba(139,92,246,.35);transform:translateY(-3px);box-shadow:0 12px 36px rgba(0,0,0,.35)}
 .pricing-root .recharge-card.popular{background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.35);box-shadow:0 0 28px rgba(139,92,246,.12)}
@@ -163,7 +163,7 @@ const CSS = `
 .pricing-root .recharge-gets{font-size:13px;color:var(--muted);margin-bottom:12px}
 .pricing-root .recharge-gets strong{color:var(--text)}
 .pricing-root .recharge-bonus{font-size:11px;font-weight:700;color:#34d399;background:rgba(16,185,129,.1);border-radius:6px;padding:3px 8px;display:inline-block;margin-bottom:14px}
-.pricing-root .recharge-cta{display:block;width:100%;padding:9px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.pricing-root .recharge-cta{display:block;width:100%;padding:9px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:auto}
 .pricing-root .recharge-cta:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.3)}
 .pricing-root .recharge-card.popular .recharge-cta{background:linear-gradient(135deg,#8B5CF6,#6366F1);border-color:transparent;color:#fff;box-shadow:0 4px 16px rgba(139,92,246,.35)}
 .pricing-root .action-pricing-section{margin-bottom:60px}
@@ -242,7 +242,7 @@ const CSS = `
 /* RESPONSIVE */
 @media(max-width:1100px){.pricing-root .plans-grid{grid-template-columns:repeat(2,1fr)}.pricing-root .packs-grid,.pricing-root .recharge-grid{grid-template-columns:repeat(3,1fr)}.pricing-root .ent-inner{grid-template-columns:1fr}.pricing-root .addons-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.pricing-root .pr-nav{padding:12px 20px}.pricing-root .plans-grid{grid-template-columns:1fr}.pricing-root .section{padding:0 20px}.pricing-root .enterprise-card{padding:36px 28px}.pricing-root .addons-grid{grid-template-columns:1fr}.pricing-root .value-ladder-grid{grid-template-columns:1fr}}
-@media(max-width:640px){.pricing-root .pr-nav{padding:12px 16px}.pricing-root .nav-logo{font-size:24px}.pricing-root .pricing-hero{padding:52px 16px 36px}.pricing-root .hero-h1{font-size:clamp(28px,8vw,44px)}.pricing-root .comp-table th:first-child,.pricing-root .comp-table td:first-child{position:sticky;left:0;background:#07071a;z-index:2;min-width:120px}}
+@media(max-width:640px){.pricing-root .pr-nav{padding:12px 16px}.pricing-root .nav-logo{font-size:24px}.pricing-root .pricing-hero{padding:52px 16px 36px}.pricing-root .hero-h1{font-size:clamp(28px,8vw,44px)}.pricing-root .comp-table th:first-child,.pricing-root .comp-table td:first-child{position:sticky;left:0;background:#07071a;z-index:2;min-width:120px}.pricing-root .nav-link{display:none}.pricing-root .nav-primary{padding:8px 14px;font-size:12px}}
 @media(max-width:560px){.pricing-root .recharge-grid{grid-template-columns:repeat(2,1fr)}.pricing-root .action-grid{grid-template-columns:1fr}.pricing-root .addons-row{grid-template-columns:1fr}}
 `
 
@@ -317,10 +317,6 @@ export default function Pricing() {
         {/* NAV */}
         <nav className="pr-nav">
           <div className="nav-left">
-            <button className="back-btn" onClick={() => navigate('/')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              Back
-            </button>
             <button className="nav-logo" onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{brand}</button>
           </div>
           <div className="nav-cta">
@@ -369,9 +365,10 @@ export default function Pricing() {
                 <div className="plans-grid">
                   {/* SPARK */}
                   <div className="plan-card" data-delay="0">
-                    <div className="plan-badge hidden">—</div>
                     <div className="plan-name">Spark</div>
-                    <div className="plan-tier-tag">Local Focus</div>
+                    <div className="plan-tags">
+                      <div className="plan-tier-tag">Local Focus</div>
+                    </div>
                     <div className="plan-desc">Text + image posts for local markets. Single language. Entry-level AI content on 2 platforms.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
@@ -381,8 +378,6 @@ export default function Pricing() {
                     </div>
                     <div className="annual-note">{note('spark')}</div>
                     <div className="per-post-chip">≈ $0.26 / post · 170× cheaper than agency</div>
-                    <div className="plan-spacer"/>
-                    <a href={email('Spark Plan')} className="plan-cta cta-outline">Start Free Trial <ChevronSvg/></a>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
                       <li><CheckSvg/>150 posts / month</li>
@@ -393,13 +388,17 @@ export default function Pricing() {
                       <li><CheckSvg/>2 automated pipeline runs / day</li>
                       <li><CheckSvg/>14-day free trial — no credit card</li>
                     </ul>
+                    <div className="plan-spacer"/>
+                    <a href={email('Spark Plan')} className="plan-cta cta-outline">Start Free Trial <ChevronSvg/></a>
                   </div>
 
                   {/* GROWTH */}
                   <div className="plan-card" data-delay="80">
-                    <div className="plan-badge popular">POPULAR</div>
                     <div className="plan-name">Growth</div>
-                    <div className="plan-tier-tag">Country-Wide</div>
+                    <div className="plan-tags">
+                      <div className="plan-tier-tag">Country-Wide</div>
+                      <div className="plan-badge popular">POPULAR</div>
+                    </div>
                     <div className="plan-desc">National reach. 2 languages. Memes, Stories &amp; smart scheduling on 3 platforms.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
@@ -409,8 +408,6 @@ export default function Pricing() {
                     </div>
                     <div className="annual-note">{note('growth')}</div>
                     <div className="per-post-chip">≈ $0.22 / post · more reach, more formats</div>
-                    <div className="plan-spacer"/>
-                    <a href={email('Growth Plan')} className="plan-cta cta-gradient">Start Free Trial <ChevronSvg/></a>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
                       <li><CheckSvg/>600 posts / month</li>
@@ -421,13 +418,17 @@ export default function Pricing() {
                       <li><CheckSvg/>5 automated runs / day</li>
                       <li><CheckSvg/>Smart scheduling (platform-optimal windows)</li>
                     </ul>
+                    <div className="plan-spacer"/>
+                    <a href={email('Growth Plan')} className="plan-cta cta-gradient">Start Free Trial <ChevronSvg/></a>
                   </div>
 
                   {/* SCALE */}
                   <div className="plan-card featured" data-delay="160">
-                    <div className="plan-badge most-popular">MOST POPULAR</div>
                     <div className="plan-name grad-text">Scale</div>
-                    <div className="plan-tier-tag" style={{ background: 'rgba(196,181,253,.1)', borderColor: 'rgba(196,181,253,.25)', color: 'rgba(196,181,253,.7)' }}>Global Reach</div>
+                    <div className="plan-tags">
+                      <div className="plan-tier-tag" style={{ background: 'rgba(196,181,253,.1)', borderColor: 'rgba(196,181,253,.25)', color: 'rgba(196,181,253,.7)' }}>Global Reach</div>
+                      <div className="plan-badge most-popular">MOST POPULAR</div>
+                    </div>
                     <div className="plan-desc">Every format, all 5 platforms, global trends, unlimited languages &amp; dialects. Maximum output.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
@@ -437,8 +438,6 @@ export default function Pricing() {
                     </div>
                     <div className="annual-note">{note('scale')}</div>
                     <div className="per-post-chip grad">≈ $0.18 / post · best value per post</div>
-                    <div className="plan-spacer"/>
-                    <a href={email('Scale Plan')} className="plan-cta cta-gradient">Get Scale <ChevronSvg/></a>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
                       <li><CheckSvg cls="grad"/>2,500 posts / month</li>
@@ -449,13 +448,17 @@ export default function Pricing() {
                       <li><CheckSvg cls="grad"/>Viral timing optimization</li>
                       <li><CheckSvg cls="grad"/>API access (5,000 calls / month)</li>
                     </ul>
+                    <div className="plan-spacer"/>
+                    <a href={email('Scale Plan')} className="plan-cta cta-gradient">Get Scale <ChevronSvg/></a>
                   </div>
 
                   {/* COMMAND */}
                   <div className="plan-card" data-delay="240">
-                    <div className="plan-badge enterprise">ENTERPRISE</div>
                     <div className="plan-name">Command</div>
-                    <div className="plan-tier-tag">Custom Scale</div>
+                    <div className="plan-tags">
+                      <div className="plan-tier-tag">Custom Scale</div>
+                      <div className="plan-badge enterprise">ENTERPRISE</div>
+                    </div>
                     <div className="plan-desc">For enterprises that need it all, their way.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
@@ -464,8 +467,6 @@ export default function Pricing() {
                     </div>
                     <div className="annual-note">Starting from $1,999 / mo</div>
                     <div className="per-post-chip hidden">placeholder</div>
-                    <div className="plan-spacer"/>
-                    <a href={email('Command Enterprise Plan')} className="plan-cta cta-amber">Talk to Sales <ChevronSvg/></a>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
                       <li><CheckSvg/>Unlimited posts</li>
@@ -475,6 +476,8 @@ export default function Pricing() {
                       <li><CheckSvg/>99.9% uptime SLA + NDA / MSA</li>
                       <li><CheckSvg/>Multi-team access + role-based permissions</li>
                     </ul>
+                    <div className="plan-spacer"/>
+                    <a href={email('Command Enterprise Plan')} className="plan-cta cta-amber">Talk to Sales <ChevronSvg/></a>
                   </div>
                 </div>
 

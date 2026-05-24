@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPost, getRunDetail, submitFeedback, rejectPost, updatePost, uploadPostMedia, publishPost } from '../lib/api'
+import { useMobile } from '../lib/useMobile'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const glass: React.CSSProperties = {
@@ -36,11 +37,11 @@ const textareaStyle: React.CSSProperties = {
 }
 
 const PLATFORM_STYLE: Record<string, React.CSSProperties> = {
-  twitter:      { background: 'rgba(56,189,248,0.12)',  color: '#38BDF8',  border: '1px solid rgba(56,189,248,0.3)' },
-  instagram:    { background: 'rgba(244,114,182,0.12)', color: '#f472b6',  border: '1px solid rgba(244,114,182,0.3)' },
-  housing_news: { background: 'rgba(52,211,153,0.12)',  color: '#34d399',  border: '1px solid rgba(52,211,153,0.3)' },
-  youtube:      { background: 'rgba(248,113,113,0.12)', color: '#f87171',  border: '1px solid rgba(248,113,113,0.3)' },
-  linkedin:     { background: 'rgba(96,165,250,0.12)',  color: '#60a5fa',  border: '1px solid rgba(96,165,250,0.3)' },
+  twitter:      { background: 'rgba(56,189,248,0.08)',  color: '#7dd3fc',  border: '1px solid rgba(56,189,248,0.18)' },
+  instagram:    { background: 'rgba(244,114,182,0.08)', color: '#f9a8d4',  border: '1px solid rgba(244,114,182,0.18)' },
+  housing_news: { background: 'rgba(52,211,153,0.08)',  color: '#6ee7b7',  border: '1px solid rgba(52,211,153,0.18)' },
+  youtube:      { background: 'rgba(248,113,113,0.08)', color: '#fca5a5',  border: '1px solid rgba(248,113,113,0.18)' },
+  linkedin:     { background: 'rgba(96,165,250,0.08)',  color: '#93c5fd',  border: '1px solid rgba(96,165,250,0.18)' },
 }
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -76,7 +77,7 @@ function renderContent(content: string) {
 function ScoreBar({ label, value, max = 10 }: { label: string; value?: number; max?: number }) {
   if (value == null) return null
   const pct = Math.min(100, (value / max) * 100)
-  const barColor = value >= 7 ? '#34d399' : value >= 5 ? '#fbbf24' : '#f87171'
+  const barColor = value >= 7 ? 'rgba(52,211,153,0.55)' : value >= 5 ? 'rgba(251,191,36,0.55)' : 'rgba(248,113,113,0.55)'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
@@ -161,6 +162,7 @@ export default function PostDetail() {
   const { postId } = useParams<{ postId: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const isMobile = useMobile()
   const logRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showLog, setShowLog] = useState(false)
@@ -315,16 +317,16 @@ export default function PostDetail() {
           <span style={{ ...badge, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>{post.draft_type}</span>
         )}
         {post.post_status === 'published' && (
-          <span style={{ ...badge, background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}>Published</span>
+          <span style={{ ...badge, background: 'rgba(52,211,153,0.08)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.18)' }}>Published</span>
         )}
         {post.post_status === 'draft' && (
-          <span style={{ ...badge, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>Draft — Awaiting Review</span>
+          <span style={{ ...badge, background: 'rgba(251,191,36,0.08)', color: '#d4a855', border: '1px solid rgba(251,191,36,0.18)' }}>Draft — Awaiting Review</span>
         )}
         {post.post_status === 'qa_rejected' && (
-          <span style={{ ...badge, background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }}>QA Rejected</span>
+          <span style={{ ...badge, background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.18)' }}>QA Rejected</span>
         )}
         {post.qa_decision === 'advisory' && (
-          <span style={{ ...badge, background: 'rgba(56,189,248,0.12)', color: '#38BDF8', border: '1px solid rgba(56,189,248,0.3)' }} title="QA ran in advisory mode — quality scores are guidance only">QA Advisory</span>
+          <span style={{ ...badge, background: 'rgba(56,189,248,0.08)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.18)' }} title="QA ran in advisory mode — quality scores are guidance only">QA Advisory</span>
         )}
         {post.user_action && (
           <span style={{ ...badge, background: 'rgba(148,163,184,0.08)', color: '#94a3b8', border: '1px solid rgba(148,163,184,0.2)' }}>✎ {post.user_action}</span>
@@ -339,7 +341,7 @@ export default function PostDetail() {
             <button
               onClick={() => { if (confirm('Publish this draft now?')) publishMut.mutate() }}
               disabled={publishMut.isPending}
-              style={{ fontSize: 13, fontWeight: 500, background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: publishMut.isPending ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ fontSize: 13, fontWeight: 500, background: 'rgba(52,211,153,0.08)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: publishMut.isPending ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
             >
               {publishMut.isPending ? 'Publishing…' : '↑ Publish'}
             </button>
@@ -368,7 +370,7 @@ export default function PostDetail() {
       </div>
 
       {/* 2-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) minmax(0,2fr)', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,3fr) minmax(0,2fr)', gap: 24 }}>
 
         {/* ── LEFT ─────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -551,7 +553,7 @@ export default function PostDetail() {
               {/* Creative context */}
               <div style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <h3 style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Creative Context</h3>
-                <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', margin: 0 }}>
+                <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(80px,auto) 1fr', gap: '10px 16px', margin: 0 }}>
                   {post.source_topic && (
                     <><dt style={{ fontSize: 11, color: '#64748b', gridColumn: '1' }}>Source / Trigger</dt><dd style={{ fontSize: 13, color: '#e2e8f0', margin: 0, gridColumn: '2' }}>{post.source_topic}</dd></>
                   )}
@@ -628,8 +630,8 @@ export default function PostDetail() {
               <span style={{
                 fontSize: 13, fontWeight: 600, padding: '4px 12px', borderRadius: 999,
                 ...(post.qa_decision === 'publish'
-                  ? { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }
-                  : { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }),
+                  ? { background: 'rgba(52,211,153,0.08)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.2)' }
+                  : { background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.2)' }),
               }}>
                 {post.qa_decision === 'publish' ? '✓ Approved by QA' : '✕ Rejected by QA'}
               </span>
@@ -637,8 +639,8 @@ export default function PostDetail() {
                 <span style={{
                   fontSize: 11, padding: '2px 8px', borderRadius: 999,
                   ...(post.qa_safety_passed
-                    ? { background: 'rgba(52,211,153,0.08)', color: '#34d399' }
-                    : { background: 'rgba(248,113,113,0.08)', color: '#f87171' }),
+                    ? { background: 'rgba(52,211,153,0.06)', color: '#6ee7b7' }
+                    : { background: 'rgba(248,113,113,0.06)', color: '#fca5a5' }),
                 }}>
                   Safety {post.qa_safety_passed ? 'pass' : 'FAIL'}
                 </span>
@@ -647,7 +649,7 @@ export default function PostDetail() {
 
             {post.qa_rejection_reasons && post.qa_rejection_reasons.length > 0 && (
               <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 10, padding: '10px 12px' }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#f87171', margin: '0 0 6px' }}>Rejection Reasons</p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#fca5a5', margin: '0 0 6px' }}>Rejection Reasons</p>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {post.qa_rejection_reasons.map((r, i) => (
                     <li key={i} style={{ fontSize: 12, color: '#fca5a5', display: 'flex', gap: 4 }}>
@@ -683,9 +685,9 @@ export default function PostDetail() {
             )}
 
             {post.qa_critique && (
-              <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 10, padding: '10px 12px' }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', margin: '0 0 4px' }}>QA Critique</p>
-                <p style={{ fontSize: 12, color: '#fde68a', lineHeight: 1.6, margin: 0 }}>{post.qa_critique}</p>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', margin: '0 0 4px' }}>QA Critique</p>
+                <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>{post.qa_critique}</p>
               </div>
             )}
           </div>
@@ -725,9 +727,9 @@ export default function PostDetail() {
                 )}
               </div>
               {post.engagement_reasoning && (
-                <div style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 10, padding: '10px 12px' }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa', margin: '0 0 4px' }}>Why these numbers?</p>
-                  <p style={{ fontSize: 12, color: '#93c5fd', lineHeight: 1.6, margin: 0 }}>{post.engagement_reasoning}</p>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '10px 12px' }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#64748b', margin: '0 0 4px' }}>Why these numbers?</p>
+                  <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>{post.engagement_reasoning}</p>
                 </div>
               )}
             </div>
@@ -801,8 +803,8 @@ export default function PostDetail() {
                     <div style={{
                       fontSize: 12, fontWeight: 500, padding: '8px 12px', borderRadius: 10,
                       ...(post.actual_engagement_7d >= post.pred_engagement_rate
-                        ? { background: 'rgba(52,211,153,0.08)', color: '#34d399', border: '1px solid rgba(52,211,153,0.2)' }
-                        : { background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }),
+                        ? { background: 'rgba(52,211,153,0.06)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.15)' }
+                        : { background: 'rgba(248,113,113,0.06)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.15)' }),
                     }}>
                       {post.actual_engagement_7d >= post.pred_engagement_rate ? '▲ Beat prediction' : '▼ Below prediction'}{' '}
                       by {Math.abs((post.actual_engagement_7d - post.pred_engagement_rate) * 100).toFixed(2)}pp
@@ -862,8 +864,8 @@ export default function PostDetail() {
                     flex: 1, fontSize: 12, fontWeight: 500, borderRadius: 8, padding: '7px 4px', cursor: 'pointer', border: '1px solid', transition: 'all 0.15s',
                     ...(post.user_action === action
                       ? action === 'approved'
-                        ? { background: 'rgba(52,211,153,0.2)', color: '#34d399', borderColor: 'rgba(52,211,153,0.4)' }
-                        : { background: 'rgba(251,191,36,0.2)', color: '#fbbf24', borderColor: 'rgba(251,191,36,0.4)' }
+                        ? { background: 'rgba(52,211,153,0.1)', color: '#6ee7b7', borderColor: 'rgba(52,211,153,0.25)' }
+                        : { background: 'rgba(251,191,36,0.1)', color: '#d4a855', borderColor: 'rgba(251,191,36,0.25)' }
                       : { background: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)' }),
                   }}>
                   {action === 'approved' ? '✓ Approve' : '⚠ Flag'}
@@ -873,7 +875,7 @@ export default function PostDetail() {
                 style={{
                   flex: 1, fontSize: 12, fontWeight: 500, borderRadius: 8, padding: '7px 4px', cursor: 'pointer', border: '1px solid', transition: 'all 0.15s',
                   ...(post.user_action === 'rejected'
-                    ? { background: 'rgba(248,113,113,0.2)', color: '#f87171', borderColor: 'rgba(248,113,113,0.4)' }
+                    ? { background: 'rgba(248,113,113,0.1)', color: '#fca5a5', borderColor: 'rgba(248,113,113,0.25)' }
                     : { background: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)' }),
                 }}>
                 ✕ Reject
@@ -919,10 +921,10 @@ export default function PostDetail() {
                 <span style={{
                   fontSize: 12, fontWeight: 500, padding: '2px 8px', borderRadius: 999,
                   ...(run.status === 'completed'
-                    ? { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }
+                    ? { background: 'rgba(52,211,153,0.08)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.18)' }
                     : run.status === 'failed'
-                    ? { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }
-                    : { background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }),
+                    ? { background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.18)' }
+                    : { background: 'rgba(96,165,250,0.08)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.18)' }),
                 }}>{run.status}</span>
               )}
               {run?.dry_run && (
@@ -946,7 +948,7 @@ export default function PostDetail() {
                   <div key={label} style={{
                     display: 'flex', alignItems: 'center', gap: 8, borderRadius: 10, padding: '8px 12px', fontSize: 12, border: '1px solid',
                     ...(val > 0
-                      ? { background: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.25)', color: '#34d399' }
+                      ? { background: 'rgba(52,211,153,0.06)', borderColor: 'rgba(52,211,153,0.15)', color: '#6ee7b7' }
                       : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)', color: '#64748b' }),
                   }}>
                     <span style={{ fontWeight: 700 }}>{val > 0 ? val : '—'}</span>
@@ -979,21 +981,23 @@ export default function PostDetail() {
             </button>
 
             {showLog && (
-              <div ref={logRef} style={{ height: 320, overflowY: 'auto', fontFamily: 'monospace', fontSize: 11, padding: 16, display: 'flex', flexDirection: 'column', gap: 2, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <div ref={logRef} style={{ height: 320, overflow: 'auto', fontFamily: 'monospace', fontSize: 11, padding: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ minWidth: 480, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {!run?.events?.length ? (
                   <span style={{ color: '#64748b' }}>No events captured for this run.</span>
                 ) : (
                   run.events.map((ev, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, lineHeight: 1.5 }}>
                       <span style={{ color: '#475569', flexShrink: 0, width: 72 }}>{formatTs(ev.ts)}</span>
-                      <span style={{ flexShrink: 0, width: 12, fontWeight: 700, color: LEVEL_COLOR[ev.level] ?? '#64748b' }}>
+                      <span style={{ flexShrink: 0, width: 16, fontWeight: 700, color: LEVEL_COLOR[ev.level] ?? '#64748b' }}>
                         {ev.level[0]}
                       </span>
-                      <span style={{ color: '#475569', flexShrink: 0, width: 112, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.logger}</span>
-                      <span style={{ color: '#cbd5e1', wordBreak: 'break-all' }}>{ev.msg}</span>
+                      <span style={{ color: '#475569', flexShrink: 0, width: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.logger}</span>
+                      <span style={{ color: '#cbd5e1', whiteSpace: 'nowrap' }}>{ev.msg}</span>
                     </div>
                   ))
                 )}
+                </div>
               </div>
             )}
           </div>
@@ -1009,11 +1013,11 @@ export default function PostDetail() {
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
           >
-            <div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: '#f1f5f9' }}>Raw Output File</span>
-              <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b', fontFamily: 'monospace' }}>{post.output_path}</span>
+              <span style={{ display: 'block', fontSize: 11, color: '#64748b', fontFamily: 'monospace', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.output_path}</span>
             </div>
-            <span style={{ fontSize: 11, color: '#64748b' }}>{showOutput ? '▲ collapse' : '▼ expand'}</span>
+            <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0, marginLeft: 12 }}>{showOutput ? '▲' : '▼'}</span>
           </button>
 
           {showOutput && (

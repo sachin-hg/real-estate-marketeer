@@ -177,6 +177,7 @@ const CSS = `
 .demo-root #phase-4.entering{animation:phase4-enter .7s cubic-bezier(.34,1.56,.64,1) both}
 .demo-root #flash-overlay{position:fixed;inset:0;pointer-events:none;z-index:500;opacity:0;background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(255,255,255,.65) 0%,rgba(139,92,246,.55) 35%,rgba(6,182,212,.2) 60%,transparent 80%)}
 @keyframes flash-burst{0%{opacity:0;transform:scale(.7)}10%{opacity:1;transform:scale(1.08)}35%{opacity:.75;transform:scale(1)}65%{opacity:.35}100%{opacity:0;transform:scale(1)}}
+.demo-root #p4-dots{display:none}
 .demo-root .carousel-slides .tw-card{padding:12px 14px;border-radius:12px;max-width:360px;margin:0 auto}
 .demo-root .carousel-slides .tw-avatar{width:30px;height:30px;font-size:12px}
 .demo-root .carousel-slides .tw-name{font-size:11px}
@@ -205,6 +206,63 @@ const CSS = `
 .demo-root .carousel-slides .li-banner-text{font-size:11px}
 .demo-root .carousel-slides .li-banner-sub{font-size:9px}
 .demo-root .carousel-slides .li-stats{padding:7px 12px;font-size:10px;gap:10px}
+@media(max-width:767px){
+  /* Nav */
+  .demo-root nav{padding:10px 14px}
+  .demo-root .nav-name{font-size:22px}
+  .demo-root .nav-stats{gap:14px}
+  .demo-root .stat-val{font-size:14px}
+  .demo-root .stat-lbl{font-size:8px;letter-spacing:.04em}
+  .demo-root .nav-pricing-link{padding:5px 10px;font-size:11px}
+  .demo-root .run-btn{padding:7px 12px;font-size:12px;gap:5px}
+  /* Hero */
+  .demo-root #hero{padding:28px 20px;min-height:calc(100vh - 52px)}
+  .demo-root .hero-title{font-size:clamp(26px,8vw,42px)}
+  .demo-root .hero-sub{font-size:14px;margin-bottom:36px}
+  .demo-root .hero-run-btn{padding:14px 30px;font-size:15px;gap:8px}
+  /* Demo wrapper */
+  .demo-root #demo{padding:12px 14px 60px}
+  /* Pipeline: horizontally scrollable compact row */
+  .demo-root .pipeline-row{display:flex;overflow-x:auto;gap:0;margin-bottom:20px;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .demo-root .pipeline-row::-webkit-scrollbar{display:none}
+  .demo-root .stage-node{min-width:56px;gap:5px}
+  .demo-root .stage-icon-wrap{width:44px;height:44px;border-radius:11px}
+  .demo-root .stage-icon-wrap svg{width:18px;height:18px}
+  .demo-root .stage-num{width:15px;height:15px;font-size:7px;top:-6px}
+  .demo-root .stage-label{font-size:8.5px;white-space:nowrap}
+  .demo-root .stage-status{font-size:7.5px;height:12px}
+  .demo-root .stage-connector{flex-shrink:0;padding-top:0;margin-top:-14px}
+  .demo-root .connector-line{width:14px}
+  /* Phase 1-2-3: single column */
+  .demo-root #phase-123{grid-template-columns:1fr;gap:12px}
+  /* Spacing below pipeline before each phase */
+  .demo-root #phase-123{margin-top:16px}
+  .demo-root #phase-4{margin-top:20px}
+  .demo-root #phase-56{margin-top:16px}
+  /* Phase 4: full-width autoplay carousel */
+  .demo-root .posts-3col{display:flex!important;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;padding-bottom:6px;grid-template-columns:unset}
+  .demo-root .posts-3col::-webkit-scrollbar{display:none}
+  .demo-root .posts-3col>*{scroll-snap-align:start;flex:0 0 100%;max-width:100%;padding:14px 14px!important;box-sizing:border-box}
+  .demo-root #p4-dots{display:flex}
+  .demo-root .phase4-header h2{font-size:20px}
+  .demo-root .phase4-header p{font-size:13px}
+  /* Phase 5-6: stack vertically; hide posts (already shown in phase 4) */
+  .demo-root #phase-56{flex-direction:column;gap:14px}
+  .demo-root #phase-56 .split-left{display:none!important}
+  .demo-root #phase-56 .split-right{flex:none;width:100%}
+  /* QA & pub metrics */
+  .demo-root .pub-metrics{grid-template-columns:1fr 1fr}
+  .demo-root .pub-val{font-size:22px}
+  .demo-root .savings-bar .big{font-size:16px}
+  /* Sticky nav */
+  .demo-root nav{position:sticky;top:0;z-index:30;background:rgba(7,7,26,0.96);backdrop-filter:blur(16px)}
+  /* Hide stats from nav — too cramped on mobile */
+  .demo-root .nav-stats{display:none!important}
+  /* Sticky pipeline below nav (~50px nav height) */
+  .demo-root .pipeline-row{position:sticky;top:50px;z-index:20;background:rgba(7,7,26,0.96);border-bottom:1px solid rgba(255,255,255,.06);margin:0 -14px;padding:10px 14px 8px;box-sizing:border-box}
+  /* Hide flash overlay on mobile */
+  .demo-root #flash-overlay{display:none!important}
+}
 `
 
 const VerifiedBadge = () => (
@@ -295,9 +353,40 @@ export default function Demo() {
   const [phase, setPhase] = useState<'hero' | 'demo'>('hero')
   const slideRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const phase4SlideRef = useRef(0)
+  const phase4TimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
   const g = (id: string) => document.getElementById(id)!
+  const isMob = () => window.innerWidth <= 767
+  function mobileScrollTo(el: HTMLElement) {
+    if (!isMob()) return
+    setTimeout(() => {
+      const root = document.querySelector('.demo-root') as HTMLElement
+      if (!root) return
+      const stickyH = 128 // nav (~50px) + pipeline (~70px) + gap
+      const top = el.getBoundingClientRect().top + root.scrollTop - stickyH - 8
+      root.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+    }, 120)
+  }
+
+  function goPhase4Slide(idx: number) {
+    phase4SlideRef.current = idx
+    const c = document.querySelector('.posts-3col') as HTMLElement
+    if (c) c.scrollTo({ left: idx * c.offsetWidth, behavior: 'smooth' })
+    for (let i = 0; i < 3; i++) {
+      const d = document.getElementById('p4d-' + i)
+      if (d) { d.style.width = i === idx ? '24px' : '8px'; d.style.background = i === idx ? '#818CF8' : 'rgba(255,255,255,.18)' }
+    }
+  }
+
+  function startPhase4Carousel() {
+    if (!isMob()) return
+    if (phase4TimerRef.current) clearInterval(phase4TimerRef.current)
+    phase4TimerRef.current = setInterval(() => {
+      goPhase4Slide((phase4SlideRef.current + 1) % 3)
+    }, 2500)
+  }
 
   function setStage(n: number, state: string, txt: string) {
     const node = g('st-' + n)
@@ -310,6 +399,13 @@ export default function Demo() {
       wrap.style.animation = state === 'active'
         ? 'stage-pop .4s cubic-bezier(.34,1.56,.64,1) both, stage-pulse 1.5s ease-in-out 0.4s infinite'
         : 'stage-pop .35s cubic-bezier(.34,1.56,.64,1) both'
+      if (isMob() && state === 'active') {
+        const pipeline = document.querySelector('.pipeline-row') as HTMLElement
+        if (pipeline) {
+          const target = node.offsetLeft - pipeline.offsetWidth / 2 + node.offsetWidth / 2
+          pipeline.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
+        }
+      }
     }
   }
 
@@ -358,6 +454,7 @@ export default function Demo() {
       const el = g('card-' + id) as HTMLElement
       el.style.animation = 'card-enter .5s cubic-bezier(.34,1.56,.64,1) both'
       el.style.opacity = '1'
+      mobileScrollTo(el)
       setTimeout(resolve, 420)
     }, delay))
   }
@@ -374,15 +471,21 @@ export default function Demo() {
       g('card-1').classList.add('scatter-l')
       g('card-2').classList.add('scatter-u')
       g('card-3').classList.add('scatter-r')
-      setTimeout(resolve, 780)
+      setTimeout(resolve, 580)
     })
   }
 
   function showPhase4() {
     (g('phase-123') as HTMLElement).style.display = 'none'
     const p4 = g('phase-4') as HTMLElement
+    p4.style.opacity = '0'
     p4.style.display = 'block'
-    requestAnimationFrame(() => requestAnimationFrame(() => p4.classList.add('entering')))
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      p4.style.opacity = ''
+      p4.classList.add('entering')
+    }))
+    mobileScrollTo(p4)
+    setTimeout(startPhase4Carousel, 900)
   }
 
   function qaHTML(): string {
@@ -444,15 +547,31 @@ export default function Demo() {
   }
 
   async function transitionToPhase56() {
-    doFlash()
+    const p56 = g('phase-56') as HTMLElement
+    if (isMob()) {
+      // Mobile: keep phase-4 visible, show phase-56 stacked below it
+      p56.style.display = 'flex'
+      const right = g('split-right')
+      right.innerHTML = qaHTML()
+      await sleep(100)
+      document.querySelectorAll('.qa-bar[data-w]').forEach(b => {
+        (b as HTMLElement).style.width = b.getAttribute('data-w') + '%'
+      })
+      mobileScrollTo(p56)
+      return
+    }
     const p4 = g('phase-4') as HTMLElement
-    p4.style.transition = 'opacity .22s ease, transform .22s ease'
+    // Pre-render phase-56 invisible so there's no empty-gap flash when phase-4 hides
+    p56.style.opacity = '0'
+    p56.style.display = 'flex'
+    doFlash()
+    p4.style.transition = 'opacity .18s ease, transform .18s ease'
     p4.style.opacity = '0'
     p4.style.transform = 'scale(1.04)'
-    await sleep(260)
+    await sleep(200)
     p4.style.display = 'none'
-    const p56 = g('phase-56') as HTMLElement
-    p56.style.display = 'flex'
+    p4.style.transition = ''
+    p56.style.opacity = ''
     ;(p56.querySelector('.split-left') as HTMLElement).style.animation = 'slam-left .52s cubic-bezier(.34,1.56,.64,1) both'
     const right = g('split-right')
     right.innerHTML = qaHTML()
@@ -488,7 +607,7 @@ export default function Demo() {
     await sleep(500); setStage(4, 'active', 'Writing for all platforms…')
     await sleep(2800)
     await dismissPhase123()
-    doFlash(); await sleep(80); showPhase4()
+    if (isMob()) { showPhase4() } else { doFlash(); showPhase4() }
     await sleep(900)
     setStage(4, 'done', '5 drafts · 18.4s'); litConnector(4); setProgress(70)
 
@@ -500,6 +619,7 @@ export default function Demo() {
     await sleep(500); setStage(6, 'active', 'Going live…')
     await sleep(1600)
     g('split-right').insertAdjacentHTML('beforeend', pubHTML())
+    if (isMob()) mobileScrollTo(g('split-right') as HTMLElement)
     setStage(6, 'done', 'All 5 platforms live'); setProgress(100)
     g('stat-posts').textContent = '5'
     g('stat-time').textContent = '97s'
@@ -508,7 +628,15 @@ export default function Demo() {
 
   function restartDemo() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    if (phase4TimerRef.current) { clearInterval(phase4TimerRef.current); phase4TimerRef.current = null }
     slideRef.current = 0
+    phase4SlideRef.current = 0
+    const p4c = document.querySelector('.posts-3col') as HTMLElement
+    if (p4c) p4c.scrollLeft = 0
+    for (let i = 0; i < 3; i++) {
+      const d = document.getElementById('p4d-' + i)
+      if (d) { d.style.width = i === 0 ? '24px' : '8px'; d.style.background = i === 0 ? '#818CF8' : 'rgba(255,255,255,.18)' }
+    }
     setProgress(0)
     ;(g('navStats') as HTMLElement).style.display = 'none'
     ;(g('navRunBtn') as HTMLElement).style.display = 'none'
@@ -530,7 +658,8 @@ export default function Demo() {
     const p4 = g('phase-4') as HTMLElement
     p4.style.display = 'none'; p4.classList.remove('entering')
     p4.style.transition = ''; p4.style.opacity = ''; p4.style.transform = ''
-    ;(g('phase-56') as HTMLElement).style.display = 'none'
+    const p56r = g('phase-56') as HTMLElement
+    p56r.style.display = 'none'; p56r.style.opacity = ''
     g('split-right').innerHTML = ''
     document.querySelectorAll('.post-slide').forEach((s, i) => s.classList.toggle('active', i === 0))
     document.querySelectorAll('.plat-tab').forEach((t, i) => t.classList.toggle('active', i === 0))
@@ -556,9 +685,9 @@ export default function Demo() {
       <div className="dot-grid" />
 
       <nav>
-        <div className="nav-logo">
+        <a href="/" className="nav-logo" style={{ textDecoration: 'none' }}>
           <span className="nav-name grad-text">{brand}</span>
-        </div>
+        </a>
         <div className="nav-stats" id="navStats" style={{ display: 'none' }}>
           <div className="stat"><span className="stat-val grad-text" id="stat-posts">0</span><span className="stat-lbl">Posts Created</span></div>
           <div className="stat"><span className="stat-val grad-text" id="stat-time">–</span><span className="stat-lbl">Run Time</span></div>
@@ -726,6 +855,11 @@ export default function Demo() {
             <TwPost />
             <IgPost />
             <LiPost />
+          </div>
+          <div id="p4-dots" style={{ gap:8, justifyContent:'center', marginTop:10 }}>
+            <button id="p4d-0" className="car-dot active" style={{ width:24, background:'#818CF8' }} onClick={() => goPhase4Slide(0)} />
+            <button id="p4d-1" className="car-dot" onClick={() => goPhase4Slide(1)} />
+            <button id="p4d-2" className="car-dot" onClick={() => goPhase4Slide(2)} />
           </div>
         </div>
 

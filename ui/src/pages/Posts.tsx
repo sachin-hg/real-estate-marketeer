@@ -26,23 +26,23 @@ const glass: React.CSSProperties = {
 }
 
 const PLATFORM_STYLE: Record<string, React.CSSProperties> = {
-  twitter:      { background: 'rgba(56,189,248,0.12)', color: '#38BDF8',  border: '1px solid rgba(56,189,248,0.25)' },
-  instagram:    { background: 'rgba(244,114,182,0.12)', color: '#f472b6', border: '1px solid rgba(244,114,182,0.25)' },
-  housing_news: { background: 'rgba(52,211,153,0.12)', color: '#34d399',  border: '1px solid rgba(52,211,153,0.25)' },
-  youtube:      { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' },
-  linkedin:     { background: 'rgba(96,165,250,0.12)',  color: '#60a5fa', border: '1px solid rgba(96,165,250,0.25)' },
+  twitter:      { background: 'rgba(56,189,248,0.08)',  color: '#7dd3fc',  border: '1px solid rgba(56,189,248,0.18)' },
+  instagram:    { background: 'rgba(244,114,182,0.08)', color: '#f9a8d4',  border: '1px solid rgba(244,114,182,0.18)' },
+  housing_news: { background: 'rgba(52,211,153,0.08)',  color: '#6ee7b7',  border: '1px solid rgba(52,211,153,0.18)' },
+  youtube:      { background: 'rgba(248,113,113,0.08)', color: '#fca5a5',  border: '1px solid rgba(248,113,113,0.18)' },
+  linkedin:     { background: 'rgba(96,165,250,0.08)',  color: '#93c5fd',  border: '1px solid rgba(96,165,250,0.18)' },
 }
 
 const ACTION_STYLE: Record<string, React.CSSProperties> = {
-  approved: { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' },
-  rejected: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' },
-  flagged:  { background: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' },
+  approved: { background: 'rgba(52,211,153,0.08)',  color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.18)' },
+  rejected: { background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.18)' },
+  flagged:  { background: 'rgba(251,191,36,0.08)',  color: '#d4a855', border: '1px solid rgba(251,191,36,0.18)' },
 }
 
 const POST_STATUS_STYLE: Record<string, React.CSSProperties> = {
-  published:   { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' },
-  qa_rejected: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' },
-  draft:       { background: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' },
+  published:   { background: 'rgba(52,211,153,0.08)',  color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.18)' },
+  qa_rejected: { background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.18)' },
+  draft:       { background: 'rgba(251,191,36,0.08)',  color: '#d4a855', border: '1px solid rgba(251,191,36,0.18)' },
 }
 
 const POST_STATUS_LABEL: Record<string, string> = {
@@ -248,7 +248,7 @@ function PostCard({ post }: { post: Post }) {
 
   return (
     <Link
-      to={`/posts/${post.post_id}`}
+      to={`/dashboard/posts/${post.post_id}`}
       style={{
         display: 'block',
         ...glass,
@@ -311,7 +311,7 @@ function PostCard({ post }: { post: Post }) {
               </span>
             )}
             {post.pred_engagement_rate !== undefined && (
-              <span style={{ background: 'rgba(56,189,248,0.1)', color: '#38BDF8', borderRadius: 6, padding: '2px 6px' }}>
+              <span style={{ background: 'rgba(56,189,248,0.07)', color: '#7dd3fc', borderRadius: 6, padding: '2px 6px' }}>
                 ER {(post.pred_engagement_rate * 100).toFixed(2)}%
               </span>
             )}
@@ -350,7 +350,7 @@ function PostCard({ post }: { post: Post }) {
         {/* QA rejection reasons */}
         {post.post_status === 'qa_rejected' && post.qa_rejection_reasons && post.qa_rejection_reasons.length > 0 && (
           <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 10, padding: '8px 12px' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#f87171', margin: '0 0 4px' }}>QA Rejection Reasons:</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#fca5a5', margin: '0 0 4px' }}>QA Rejection Reasons:</p>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 2 }}>
               {post.qa_rejection_reasons.map((reason, i) => (
                 <li key={i} style={{ fontSize: 11, color: '#fca5a5', display: 'flex', gap: 4 }}>
@@ -380,7 +380,7 @@ function PostCard({ post }: { post: Post }) {
         {post.actual_engagement_7d !== undefined && post.pred_engagement_rate !== undefined && (
           <div style={{ fontSize: 11, display: 'flex', gap: 8 }}>
             <span style={{ color: '#64748b' }}>Actual 7d:</span>
-            <span style={{ color: post.actual_engagement_7d >= post.pred_engagement_rate ? '#34d399' : '#f87171', fontWeight: 600 }}>
+            <span style={{ color: post.actual_engagement_7d >= post.pred_engagement_rate ? '#6ee7b7' : '#fca5a5', fontWeight: 600 }}>
               {post.actual_engagement_7d >= post.pred_engagement_rate ? '▲' : '▼'}{' '}
               {(post.actual_engagement_7d * 100).toFixed(2)}%
             </span>
@@ -421,24 +421,25 @@ function PostCard({ post }: { post: Post }) {
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => handleAction('approved')}
-              style={{ flex: 1, fontSize: 11, fontWeight: 500, background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.18)' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.1)' }}
-            >✓ Approve</button>
-            <button
-              onClick={() => handleAction('flagged')}
-              style={{ flex: 1, fontSize: 11, fontWeight: 500, background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,191,36,0.18)' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,191,36,0.1)' }}
-            >⚠ Flag</button>
-            <button
-              onClick={() => handleAction('rejected')}
-              style={{ flex: 1, fontSize: 11, fontWeight: 500, background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,113,113,0.18)' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,113,113,0.1)' }}
-            >✕ Reject</button>
+            {([
+              { action: 'approved', label: '✓ Approve', activeColor: '#6ee7b7', activeBg: 'rgba(52,211,153,0.1)', activeBorder: 'rgba(52,211,153,0.2)' },
+              { action: 'flagged',  label: '⚠ Flag',    activeColor: '#d4a855', activeBg: 'rgba(251,191,36,0.1)', activeBorder: 'rgba(251,191,36,0.2)' },
+              { action: 'rejected', label: '✕ Reject',  activeColor: '#fca5a5', activeBg: 'rgba(248,113,113,0.1)', activeBorder: 'rgba(248,113,113,0.2)' },
+            ] as const).map(({ action, label, activeColor, activeBg, activeBorder }) => {
+              const isActive = post.user_action === action
+              return (
+                <button
+                  key={action}
+                  onClick={() => handleAction(action)}
+                  style={{
+                    flex: 1, fontSize: 11, fontWeight: 500, borderRadius: 8, padding: '6px 0', cursor: 'pointer', transition: 'background 0.15s',
+                    background: isActive ? activeBg : 'rgba(255,255,255,0.04)',
+                    color: isActive ? activeColor : '#64748b',
+                    border: isActive ? `1px solid ${activeBorder}` : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >{label}</button>
+              )
+            })}
           </div>
 
           {/* Rejection reason */}
@@ -486,6 +487,13 @@ export default function Posts() {
   const dateTo = searchParams.get('date_to') ?? ''
   const search = searchParams.get('search') ?? ''
   const page = parseInt(searchParams.get('page') ?? '1', 10)
+  const [filtersOpen, setFiltersOpen] = useState(() => !!(
+    searchParams.get('live') || searchParams.get('platform') ||
+    searchParams.get('post_status') || searchParams.get('user_action') ||
+    searchParams.get('draft_type') || searchParams.get('run_id') ||
+    searchParams.get('date_from') || searchParams.get('date_to') ||
+    searchParams.get('search')
+  ))
 
   const setParam = (key: string, value: string) => {
     setSearchParams((prev) => {
@@ -550,140 +558,131 @@ export default function Posts() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Filter bar */}
-      <div style={{ ...glass, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {/* Live toggle */}
-          <button
-            onClick={() => {
-              setSearchParams((prev) => {
-                const next = new URLSearchParams(prev)
-                if (live) { next.delete('live') } else { next.set('live', '1') }
-                next.set('page', '1')
-                return next
-              })
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              fontWeight: 500,
-              borderRadius: 8,
-              padding: '6px 12px',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              ...(live
-                ? { background: 'rgba(52,211,153,0.15)', color: '#34d399', outline: '1px solid rgba(52,211,153,0.35)' }
-                : { background: 'rgba(255,255,255,0.05)', color: '#94a3b8', outline: '1px solid rgba(255,255,255,0.1)' }),
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: live ? '#34d399' : '#64748b', ...(live ? { animation: 'pulse 2s infinite' } : {}) }} />
-            Live
-          </button>
-          <select
-            value={platform}
-            onChange={(e) => setParam('platform', e.target.value)}
-            style={selectStyle}
-          >
-            {PLATFORMS.map((p) => (
-              <option key={p} value={p} style={{ background: '#0f172a' }}>{p ? p : 'All Platforms'}</option>
-            ))}
-          </select>
-          <select
-            value={postStatus}
-            onChange={(e) => setParam('post_status', e.target.value)}
-            style={selectStyle}
-          >
-            {POST_STATUSES.map((s) => (
-              <option key={s} value={s} style={{ background: '#0f172a' }}>
-                {s === '' ? 'All QA Status' : s === 'published' ? 'QA Approved' : s === 'draft' ? 'Draft' : 'QA Rejected'}
-              </option>
-            ))}
-          </select>
-          <select
-            value={userAction}
-            onChange={(e) => setParam('user_action', e.target.value)}
-            style={selectStyle}
-          >
-            {ACTIONS.map((a) => (
-              <option key={a} value={a} style={{ background: '#0f172a' }}>{a ? `✎ ${a}` : 'All User Actions'}</option>
-            ))}
-          </select>
-          <select
-            value={draftType}
-            onChange={(e) => setParam('draft_type', e.target.value)}
-            style={selectStyle}
-          >
-            {DRAFT_TYPES.map((d) => (
-              <option key={d} value={d} style={{ background: '#0f172a' }}>{d ? d : 'All Types'}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setParam('search', e.target.value)}
-            placeholder="Search content..."
-            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
-          />
+      <div style={{ ...glass, overflow: 'hidden' }}>
+        {/* Header — always visible, tap to expand */}
+        <div
+          onClick={() => setFiltersOpen(v => !v)}
+          style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' as const }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>Filters</span>
+            {hasFilters && (
+              <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 999, background: 'rgba(139,92,246,0.2)', color: '#c4b5fd', fontWeight: 600 }}>active</span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>
+              {isLoading ? '…' : `${data?.total ?? 0} posts`}
+              {live && !isLoading && <span style={{ marginLeft: 6, color: '#6ee7b7', fontWeight: 500 }}>· {countdown}</span>}
+            </span>
+            <span style={{ fontSize: 14, color: '#64748b', display: 'inline-block', transform: filtersOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+          </div>
         </div>
 
-        {/* Second row: run ID + date filters */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 210 }}>
-            <input
-              list="run-ids-list"
-              value={runId}
-              onChange={(e) => setParam('run_id', e.target.value)}
-              placeholder="Filter by Run ID..."
-              style={{ ...inputStyle, width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
-            />
-            <datalist id="run-ids-list">
-              {runIds.map((id) => <option key={id} value={id} />)}
-            </datalist>
-            {runId && (
+        {/* Collapsible filter content */}
+        {filtersOpen && (
+          <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 12 }}>
+              {/* Live toggle */}
               <button
-                onClick={() => setParam('run_id', '')}
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
-              >✕</button>
-            )}
-          </div>
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev)
+                    if (live) { next.delete('live') } else { next.set('live', '1') }
+                    next.set('page', '1')
+                    return next
+                  })
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderRadius: 8,
+                  padding: '6px 12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  ...(live
+                    ? { background: 'rgba(52,211,153,0.08)', color: '#6ee7b7', outline: '1px solid rgba(52,211,153,0.2)' }
+                    : { background: 'rgba(255,255,255,0.05)', color: '#94a3b8', outline: '1px solid rgba(255,255,255,0.1)' }),
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: live ? '#6ee7b7' : '#64748b', ...(live ? { animation: 'pulse 2s infinite' } : {}) }} />
+                Live
+              </button>
+              <select value={platform} onChange={(e) => setParam('platform', e.target.value)} style={selectStyle}>
+                {PLATFORMS.map((p) => (
+                  <option key={p} value={p} style={{ background: '#0f172a' }}>{p ? p : 'All Platforms'}</option>
+                ))}
+              </select>
+              <select value={postStatus} onChange={(e) => setParam('post_status', e.target.value)} style={selectStyle}>
+                {POST_STATUSES.map((s) => (
+                  <option key={s} value={s} style={{ background: '#0f172a' }}>
+                    {s === '' ? 'All QA Status' : s === 'published' ? 'QA Approved' : s === 'draft' ? 'Draft' : 'QA Rejected'}
+                  </option>
+                ))}
+              </select>
+              <select value={userAction} onChange={(e) => setParam('user_action', e.target.value)} style={selectStyle}>
+                {ACTIONS.map((a) => (
+                  <option key={a} value={a} style={{ background: '#0f172a' }}>{a ? `✎ ${a}` : 'All User Actions'}</option>
+                ))}
+              </select>
+              <select value={draftType} onChange={(e) => setParam('draft_type', e.target.value)} style={selectStyle}>
+                {DRAFT_TYPES.map((d) => (
+                  <option key={d} value={d} style={{ background: '#0f172a' }}>{d ? d : 'All Types'}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setParam('search', e.target.value)}
+                placeholder="Search content..."
+                style={{ ...inputStyle, flex: 1, minWidth: 160 }}
+              />
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>From</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setParam('date_from', e.target.value)}
-              style={{ ...inputStyle, colorScheme: 'dark' }}
-            />
+            {/* Second row: run ID + date filters */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 210 }}>
+                <input
+                  list="run-ids-list"
+                  value={runId}
+                  onChange={(e) => setParam('run_id', e.target.value)}
+                  placeholder="Filter by Run ID..."
+                  style={{ ...inputStyle, width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                />
+                <datalist id="run-ids-list">
+                  {runIds.map((id) => <option key={id} value={id} />)}
+                </datalist>
+                {runId && (
+                  <button
+                    onClick={() => setParam('run_id', '')}
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+                  >✕</button>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>From</label>
+                <input type="date" value={dateFrom} onChange={(e) => setParam('date_from', e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>To</label>
+                <input type="date" value={dateTo} onChange={(e) => setParam('date_to', e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }} />
+              </div>
+              {hasFilters && (
+                <button
+                  onClick={clearFilters}
+                  style={{ fontSize: 11, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>To</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setParam('date_to', e.target.value)}
-              style={{ ...inputStyle, colorScheme: 'dark' }}
-            />
-          </div>
-
-          {hasFilters && (
-            <button
-              onClick={clearFilters}
-              style={{ fontSize: 11, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
-            >
-              Clear all
-            </button>
-          )}
-
-          <span style={{ fontSize: 11, color: '#64748b', marginLeft: 'auto' }}>
-            {isLoading ? 'Loading…' : `${data?.total ?? 0} posts`}
-            {live && !isLoading && (
-              <span style={{ marginLeft: 8, color: '#34d399', fontWeight: 500 }}>· next run in {countdown}</span>
-            )}
-          </span>
-        </div>
+        )}
       </div>
 
       {/* Results */}

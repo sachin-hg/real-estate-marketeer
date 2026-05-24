@@ -390,7 +390,7 @@ export default function Login() {
           {/* Brand */}
           <span className="brand">{brand}</span>
           <div className="divider" />
-          <p className="subtitle">Investor Portal</p>
+          <p className="subtitle">Early Access</p>
 
           {/* Error */}
           {error && (
@@ -459,9 +459,9 @@ export default function Login() {
           {/* Footer links */}
           <div className="links">
             <span>
-              Not an investor yet?{' '}
+              Don't have access yet?{' '}
               <Link to="/invest" className="invest-link">
-                Request access →
+                Get early access →
               </Link>
             </span>
             <a href="/">Back to homepage</a>

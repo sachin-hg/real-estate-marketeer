@@ -485,8 +485,8 @@ async def _run_slack_pipeline(
 
 
 @app.get("/api/runs")
-async def list_runs():
-    """List all runs, newest first, limit 50. Merges in-memory (web) + DB (CLI) runs."""
+async def list_runs(limit: int = 500):
+    """List all runs, newest first. Merges in-memory (web) + DB (CLI) runs."""
     items = []
     seen_ids: set[str] = set()
 
@@ -514,7 +514,7 @@ async def list_runs():
             db_rows = (
                 session.query(RunRecord)
                 .order_by(RunRecord.triggered_at.desc())
-                .limit(50)
+                .limit(limit)
                 .all()
             )
             for rec in db_rows:
@@ -535,7 +535,7 @@ async def list_runs():
         logger.warning("DB run list failed: %s", exc)
 
     items.sort(key=lambda r: r.get("triggered_at") or "", reverse=True)
-    return items[:50]
+    return items[:limit]
 
 
 @app.get("/api/runs/{run_id}/calls")

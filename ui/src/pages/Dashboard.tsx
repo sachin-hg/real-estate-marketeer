@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { getPostStats, getRuns } from '../lib/api'
+import { useMobile } from '../lib/useMobile'
 
 function timeAgo(dateStr?: string): string {
   if (!dateStr) return 'Unknown'
@@ -14,10 +15,10 @@ function timeAgo(dateStr?: string): string {
 }
 
 const STATUS_STYLE: Record<string, React.CSSProperties> = {
-  running: { background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' },
-  completed: { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' },
-  failed: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' },
-  taken_down: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' },
+  running: { background: 'rgba(96,165,250,0.08)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.18)' },
+  completed: { background: 'rgba(52,211,153,0.08)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.18)' },
+  failed: { background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.18)' },
+  taken_down: { background: 'rgba(248,113,113,0.08)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.18)' },
 }
 
 const glass: React.CSSProperties = {
@@ -28,6 +29,7 @@ const glass: React.CSSProperties = {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const isMobile = useMobile()
   const statsQ = useQuery({ queryKey: ['post-stats'], queryFn: getPostStats })
   const runsQ = useQuery({ queryKey: ['runs'], queryFn: getRuns, refetchInterval: 10_000 })
 
@@ -49,7 +51,7 @@ export default function Dashboard() {
         <StatCard
           label="Avg QA Score"
           value={statsQ.isLoading ? '…' : `${(stats?.avg_qa ?? 0).toFixed(1)} / 10`}
-          valueColor="#34d399"
+          valueColor="#6ee7b7"
         />
         <StatCard
           label="Avg Predicted ER"
@@ -59,7 +61,7 @@ export default function Dashboard() {
         <StatCard
           label="QA Rejection Rate"
           value={statsQ.isLoading ? '…' : `${((stats?.qa_rejection_rate ?? 0) * 100).toFixed(0)}%`}
-          valueColor={(stats?.qa_rejection_rate ?? 0) > 0.4 ? '#f87171' : '#94a3b8'}
+          valueColor={(stats?.qa_rejection_rate ?? 0) > 0.4 ? '#fca5a5' : '#94a3b8'}
           onClick={() => navigate('/dashboard/posts?post_status=qa_rejected')}
         />
         <StatCard
@@ -71,7 +73,7 @@ export default function Dashboard() {
         <StatCard
           label="Active Runs"
           value={runsQ.isLoading ? '…' : String(pendingReview)}
-          valueColor="#fbbf24"
+          valueColor="#d4a855"
           onClick={() => navigate('/dashboard/runs')}
         />
         <StatCard
@@ -83,7 +85,7 @@ export default function Dashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,2fr) minmax(0,1fr)', gap: 24 }}>
           {/* Recent runs */}
           <div style={{ ...glass, overflow: 'hidden' }}>
             <div style={{
@@ -176,7 +178,7 @@ export default function Dashboard() {
                         <span style={{ color: '#f1f5f9', fontWeight: 500 }}>
                           {count}
                           {rejected > 0 && (
-                            <span style={{ marginLeft: 6, color: '#f87171', fontSize: 11 }}>({rejPct}% rejected)</span>
+                            <span style={{ marginLeft: 6, color: '#fca5a5', fontSize: 11 }}>({rejPct}% rejected)</span>
                           )}
                         </span>
                       </div>
@@ -188,7 +190,7 @@ export default function Dashboard() {
                           borderRadius: rejected > 0 ? '999px 0 0 999px' : 999,
                         }} />
                         {rejected > 0 && (
-                          <div style={{ width: `${rejectedPct}%`, height: '100%', background: '#f87171' }} />
+                          <div style={{ width: `${rejectedPct}%`, height: '100%', background: 'rgba(248,113,113,0.6)' }} />
                         )}
                       </div>
                     </div>
@@ -207,12 +209,12 @@ export default function Dashboard() {
                     style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b', cursor: 'pointer' }}
                     onClick={() => navigate('/dashboard/posts?post_status=draft')}
                   >
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fbbf24', display: 'inline-block' }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d4a855', display: 'inline-block' }} />
                     Drafts: {stats.by_post_status.draft}
                   </span>
                 )}
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(248,113,113,0.6)', display: 'inline-block' }} />
                   QA Rejected: {stats.by_post_status.qa_rejected ?? 0}
                 </span>
               </div>

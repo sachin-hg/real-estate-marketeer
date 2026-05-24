@@ -204,6 +204,24 @@ def get_stats():
     }
 
 
+@router.get("/top")
+def get_top_posts(limit: int = 9):
+    from db.connection import get_db_session
+    from db.models import PublishedPostRecord
+    from sqlalchemy import desc
+
+    with get_db_session() as session:
+        records = (
+            session.query(PublishedPostRecord)
+            .filter(PublishedPostRecord.post_status != "qa_rejected")
+            .filter(PublishedPostRecord.pred_engagement_rate.isnot(None))
+            .order_by(desc(PublishedPostRecord.pred_engagement_rate))
+            .limit(limit)
+            .all()
+        )
+        return [_serialize_record(r) for r in records]
+
+
 @router.get("/")
 def list_posts(
     platform: Optional[str] = None,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMobile } from '../lib/useMobile'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getRunDetail, getPosts, getRunCalls } from '../lib/api'
@@ -13,17 +14,17 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  running:   { bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },
-  completed: { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-  failed:    { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
+  running:   { bg: 'rgba(59,130,246,0.08)',  color: '#93c5fd' },
+  completed: { bg: 'rgba(16,185,129,0.08)',  color: '#6ee7b7' },
+  failed:    { bg: 'rgba(239,68,68,0.08)',   color: '#fca5a5' },
 }
 
 const PLATFORM_BADGE: Record<string, { bg: string; color: string }> = {
-  twitter:      { bg: 'rgba(14,165,233,0.15)',  color: '#38BDF8' },
-  instagram:    { bg: 'rgba(236,72,153,0.15)',  color: '#f472b6' },
-  housing_news: { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-  youtube:      { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
-  linkedin:     { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
+  twitter:      { bg: 'rgba(14,165,233,0.08)',  color: '#7dd3fc' },
+  instagram:    { bg: 'rgba(236,72,153,0.08)',  color: '#f9a8d4' },
+  housing_news: { bg: 'rgba(16,185,129,0.08)',  color: '#6ee7b7' },
+  youtube:      { bg: 'rgba(239,68,68,0.08)',   color: '#fca5a5' },
+  linkedin:     { bg: 'rgba(59,130,246,0.08)',  color: '#93c5fd' },
 }
 
 const glassCard: React.CSSProperties = {
@@ -55,18 +56,18 @@ function CollapsibleSection({ title, count, badge, defaultOpen = false, children
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
       >
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {title}
+        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 500, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ flexShrink: 0 }}>{title}</span>
           <span style={{
-            fontSize: 11, fontWeight: 400, color: '#64748b',
+            fontSize: 11, fontWeight: 400, color: '#64748b', flexShrink: 0,
             background: 'rgba(255,255,255,0.06)', borderRadius: 999, padding: '2px 8px',
           }}>{count}</span>
           {badge && <span style={{
-            fontSize: 11, fontWeight: 500, color: '#fbbf24',
-            background: 'rgba(245,158,11,0.1)', borderRadius: 999, padding: '2px 8px',
+            fontSize: 11, fontWeight: 500, color: '#94a3b8', flexShrink: 0,
+            background: 'rgba(255,255,255,0.07)', borderRadius: 999, padding: '2px 8px',
           }}>{badge}</span>}
         </span>
-        <span style={{ fontSize: 11, color: '#64748b' }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0, marginLeft: 8 }}>{open ? '▲' : '▼'}</span>
       </button>
       {open && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
@@ -80,7 +81,7 @@ function CollapsibleSection({ title, count, badge, defaultOpen = false, children
 function ScoreBar({ value }: { value?: number | null }) {
   if (value == null) return null
   const pct = Math.min(100, (value / 10) * 100)
-  const color = value >= 7 ? '#34d399' : value >= 5 ? '#fbbf24' : '#f87171'
+  const color = value >= 7 ? 'rgba(52,211,153,0.55)' : value >= 5 ? 'rgba(251,191,36,0.55)' : 'rgba(248,113,113,0.55)'
   return (
     <div className="flex items-center gap-2">
       <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
@@ -255,17 +256,17 @@ function ApiCallRow({ call }: { call: RunApiCall }) {
   return (
     <div style={{ padding: '10px 16px', fontSize: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
       <button onClick={() => setOpen(v => !v)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: 'none', border: 'none', cursor: 'pointer' }}>
-        <span style={{ fontFamily: 'monospace', fontWeight: 700, flexShrink: 0, color: isErr ? '#f87171' : '#34d399' }}>
+        <span style={{ fontFamily: 'monospace', fontWeight: 700, flexShrink: 0, color: isErr ? '#fca5a5' : '#6ee7b7' }}>
           {isErr ? '✕' : '✓'}
         </span>
-        <span style={{ background: 'rgba(245,158,11,0.1)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace', fontSize: 10, flexShrink: 0 }}>
+        <span style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace', fontSize: 10, flexShrink: 0 }}>
           {call.agent}
         </span>
         <span style={{ background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace', flexShrink: 0 }}>{call.api_name}</span>
         <span style={{ color: '#94a3b8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{call.use_case || call.endpoint}</span>
         <span style={{ flexShrink: 0, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>{call.result_count ?? 0} results</span>
         <span style={{ flexShrink: 0, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>{call.elapsed_ms}ms</span>
-        <span style={{ flexShrink: 0, fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums', color: call.estimated_cost_usd > 0 ? '#fbbf24' : '#64748b' }}>{costStr}</span>
+        <span style={{ flexShrink: 0, fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums', color: '#64748b' }}>{costStr}</span>
         <span style={{ color: '#64748b', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
       </button>
 
@@ -295,7 +296,7 @@ function ApiCallRow({ call }: { call: RunApiCall }) {
                 </span>
                 <CopyButton text={JSON.stringify(call.response_preview, null, 2)} />
               </div>
-              <pre style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 6, padding: 8, fontSize: 11, overflowX: 'auto', maxHeight: 256, color: '#34d399', margin: 0 }}>{JSON.stringify(call.response_preview, null, 2)}</pre>
+              <pre style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, padding: 8, fontSize: 11, overflowX: 'auto', maxHeight: 256, color: '#94a3b8', margin: 0 }}>{JSON.stringify(call.response_preview, null, 2)}</pre>
             </div>
           )}
 
@@ -312,17 +313,14 @@ function ApiCallRow({ call }: { call: RunApiCall }) {
 
 function LlmCallRow({ call, isRetry }: { call: RunLlmCall; isRetry?: boolean }) {
   const [open, setOpen] = useState(false)
+  const isMobile = useMobile()
   const costStr = call.cost_usd ? `$${call.cost_usd.toFixed(4)}` : ''
   const tokens = call.input_tokens != null
     ? `${call.input_tokens.toLocaleString()} in · ${(call.output_tokens ?? 0).toLocaleString()} out`
     : ''
   const shortModel = (call.model || '').replace('claude-', '').replace('-20251001', '').replace('gemini-', '')
   const isQaRevision = call.agent.includes('/revision/')
-  const agentStyle = isQaRevision
-    ? { background: 'rgba(245,158,11,0.1)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.2)' }
-    : isRetry
-    ? { background: 'rgba(249,115,22,0.1)', color: '#fb923c', border: '1px solid rgba(249,115,22,0.2)' }
-    : { background: 'rgba(139,92,246,0.1)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.2)' }
+  const agentStyle = { background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)' }
 
   return (
     <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', borderLeft: isRetry ? '2px solid rgba(249,115,22,0.5)' : 'none', marginLeft: isRetry ? 8 : 0 }}>
@@ -332,14 +330,21 @@ function LlmCallRow({ call, isRetry }: { call: RunLlmCall; isRetry?: boolean }) 
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
       >
-        {isRetry && <span style={{ color: '#fb923c', flexShrink: 0, fontFamily: 'monospace', fontSize: 10 }}>↩ retry</span>}
-        {isQaRevision && <span style={{ color: '#fbbf24', flexShrink: 0, fontFamily: 'monospace', fontSize: 10 }}>✏ revise</span>}
+        {isRetry && <span style={{ color: '#94a3b8', flexShrink: 0, fontFamily: 'monospace', fontSize: 10 }}>↩ retry</span>}
+        {isQaRevision && <span style={{ color: '#94a3b8', flexShrink: 0, fontFamily: 'monospace', fontSize: 10 }}>✏ revise</span>}
         <span style={{ ...agentStyle, borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace', flexShrink: 0, fontSize: 10 }}>{shortModel}</span>
         <span style={{ color: '#cbd5e1', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{call.agent}</span>
-        {tokens && <span style={{ color: '#64748b', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{tokens}</span>}
-        {costStr && <span style={{ fontWeight: 600, color: '#a78bfa', flexShrink: 0 }}>{costStr}</span>}
-        <span style={{ color: '#64748b', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{call.elapsed_ms}ms</span>
         <span style={{ color: '#64748b', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+        {isMobile && (tokens || costStr) && (
+          <span style={{ flexBasis: '100%', display: 'flex', gap: 10, fontSize: 11, color: '#64748b', paddingLeft: isRetry ? 0 : 4, fontVariantNumeric: 'tabular-nums' }}>
+            {tokens && <span>{tokens}</span>}
+            {costStr && <span>{costStr}</span>}
+            <span>{call.elapsed_ms}ms</span>
+          </span>
+        )}
+        {!isMobile && tokens && <span style={{ color: '#64748b', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{tokens}</span>}
+        {!isMobile && costStr && <span style={{ fontWeight: 400, color: '#64748b', flexShrink: 0 }}>{costStr}</span>}
+        {!isMobile && <span style={{ color: '#64748b', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{call.elapsed_ms}ms</span>}
       </button>
 
       {open && (
@@ -484,7 +489,7 @@ export default function RunDetail() {
             color: st?.color ?? '#94a3b8',
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            {isRunning && <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#60a5fa', animation: 'pulse 2s infinite' }} />}
+            {isRunning && <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#93c5fd', animation: 'pulse 2s infinite' }} />}
             {run.status}
           </span>
         </div>
@@ -501,16 +506,16 @@ export default function RunDetail() {
               <div key={field} style={{
                 display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '8px 12px', fontSize: 13,
                 background: done
-                  ? 'rgba(16,185,129,0.1)'
+                  ? 'rgba(52,211,153,0.06)'
                   : isRunning
-                  ? 'rgba(59,130,246,0.1)'
+                  ? 'rgba(59,130,246,0.06)'
                   : 'rgba(255,255,255,0.04)',
                 border: done
-                  ? '1px solid rgba(16,185,129,0.25)'
+                  ? '1px solid rgba(52,211,153,0.15)'
                   : isRunning
-                  ? '1px solid rgba(59,130,246,0.25)'
+                  ? '1px solid rgba(59,130,246,0.15)'
                   : '1px solid rgba(255,255,255,0.07)',
-                color: done ? '#34d399' : isRunning ? '#60a5fa' : '#64748b',
+                color: done ? '#6ee7b7' : isRunning ? '#93c5fd' : '#64748b',
               }} className={!done && isRunning ? 'animate-pulse' : ''}>
                 <span style={{ fontWeight: 600 }}>{done ? val : '—'}</span>
                 <span>{label}</span>
@@ -518,13 +523,13 @@ export default function RunDetail() {
             )
           })}
           {totalLlmCost > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '8px 12px', fontSize: 13, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: '#a78bfa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '8px 12px', fontSize: 13, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}>
               <span style={{ fontWeight: 600 }}>${totalLlmCost.toFixed(3)}</span>
               <span>LLM Cost</span>
             </div>
           )}
           {totalApiCost > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '8px 12px', fontSize: 13, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '8px 12px', fontSize: 13, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}>
               <span style={{ fontWeight: 600 }}>~${totalApiCost.toFixed(3)}</span>
               <span>API Cost</span>
             </div>
@@ -563,7 +568,7 @@ export default function RunDetail() {
             <div className="space-y-4">
               {approvedPosts.length > 0 && (
                 <div className="space-y-2">
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     ✓ Approved / Published — {approvedPosts.length}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -574,7 +579,7 @@ export default function RunDetail() {
 
               {draftPosts.length > 0 && (
                 <div className="space-y-2">
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#d4a855', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     ⏳ Pending Human Review — {draftPosts.length}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -585,7 +590,7 @@ export default function RunDetail() {
 
               {rejectedPosts.length > 0 && (
                 <div className="space-y-2">
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     ✕ QA Rejected — {rejectedPosts.length}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -618,7 +623,7 @@ export default function RunDetail() {
                   {item.source && <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>{item.source}</p>}
                   {item.summary && <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 4 }}>{item.summary}</p>}
                   {item.relevance && (
-                    <p style={{ fontSize: 12, color: '#34d399', background: 'rgba(16,185,129,0.08)', borderRadius: 6, padding: '6px 8px' }}>
+                    <p style={{ fontSize: 12, color: '#94a3b8', background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '6px 8px' }}>
                       <span style={{ fontWeight: 500 }}>Why relevant: </span>{item.relevance}
                     </p>
                   )}
@@ -635,11 +640,11 @@ export default function RunDetail() {
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#818CF8' }}>{t.hashtag}</span>
                     <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 8px', textTransform: 'capitalize' }}>{t.platform}</span>
                     {t.volume && <span style={{ fontSize: 12, color: '#64748b' }}>vol: {t.volume}</span>}
-                    {t.city_hint && <span style={{ fontSize: 11, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', borderRadius: 999, padding: '2px 8px' }}>{t.city_hint}</span>}
+                    {t.city_hint && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 8px' }}>{t.city_hint}</span>}
                   </div>
                   {t.context && <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>{t.context}</p>}
                   {t.creative_hook && (
-                    <p style={{ fontSize: 12, color: '#fbbf24', background: 'rgba(245,158,11,0.08)', borderRadius: 6, padding: '6px 8px', fontStyle: 'italic' }}>
+                    <p style={{ fontSize: 12, color: '#94a3b8', background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '6px 8px', fontStyle: 'italic' }}>
                       Hook: "{t.creative_hook}"
                     </p>
                   )}
@@ -657,14 +662,14 @@ export default function RunDetail() {
                   <div className="flex items-center gap-2 flex-wrap mb-2">
                     <span style={{
                       fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 999,
-                      background: b.draft_type === 'social' ? 'rgba(139,92,246,0.15)' : 'rgba(16,185,129,0.15)',
-                      color: b.draft_type === 'social' ? '#a78bfa' : '#34d399',
+                      background: 'rgba(255,255,255,0.06)',
+                      color: '#94a3b8',
                     }}>{b.draft_type}</span>
                     {b.tone && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 8px' }}>{b.tone}</span>}
                     {b.target_platforms?.map((p) => (
-                      <span key={p} style={{ fontSize: 11, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', borderRadius: 999, padding: '2px 6px' }}>{p}</span>
+                      <span key={p} style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 6px' }}>{p}</span>
                     ))}
-                    {b.city_hint && <span style={{ fontSize: 11, background: 'rgba(245,158,11,0.1)', color: '#fbbf24', borderRadius: 999, padding: '2px 6px' }}>{b.city_hint}</span>}
+                    {b.city_hint && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 6px' }}>{b.city_hint}</span>}
                   </div>
                   {b.topic && (
                     <p style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500, borderLeft: '2px solid rgba(255,255,255,0.12)', paddingLeft: 8, marginBottom: 4 }}>
@@ -676,7 +681,7 @@ export default function RunDetail() {
                     <p style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', lineHeight: 1.5, marginBottom: 4 }}>{b.source_summary}</p>
                   )}
                   {b.urgency && (
-                    <p style={{ fontSize: 12, color: '#fbbf24', background: 'rgba(245,158,11,0.08)', borderRadius: 6, padding: '6px 8px', marginBottom: 4 }}>
+                    <p style={{ fontSize: 12, color: '#94a3b8', background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '6px 8px', marginBottom: 4 }}>
                       <span style={{ fontWeight: 500 }}>Urgency: </span>{b.urgency}
                     </p>
                   )}
@@ -700,7 +705,7 @@ export default function RunDetail() {
                     }}>{d.draft_type}</span>
                     {d.media_format && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 8px' }}>{d.media_format}</span>}
                     {d.target_platforms.map((p) => (
-                      <span key={p} style={{ fontSize: 11, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', borderRadius: 999, padding: '2px 6px' }}>{p}</span>
+                      <span key={p} style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderRadius: 999, padding: '2px 6px' }}>{p}</span>
                     ))}
                   </div>
                   <p style={{ fontSize: 14, fontWeight: 500, color: '#f1f5f9', marginBottom: 2 }}>{d.angle || d.headline}</p>
@@ -782,8 +787,9 @@ export default function RunDetail() {
         {logOpen && (
           <div
             ref={logRef}
-            style={{ height: 384, overflowY: 'auto', fontFamily: 'monospace', fontSize: 11, padding: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}
+            style={{ height: 384, overflow: 'auto', fontFamily: 'monospace', fontSize: 11, padding: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}
           >
+            <div style={{ minWidth: 480 }}>
             {!run.events?.length ? (
               <span style={{ color: '#334155' }}>No events captured for this run.</span>
             ) : (
@@ -794,16 +800,17 @@ export default function RunDetail() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ color: '#475569', flexShrink: 0, width: 80 }}>{formatTs(ev.ts)}</span>
-                    <span style={{ flexShrink: 0, width: 64, fontWeight: 700, color: LEVEL_COLOR[ev.level] ?? '#64748b' }}>
+                    <span style={{ color: '#475569', flexShrink: 0, width: 72 }}>{formatTs(ev.ts)}</span>
+                    <span style={{ flexShrink: 0, width: 52, fontWeight: 700, color: LEVEL_COLOR[ev.level] ?? '#64748b' }}>
                       {ev.level}
                     </span>
-                    <span style={{ color: '#475569', flexShrink: 0, width: 144, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ev.logger}>{shortLogger}</span>
-                    <span style={{ color: '#cbd5e1', wordBreak: 'break-word', minWidth: 0 }}>{ev.msg}</span>
+                    <span style={{ color: '#475569', flexShrink: 0, width: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ev.logger}>{shortLogger}</span>
+                    <span style={{ color: '#cbd5e1', whiteSpace: 'nowrap' }}>{ev.msg}</span>
                   </div>
                 )
               })
             )}
+            </div>
           </div>
         )}
       </div>

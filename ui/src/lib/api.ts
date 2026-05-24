@@ -159,7 +159,7 @@ export const getRuns = () =>
       published_count: number
       error?: string
     }>
-  >('/api/runs')
+  >('/api/runs?limit=500')
 
 export const getRunDetail = (runId: string) =>
   fetchJson<{

@@ -277,7 +277,7 @@ export default function Analytics() {
           {filteredPosts.length === 0 ? <EmptyChart /> : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={filteredPosts} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="date" tickFormatter={tick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={28} />
                 <Tooltip labelFormatter={(l: unknown) => String(l)} formatter={(v: unknown, n: unknown) => [String(v), n as string]} />
@@ -296,7 +296,7 @@ export default function Analytics() {
           {platCountData.length === 0 ? <EmptyChart /> : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={platCountData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="date" tickFormatter={tick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={28} />
                 <Tooltip labelFormatter={(l: unknown) => String(l)} formatter={(v: unknown, n: unknown) => [String(v), n as string]} />
@@ -349,7 +349,7 @@ export default function Analytics() {
           {qaData.length === 0 ? <EmptyChart /> : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={qaData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="date" tickFormatter={tick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} width={28} tickFormatter={(v: unknown) => String(v)} />
                 <Tooltip
@@ -370,7 +370,7 @@ export default function Analytics() {
           {rejData.length === 0 ? <EmptyChart /> : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={rejData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="date" tickFormatter={tick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis
                   domain={[0, 1]}
@@ -400,7 +400,7 @@ export default function Analytics() {
           {erData.length === 0 ? <EmptyChart /> : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={erData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="date" tickFormatter={tick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis
                   tick={{ fontSize: 11 }}
@@ -450,7 +450,7 @@ export default function Analytics() {
           {filteredCost.length === 0 ? <EmptyChart /> : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={filteredCost} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="date" tickFormatter={tick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: unknown) => `$${Number(v).toFixed(2)}`} width={48} />
                 <Tooltip
@@ -479,7 +479,7 @@ export default function Analytics() {
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <ScatterChart margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="pred" name="Predicted" unit="%" tick={{ fontSize: 11 }}
                     label={{ value: 'Pred ER %', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#94a3b8' }} />
                   <YAxis dataKey="actual" name="Actual" unit="%" tick={{ fontSize: 11 }}
