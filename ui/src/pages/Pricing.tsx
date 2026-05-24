@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
 import { SEO } from '../components/SEO'
 
@@ -266,7 +266,6 @@ const GridIcon = () => (
 )
 
 export default function Pricing() {
-  const navigate = useNavigate()
   const brand = useBrandName()
   const [isAnnual, setIsAnnual] = useState(false)
   const [mode, setMode] = useState<'subscription' | 'payg'>('subscription')
@@ -341,7 +340,7 @@ export default function Pricing() {
         {/* NAV */}
         <nav className="pr-nav">
           <div className="nav-left">
-            <button className="nav-logo" onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{brand}</button>
+            <Link to="/" className="nav-logo">{brand}</Link>
           </div>
           <div className="nav-cta">
             <a href="#faq" className="nav-link">FAQ</a>
