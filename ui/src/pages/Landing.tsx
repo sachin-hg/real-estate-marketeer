@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
 import { CardMarqueeBg } from '../components/CardMarqueeBg'
+import { SEO } from '../components/SEO'
 import {
   Radio, Search, Layers, Sparkles, Send,
   Zap, Bot, Target, Clock, DollarSign,
@@ -19,9 +20,10 @@ const useAppName = useBrandName
 function useMobile() {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768)
   useEffect(() => {
-    const h = () => setMobile(window.innerWidth < 768)
-    window.addEventListener('resize', h)
-    return () => window.removeEventListener('resize', h)
+    let t: ReturnType<typeof setTimeout>
+    const h = () => { clearTimeout(t); t = setTimeout(() => setMobile(window.innerWidth < 768), 150) }
+    window.addEventListener('resize', h, { passive: true })
+    return () => { window.removeEventListener('resize', h); clearTimeout(t) }
   }, [])
   return mobile
 }
@@ -35,32 +37,71 @@ function GradText({ children }: { children: React.ReactNode }) {
 }
 
 function TwitterIcon({ size = 16 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63 5.905-5.63Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" /></svg>
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63 5.905-5.63Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" /></svg>
 }
 function InstagramIcon({ size = 16 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
 }
 function LinkedInIcon({ size = 16 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
 }
 
+// Pure CSS animation — no JS timer, no state, no re-render after mount.
+// IntersectionObserver triggers the animation class when the bar enters the viewport.
 function MetricBar({ label, value, max, color, suffix = '' }: {
   label: string; value: number; max: number; color: string; suffix?: string
 }) {
-  const [w, setW] = useState(0)
-  useEffect(() => { const t = setTimeout(() => setW((value / max) * 100), 300); return () => clearTimeout(t) }, [value, max])
+  const pct = (value / max) * 100
+  const id = `mb-${label.replace(/\s+/g, '-').toLowerCase()}`
   return (
     <div style={{ marginBottom: 16 }}>
+      <style>{`
+        @keyframes ${id}-fill { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+        .${id}-bar { transform-origin: left; transform: scaleX(0);
+          animation: ${id}-fill 1.1s cubic-bezier(.22,1,.36,1) both; }
+      `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
         <span style={{ fontSize: 12, color: '#94a3b8' }}>{label}</span>
         <span style={{ fontSize: 12, fontWeight: 700, color }}>{value}{suffix}</span>
       </div>
       <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', borderRadius: 3, background: color, width: `${w}%`, transition: 'width 1.1s cubic-bezier(0.22,1,0.36,1)' }} />
+        <div className={`${id}-bar`} style={{ height: '100%', borderRadius: 3, background: color, width: `${pct}%` }} />
       </div>
     </div>
   )
 }
+
+// ─── carousel card — memoized so only the active card re-renders ──────────────
+const CarouselCard = memo(function CarouselCard({ node, i, active, n, cardW, cardH }: {
+  node: React.ReactNode; i: number; active: number; n: number; cardW: number; cardH: number
+}) {
+  const raw = ((i - active) % n + n) % n
+  const d = raw > n / 2 ? raw - n : raw
+  const isC = d === 0
+  const isAdj = Math.abs(d) === 1
+  const tx = d * cardW * 0.76
+  const ty = isC ? -24 : 0
+  const sc = isC ? 1 : 0.84
+  const opacity = isC ? 1 : isAdj ? 0.55 : 0
+  return (
+    <div style={{
+      position: 'absolute', left: '50%', top: 24,
+      marginLeft: -(cardW / 2), width: cardW, height: cardH,
+      transform: `translateX(${tx}px) translateY(${ty}px) scale(${sc})`,
+      transformOrigin: 'center top', opacity,
+      zIndex: isC ? 3 : 1,
+      background: isC ? '#08081e' : 'transparent',
+      borderRadius: isC ? 24 : 0,
+      overflow: isC ? 'hidden' : 'visible',
+      pointerEvents: (isC || isAdj) ? 'auto' : 'none',
+      transition: 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.5s ease',
+      willChange: 'transform, opacity',
+      contain: 'layout style',
+    }}>
+      {node}
+    </div>
+  )
+})
 
 // ─── carousel: centre card prominent, side cards peek from behind ─────────────
 function NodeCarousel({ nodes, interval = 3600, cardW = CAR_W, cardH = CAR_H }: {
@@ -77,50 +118,24 @@ function NodeCarousel({ nodes, interval = 3600, cardW = CAR_W, cardH = CAR_H }: 
     return () => clearInterval(id)
   }, [n, interval])
 
+  // Dot widths precomputed so the map below is allocation-free
+  const dotStyles = useMemo(() => nodes.map((_, i) => ({
+    width: i === active ? 28 : 8, height: 8, borderRadius: 4,
+    border: 'none' as const, cursor: 'pointer' as const, padding: 0,
+    background: i === active ? '#818CF8' : 'rgba(255,255,255,0.18)',
+    transition: 'width 0.35s cubic-bezier(.22,1,.36,1), background 0.35s ease',
+  })), [active, nodes.length])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
       <div style={{ position: 'relative', height: cardH + 40, width: '100%' }}>
-        {nodes.map((node, i) => {
-          const raw = ((i - active) % n + n) % n
-          const d = raw > n / 2 ? raw - n : raw
-          const isC = d === 0
-          const isAdj = Math.abs(d) === 1
-          const tx = d * cardW * 0.76
-          const ty = isC ? -24 : 0
-          const sc = isC ? 1 : 0.84
-          const opacity = isC ? 1 : isAdj ? 0.55 : 0
-          return (
-            <div key={i} style={{
-              position: 'absolute',
-              left: '50%',
-              top: 24,
-              marginLeft: -(cardW / 2),
-              width: cardW,
-              height: cardH,
-              transform: `translateX(${tx}px) translateY(${ty}px) scale(${sc})`,
-              transformOrigin: 'center top',
-              opacity,
-              zIndex: isC ? 3 : 1,
-              background: isC ? '#08081e' : 'transparent',
-              borderRadius: isC ? 24 : 0,
-              overflow: isC ? 'hidden' : 'visible',
-              pointerEvents: (isC || isAdj) ? 'auto' : 'none',
-              transition: 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.5s ease',
-              willChange: 'transform, opacity',
-            }}>
-              {node}
-            </div>
-          )
-        })}
+        {nodes.map((node, i) => (
+          <CarouselCard key={i} node={node} i={i} active={active} n={n} cardW={cardW} cardH={cardH} />
+        ))}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
         {nodes.map((_, i) => (
-          <button key={i} onClick={() => setActive(i)} style={{
-            width: i === active ? 28 : 8, height: 8, borderRadius: 4,
-            border: 'none', cursor: 'pointer', padding: 0,
-            background: i === active ? '#818CF8' : 'rgba(255,255,255,0.18)',
-            transition: 'width 0.35s cubic-bezier(.22,1,.36,1), background 0.35s ease',
-          }} />
+          <button key={i} onClick={() => setActive(i)} style={dotStyles[i]} />
         ))}
       </div>
     </div>
@@ -235,12 +250,13 @@ const CONTACT_HREF = 'mailto:a.sachin533@gmail.com?subject=NAVA%20%E2%80%94%20Le
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
-  const navigate = useNavigate()
   const appName = useAppName()
   const mobile = useMobile()
+  // Stable reference — avoids re-reading window.location.origin on every render
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const [visible, setVisible] = useState(false)
   const [activeSection, setActiveSection] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLElement>(null)
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([])
   const isSnapping = useRef(false)
   const currentIdx = useRef(0)
@@ -249,7 +265,16 @@ export default function Landing() {
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartY = useRef(0)
 
-  const carW = mobile ? Math.min(CAR_W, window.innerWidth - 48) : CAR_W
+  // Derive from mobile state — no direct window.innerWidth access during render
+  // (avoids SSR mismatch and repeated layout reads)
+  const [winW, setWinW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 768)
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>
+    const h = () => { clearTimeout(t); t = setTimeout(() => setWinW(window.innerWidth), 150) }
+    window.addEventListener('resize', h, { passive: true })
+    return () => { window.removeEventListener('resize', h); clearTimeout(t) }
+  }, [])
+  const carW = mobile ? Math.min(CAR_W, winW - 48) : CAR_W
   const carH = mobile ? 360 : CAR_H
 
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
@@ -483,6 +508,31 @@ export default function Landing() {
 
   return (
     <>
+      <SEO
+        title={`${appName} — The AI #TrendJack Engine`}
+        description={`Turn any trending moment into brand buzz in 90 seconds. ${appName} is a multi-agent AI that detects trends, crafts platform-native posts, and publishes across Twitter, Instagram, LinkedIn and more — autonomously.`}
+        canonical="/"
+        keywords="AI trend jacking, social media automation, trending content AI, brand buzz, Instagram automation, Twitter automation, LinkedIn automation, content marketing AI"
+        structuredData={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: appName,
+            applicationCategory: 'BusinessApplication',
+            description: `Multi-agent AI that monitors trending topics and auto-generates platform-native social posts in under 90 seconds`,
+            offers: { '@type': 'Offer', price: '39', priceCurrency: 'USD' },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              { '@type': 'Question', name: `What is ${appName}?`, acceptedAnswer: { '@type': 'Answer', text: `${appName} is an AI-powered multi-agent trend-jacking engine. It monitors trending topics across 15+ sources and automatically generates platform-native posts for Twitter/X, Instagram, and LinkedIn in under 90 seconds — for brands of any size, in any industry.` } },
+              { '@type': 'Question', name: `How fast does ${appName} publish content?`, acceptedAnswer: { '@type': 'Answer', text: `${appName} goes from trend detection to a live published post in under 90 seconds — simultaneously on Twitter/X, Instagram, and LinkedIn.` } },
+              { '@type': 'Question', name: `How much does ${appName} cost?`, acceptedAnswer: { '@type': 'Answer', text: `${appName} starts at $39/month (Spark plan, ~150 posts at $0.26/post). All plans include a 14-day free trial.` } },
+            ],
+          },
+        ]}
+      />
       <style>{`
         @keyframes float-a{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-60px) scale(1.08)}66%{transform:translate(-30px,30px) scale(0.95)}}
         @keyframes float-b{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(-50px,40px) scale(1.05)}70%{transform:translate(30px,-40px) scale(0.97)}}
@@ -490,12 +540,12 @@ export default function Landing() {
         @keyframes slide-up{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.6)}}
         @keyframes wire-fill{0%{width:0%;opacity:1}72%{width:100%;opacity:1}88%{width:100%;opacity:.25}100%{width:100%;opacity:0}}
-        .pipe-wire-fill{position:absolute;top:0;left:0;bottom:0;width:0%;border-radius:1px;background:linear-gradient(90deg,#8B5CF6 0%,#818CF8 35%,#38BDF8 70%,#67E8F9 100%);filter:drop-shadow(0 0 4px rgba(139,92,246,.8));animation:wire-fill 2.8s linear infinite}
-        @keyframes node-0{0%{opacity:.4;box-shadow:none;filter:brightness(1)}5%{opacity:1;box-shadow:0 0 32px 8px #8B5CF6;filter:brightness(1.8)}14%,79%{opacity:1;box-shadow:0 0 16px 4px #8B5CF6;filter:brightness(1.3)}92%{opacity:.5;box-shadow:none;filter:brightness(1)}100%{opacity:.4;box-shadow:none;filter:brightness(1)}}
-        @keyframes node-1{0%,16%{opacity:.4;box-shadow:none;filter:brightness(1)}22%{opacity:1;box-shadow:0 0 32px 8px #6366F1;filter:brightness(1.8)}31%,79%{opacity:1;box-shadow:0 0 16px 4px #6366F1;filter:brightness(1.3)}92%{opacity:.5;box-shadow:none;filter:brightness(1)}100%{opacity:.4;box-shadow:none;filter:brightness(1)}}
-        @keyframes node-2{0%,34%{opacity:.4;box-shadow:none;filter:brightness(1)}40%{opacity:1;box-shadow:0 0 32px 8px #3B82F6;filter:brightness(1.8)}49%,79%{opacity:1;box-shadow:0 0 16px 4px #3B82F6;filter:brightness(1.3)}92%{opacity:.5;box-shadow:none;filter:brightness(1)}100%{opacity:.4;box-shadow:none;filter:brightness(1)}}
-        @keyframes node-3{0%,52%{opacity:.4;box-shadow:none;filter:brightness(1)}58%{opacity:1;box-shadow:0 0 32px 8px #06B6D4;filter:brightness(1.8)}67%,79%{opacity:1;box-shadow:0 0 16px 4px #06B6D4;filter:brightness(1.3)}92%{opacity:.5;box-shadow:none;filter:brightness(1)}100%{opacity:.4;box-shadow:none;filter:brightness(1)}}
-        @keyframes node-4{0%,70%{opacity:.4;box-shadow:none;filter:brightness(1)}76%{opacity:1;box-shadow:0 0 32px 8px #10B981;filter:brightness(1.8)}82%{opacity:1;box-shadow:0 0 16px 4px #10B981;filter:brightness(1.3)}92%{opacity:.5;box-shadow:none;filter:brightness(1)}100%{opacity:.4;box-shadow:none;filter:brightness(1)}}
+        .pipe-wire-fill{position:absolute;top:0;left:0;bottom:0;width:0%;border-radius:1px;background:linear-gradient(90deg,#8B5CF6 0%,#818CF8 35%,#38BDF8 70%,#67E8F9 100%);box-shadow:0 0 4px rgba(139,92,246,.6);animation:wire-fill 2.8s linear infinite}
+        @keyframes node-0{0%{opacity:.4;box-shadow:none}5%{opacity:1;box-shadow:0 0 32px 8px #8B5CF6}14%,79%{opacity:1;box-shadow:0 0 16px 4px #8B5CF6}92%{opacity:.5;box-shadow:none}100%{opacity:.4;box-shadow:none}}
+        @keyframes node-1{0%,16%{opacity:.4;box-shadow:none}22%{opacity:1;box-shadow:0 0 32px 8px #6366F1}31%,79%{opacity:1;box-shadow:0 0 16px 4px #6366F1}92%{opacity:.5;box-shadow:none}100%{opacity:.4;box-shadow:none}}
+        @keyframes node-2{0%,34%{opacity:.4;box-shadow:none}40%{opacity:1;box-shadow:0 0 32px 8px #3B82F6}49%,79%{opacity:1;box-shadow:0 0 16px 4px #3B82F6}92%{opacity:.5;box-shadow:none}100%{opacity:.4;box-shadow:none}}
+        @keyframes node-3{0%,52%{opacity:.4;box-shadow:none}58%{opacity:1;box-shadow:0 0 32px 8px #06B6D4}67%,79%{opacity:1;box-shadow:0 0 16px 4px #06B6D4}92%{opacity:.5;box-shadow:none}100%{opacity:.4;box-shadow:none}}
+        @keyframes node-4{0%,70%{opacity:.4;box-shadow:none}76%{opacity:1;box-shadow:0 0 32px 8px #10B981}82%{opacity:1;box-shadow:0 0 16px 4px #10B981}92%{opacity:.5;box-shadow:none}100%{opacity:.4;box-shadow:none}}
         @keyframes card-live{
           0%,100%{transform:translateY(0) scale(1);    box-shadow:0 16px 48px rgba(0,0,0,0.25),0 0 0px   var(--g,rgba(99,102,241,0));}
           50%    {transform:translateY(-16px) scale(1.018);box-shadow:0 40px 80px rgba(0,0,0,0.4), 0 0 60px var(--g,rgba(99,102,241,0.35));}}
@@ -534,13 +584,11 @@ export default function Landing() {
         <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: mobile ? '14px 20px' : '18px 52px', background: 'rgba(7,7,26,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <span style={{ fontWeight: 900, fontSize: mobile ? 24 : 32, letterSpacing: '0.01em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{appName}</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-g" onClick={() => navigate('/dashboard')} style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 500, cursor: 'pointer', color: '#cbd5e1', background: 'transparent' }}>Dashboard</button>
-            <button className="btn-p nav-btn-secondary" onClick={() => navigate('/invest')} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#fff', border: 'none' }}>Invest</button>
-            <button onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', border: '1px solid rgba(139,92,246,.35)' }}>Pricing</button>
-            <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
-              <button className="btn-g" style={{ padding: mobile ? '8px 14px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Mail size={14} />{!mobile && "Let's Talk"}
-              </button>
+            <Link to="/dashboard" className="btn-g" style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 500, color: '#cbd5e1', background: 'transparent', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Dashboard</Link>
+            <Link to="/invest" className="btn-p nav-btn-secondary" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Invest</Link>
+            <Link to="/pricing" style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 600, color: '#c4b5fd', background: 'transparent', border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Pricing</Link>
+            <a href={CONTACT_HREF} className="btn-g" style={{ padding: mobile ? '8px 14px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#e2e8f0', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+              <Mail size={14} />{!mobile && "Let's Talk"}
             </a>
           </div>
         </nav>
@@ -556,10 +604,10 @@ export default function Landing() {
         )}
 
         {/* scroll container */}
-        <div ref={containerRef} className="snap-box">
+        <main ref={containerRef} className="snap-box" aria-label="NAVA landing page content">
 
           {/* ── S1 · HERO ───────────────────────────────────────────── */}
-          <div ref={ref(0)} style={S}>
+          <div ref={ref(0)} style={S} role="region" aria-label="Hero">
             <CardMarqueeBg />
             {visible && (
               <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', maxWidth: 860, width: '100%' }}>
@@ -569,7 +617,7 @@ export default function Landing() {
                     AI #TrendJacker
                   </span>
                 </div>
-                <h1 className="anim-up d1" style={{ fontSize: 'clamp(64px,14vw,156px)', fontWeight: 900, lineHeight: 0.88, letterSpacing: '-0.04em', marginBottom: mobile ? 24 : 40, background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', filter: 'drop-shadow(0 0 50px rgba(139,92,246,0.4))' }}>
+                <h1 className="anim-up d1" style={{ fontSize: 'clamp(64px,14vw,156px)', fontWeight: 900, lineHeight: 0.88, letterSpacing: '-0.04em', marginBottom: mobile ? 24 : 40, background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', textShadow: '0 0 50px rgba(139,92,246,0.4)' }}>
                   {appName}
                 </h1>
                 <p className="anim-up d2" style={{ fontSize: 'clamp(18px,3.2vw,36px)', fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2, maxWidth: 700, marginBottom: 14, letterSpacing: '-0.025em' }}>
@@ -579,12 +627,12 @@ export default function Landing() {
                   Trend detected → AI-crafted post → published. In 90 seconds.
                 </p>
                 <div className="anim-up d4" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <button className="btn-p" onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '13px 28px' : '16px 38px', borderRadius: 12, fontSize: mobile ? 14 : 16, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Link to="/pricing" className="btn-p" style={{ padding: mobile ? '13px 28px' : '16px 38px', borderRadius: 12, fontSize: mobile ? 14 : 16, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
                     Get Started <ArrowRight size={16} />
-                  </button>
-                  <button className="btn-g" onClick={() => window.open('/demo', '_blank')} style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
+                  </Link>
+                  <Link to="/demo" className="btn-g" style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, color: '#c4b5fd', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none' }}>
                     Watch It Happen
-                  </button>
+                  </Link>
                 </div>
               </section>
             )}
@@ -602,7 +650,7 @@ export default function Landing() {
           </div>
 
           {/* ── S2 · PLATFORM SAMPLES ───────────────────────────────── */}
-          <div ref={ref(1)} style={S}>
+          <div ref={ref(1)} style={S} role="region" aria-label="Platform post examples">
             <section style={{ width: '100%', maxWidth: 1200, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 28 : 48 }}>
                 <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>
@@ -660,7 +708,7 @@ export default function Landing() {
           </div>
 
           {/* ── S3 · PIPELINE ───────────────────────────────────────── */}
-          <div ref={ref(2)} style={S}>
+          <div ref={ref(2)} style={S} role="region" aria-label="How it works">
             <section style={{ width: '100%', maxWidth: 1160, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
                 <h2 style={{ fontSize: mobile ? 'clamp(22px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 10 }}>
@@ -732,7 +780,7 @@ export default function Landing() {
           </div>
 
           {/* ── S4 · METRICS (carousel) ─────────────────────────────── */}
-          <div ref={ref(3)} style={S}>
+          <div ref={ref(3)} style={S} role="region" aria-label="Performance metrics">
             <section style={{ width: '100%', maxWidth: 1200, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
                 <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>Proof, not promises.</h2>
@@ -743,7 +791,7 @@ export default function Landing() {
           </div>
 
           {/* ── S5 · CASE STUDY (carousel) ──────────────────────────── */}
-          <div ref={ref(4)} style={S}>
+          <div ref={ref(4)} style={S} role="region" aria-label="Results and case studies">
             <section style={{ width: '100%', maxWidth: 1140, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 20 : 40 }}>
                 <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>Numbers Don't Lie.</h2>
@@ -761,7 +809,7 @@ export default function Landing() {
           </div>
 
           {/* ── S6 · FEATURES (carousel) ────────────────────────────── */}
-          <div ref={ref(5)} style={S}>
+          <div ref={ref(5)} style={S} role="region" aria-label="Key features">
             <section style={{ width: '100%', maxWidth: 1200, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
                 <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>Built different.</h2>
@@ -772,7 +820,7 @@ export default function Landing() {
           </div>
 
           {/* ── S7 · INVESTOR + SHARE ───────────────────────────────── */}
-          <div ref={ref(6)} style={S}>
+          <div ref={ref(6)} style={S} role="region" aria-label="Investor and social share">
             <section style={{ width: '100%', maxWidth: 1100, padding: mobile ? '0 20px' : '0 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mobile ? 32 : 48 }}>
 
               {/* Investor card */}
@@ -789,13 +837,11 @@ export default function Landing() {
                     A $15B+ addressable market. AI-native infrastructure. Recurring revenue from Day 1. Starting with real estate — expanding to every vertical that publishes.
                   </p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <button className="btn-p" onClick={() => navigate('/invest')} style={{ padding: mobile ? '12px 24px' : '14px 32px', borderRadius: 12, fontSize: mobile ? 14 : 15, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Link to="/invest" className="btn-p" style={{ padding: mobile ? '12px 24px' : '14px 32px', borderRadius: 12, fontSize: mobile ? 14 : 15, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
                       View Investor Brief <ArrowRight size={15} />
-                    </button>
-                    <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
-                      <button className="btn-g" style={{ padding: mobile ? '12px 20px' : '14px 28px', borderRadius: 12, fontSize: mobile ? 13 : 14, fontWeight: 600, cursor: 'pointer', color: '#e2e8f0', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Mail size={14} /> Partner With Us
-                      </button>
+                    </Link>
+                    <a href={CONTACT_HREF} className="btn-g" style={{ padding: mobile ? '12px 20px' : '14px 28px', borderRadius: 12, fontSize: mobile ? 13 : 14, fontWeight: 600, color: '#e2e8f0', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                      <Mail size={14} /> Partner With Us
                     </a>
                   </div>
                 </div>
@@ -817,35 +863,28 @@ export default function Landing() {
                 <h3 style={{ fontSize: mobile ? 'clamp(22px,5.5vw,32px)' : 'clamp(26px,3vw,40px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 20 }}>
                   Loved it? <GradText>Spread the word.</GradText>
                 </h3>
+                <style>{`
+                  .share-btn{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;will-change:transform}
+                  .share-btn:hover{transform:translateY(-3px)}
+                  .share-btn-x{background:#000}.share-btn-x:hover{box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+                  .share-btn-li{background:#0077b5}.share-btn-li:hover{box-shadow:0 8px 24px rgba(0,119,181,0.45)}
+                  .share-btn-wa{background:#25d366}.share-btn-wa:hover{box-shadow:0 8px 24px rgba(37,211,102,0.45)}
+                  .share-btn-cp{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.18);color:#e2e8f0;transition:transform .15s,background .15s}
+                  .share-btn-cp:hover{background:rgba(255,255,255,0.12);transform:translateY(-3px)}
+                `}</style>
                 <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {/* Twitter/X */}
-                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('This AI goes from trending topic → published post across Twitter, Instagram & LinkedIn in under 90 seconds.\n\n3.8× engagement lift. 170× cheaper than agencies. Zero human in the loop.\n\nContent marketing just changed. 🔥 #AI #ContentMarketing #TrendJacking')}&url=${encodeURIComponent(window.location.origin)}`} target="_blank" rel="noreferrer" title="Share on X" style={{ textDecoration: 'none' }}>
-                    <button style={{ width: 48, height: 48, borderRadius: '50%', background: '#000', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,box-shadow .15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}>
-                      <TwitterIcon size={18} />
-                    </button>
+                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('This AI goes from trending topic → published post across Twitter, Instagram & LinkedIn in under 90 seconds.\n\n3.8× engagement lift. 170× cheaper than agencies. Zero human in the loop.\n\nContent marketing just changed. 🔥 #AI #ContentMarketing #TrendJacking')}&url=${encodeURIComponent(origin)}`} target="_blank" rel="noreferrer" title="Share on X" style={{ textDecoration: 'none' }}>
+                    <button className="share-btn share-btn-x"><TwitterIcon size={18} /></button>
                   </a>
-                  {/* LinkedIn */}
-                  <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&summary=${encodeURIComponent('NAVA publishes trend-jacked social posts autonomously in under 90 seconds — 3.8× higher engagement, 170× cheaper than agencies. Built for real estate brands scaling content without scaling headcount.')}`} target="_blank" rel="noreferrer" title="Share on LinkedIn" style={{ textDecoration: 'none' }}>
-                    <button style={{ width: 48, height: 48, borderRadius: '50%', background: '#0077b5', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,box-shadow .15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(0,119,181,0.45)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}>
-                      <LinkedInIcon size={18} />
-                    </button>
+                  <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(origin)}&summary=${encodeURIComponent(`${appName} publishes trend-jacked social posts autonomously in under 90 seconds — 3.8× higher engagement, 170× cheaper than agencies.`)}`} target="_blank" rel="noreferrer" title="Share on LinkedIn" style={{ textDecoration: 'none' }}>
+                    <button className="share-btn share-btn-li"><LinkedInIcon size={18} /></button>
                   </a>
-                  {/* WhatsApp */}
-                  <a href={`https://wa.me/?text=${encodeURIComponent(`Bhai dekh yeh — AI jo kisi bhi trending topic se 90 seconds mein Twitter, Instagram aur LinkedIn pe post publish kar deta hai. 🤯\n\n3.8× engagement lift. Agency se 170× sasta. Zero manual work.\n\nYeh content marketing ka future hai 👇\n${window.location.origin}`)}`} target="_blank" rel="noreferrer" title="Share on WhatsApp" style={{ textDecoration: 'none' }}>
-                    <button style={{ width: 48, height: 48, borderRadius: '50%', background: '#25d366', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,box-shadow .15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(37,211,102,0.45)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`Bhai dekh yeh — AI jo kisi bhi trending topic se 90 seconds mein Twitter, Instagram aur LinkedIn pe post publish kar deta hai. 🤯\n\n3.8× engagement lift. Agency se 170× sasta. Zero manual work.\n\nYeh content marketing ka future hai 👇\n${origin}`)}`} target="_blank" rel="noreferrer" title="Share on WhatsApp" style={{ textDecoration: 'none' }}>
+                    <button className="share-btn share-btn-wa">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.545-1.367A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.68-.523-5.197-1.432l-.371-.222-3.864.807.826-3.748-.243-.386A9.944 9.944 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
                     </button>
                   </a>
-                  {/* Copy link */}
-                  <button title="Copy link" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}\n\nNAVA — AI that publishes trend-jacked social posts in under 90 seconds. 3.8× engagement lift, 170× cheaper than agencies. Zero manual work.`); }} style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s,background .15s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.12)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)' }}>
+                  <button className="share-btn share-btn-cp" title="Copy link" onClick={() => navigator.clipboard.writeText(`${origin}\n\n${appName} — AI that publishes trend-jacked social posts in under 90 seconds. 3.8× engagement lift, 170× cheaper than agencies. Zero manual work.`)}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   </button>
                 </div>
@@ -855,7 +894,7 @@ export default function Landing() {
           </div>
 
           {/* ── S8 · WORK WITH US ───────────────────────────────────── */}
-          <div ref={ref(7)} style={S}>
+          <div ref={ref(7)} style={S} role="region" aria-label="Careers">
             <section style={{ width: '100%', maxWidth: 1100, padding: mobile ? '0 20px' : '0 48px' }}>
               <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 40 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 14px 5px 10px', borderRadius: 100, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)', fontSize: 11, fontWeight: 700, color: '#6ee7b7', letterSpacing: '0.06em', marginBottom: 16 }}>
@@ -889,19 +928,19 @@ export default function Landing() {
           </div>
 
           {/* ── S9 · CTA + FOOTER ───────────────────────────────────── */}
-          <div ref={ref(8)} style={{ ...S, justifyContent: 'space-between' }}>
+          <div ref={ref(8)} style={{ ...S, justifyContent: 'space-between' }} role="region" aria-label="Get started">
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: mobile ? '0 20px' : '0 24px' }}>
               <h2 style={{ fontSize: mobile ? 'clamp(32px,8vw,56px)' : 'clamp(40px,6vw,72px)', fontWeight: 900, letterSpacing: '-0.035em', marginBottom: 16, color: '#fff' }}>
                 Ready to <GradText>#TrendJack?</GradText>
               </h2>
               <p style={{ color: '#94a3b8', fontSize: mobile ? 15 : 18, marginBottom: mobile ? 32 : 48 }}>See it working live — right now.</p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="btn-p" onClick={() => window.open('/pricing', '_blank')} style={{ padding: mobile ? '14px 28px' : '18px 44px', borderRadius: 14, fontSize: mobile ? 15 : 17, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Link to="/pricing" className="btn-p" style={{ padding: mobile ? '14px 28px' : '18px 44px', borderRadius: 14, fontSize: mobile ? 15 : 17, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
                   Get Started <ArrowRight size={18} />
-                </button>
-                <button className="btn-g" onClick={() => window.open('/demo', '_blank')} style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, cursor: 'pointer', color: '#c4b5fd', background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)' }}>
+                </Link>
+                <Link to="/demo" className="btn-g" style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, color: '#c4b5fd', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none' }}>
                   Watch It Happen
-                </button>
+                </Link>
               </div>
               {!mobile && (
                 <div style={{ marginTop: 52, display: 'flex', gap: 48, color: '#64748b', fontSize: 13 }}>
@@ -935,7 +974,7 @@ export default function Landing() {
             </footer>
           </div>
 
-        </div>
+        </main>
       </div>
     </>
   )

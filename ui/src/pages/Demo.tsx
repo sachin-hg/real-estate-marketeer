@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import { useBrandName } from '../lib/useBrandName'
+import { SEO } from '../components/SEO'
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 .demo-root {
   --bg:#07071a;--surf:rgba(255,255,255,0.04);--bord:rgba(255,255,255,0.09);
   --purple:#8B5CF6;--indigo:#6366F1;--cyan:#06B6D4;--green:#10B981;
@@ -676,6 +676,24 @@ export default function Demo() {
 
   return (
     <div className="demo-root">
+      <SEO
+        title={`${brand} Live Demo — Watch AI Turn Trends into Posts in 90s`}
+        description={`See ${brand}'s AI multi-agent pipeline in action. Trigger a live run and watch trend detection, research, content strategy, AI creative, and publishing happen in real time.`}
+        canonical="/demo"
+        keywords={`${brand} demo, AI content generation demo, trend jacking AI, social media automation demo`}
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: `${brand} Live Demo`,
+          description: `Interactive live demo of the ${brand} AI content pipeline. Watch trend detection → research → content strategy → AI creative → publishing in real time.`,
+          mainEntity: {
+            '@type': 'SoftwareApplication',
+            name: `${brand} AI Pipeline`,
+            applicationCategory: 'BusinessApplication',
+            description: 'Multi-agent AI pipeline for trend-jacking social media content generation across Twitter, Instagram, and LinkedIn',
+          },
+        }}
+      />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div id="progress-track" />
       <div id="flash-overlay" />
@@ -704,20 +722,21 @@ export default function Demo() {
       </nav>
 
       {/* HERO */}
-      <div id="hero" style={{ display: phase === 'hero' ? 'flex' : 'none' }}>
-        <div className="hero-badge"><span className="live-dot" /> AI #TrendJacker</div>
+      <main>
+      <header id="hero" style={{ display: phase === 'hero' ? 'flex' : 'none' }}>
+        <div className="hero-badge"><span className="live-dot" aria-hidden="true" /> AI #TrendJacker</div>
         <h1 className="hero-title">Watch <span className="grad-text">{brand}</span> work<br />in real time.</h1>
         <p className="hero-sub">From a trending topic to 5 platform-ready posts — fully automated, in under 2 minutes.</p>
         <button className="hero-run-btn" onClick={startDemo}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>{' '}Watch it happen
         </button>
         <p className="hero-hint">No setup. No login. Just the magic.</p>
-      </div>
+      </header>
 
       {/* DEMO */}
-      <div id="demo" style={{ display: phase === 'demo' ? 'block' : 'none' }}>
+      <section id="demo" aria-label="Live pipeline demo" style={{ display: phase === 'demo' ? 'block' : 'none' }}>
         {/* Pipeline row */}
         <div className="pipeline-row">
           <div className="stage-node" id="st-1">
@@ -902,7 +921,8 @@ export default function Demo() {
           </div>
           <div className="split-right" id="split-right" />
         </div>
-      </div>
+      </section>
+      </main>
     </div>
   )
 }

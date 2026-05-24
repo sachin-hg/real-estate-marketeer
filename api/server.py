@@ -33,7 +33,8 @@ def _utc_iso(dt: datetime | None) -> str | None:
     return dt.isoformat()
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
@@ -43,6 +44,9 @@ from workflow.graph import get_graph
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Housing.com Content Agent", version="1.0.0")
+
+# Compress all text responses ≥ 1 KB — cuts JS/JSON payload by 60-80%
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # Register API routers
 from api.routes.posts import router as posts_router
@@ -727,13 +731,42 @@ app.mount("/output", StaticFiles(directory=str(_output_dir)), name="output")
 
 _ui_dist = Path(__file__).parent.parent / "ui" / "dist"
 if _ui_dist.exists():
-    _assets_dir = _ui_dist / "assets"
-    if _assets_dir.is_dir():
-        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+    # No separate /assets mount — the catch-all below handles assets so it can
+    # set long-lived Cache-Control headers on content-hashed filenames.
+
+    _CONTENT_TYPES = {
+        '.js': 'application/javascript', '.mjs': 'application/javascript',
+        '.css': 'text/css', '.html': 'text/html', '.json': 'application/json',
+        '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp',
+        '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf',
+    }
+
+    def _serve_file(path: Path, cache_control: str, accept_encoding: str = '') -> Response:
+        """Return the best pre-compressed variant or the raw file."""
+        is_hashed = (
+            path.suffix in {'.js', '.css', '.woff2', '.woff', '.ttf'}
+            and '-' in path.stem
+        )
+        cc = 'public, max-age=31536000, immutable' if is_hashed else cache_control
+        ct = _CONTENT_TYPES.get(path.suffix, 'application/octet-stream')
+
+        # Prefer brotli, then gzip, then raw
+        if 'br' in accept_encoding and (path.parent / (path.name + '.br')).is_file():
+            data = (path.parent / (path.name + '.br')).read_bytes()
+            return Response(data, media_type=ct, headers={'Cache-Control': cc, 'Content-Encoding': 'br', 'Vary': 'Accept-Encoding'})
+        if 'gzip' in accept_encoding and (path.parent / (path.name + '.gz')).is_file():
+            data = (path.parent / (path.name + '.gz')).read_bytes()
+            return Response(data, media_type=ct, headers={'Cache-Control': cc, 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding'})
+        return _FileResponse(str(path), media_type=ct, headers={'Cache-Control': cc})
 
     @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_spa(full_path: str):
+    async def serve_spa(full_path: str, request: Request):
+        ae = request.headers.get('accept-encoding', '')
         candidate = _ui_dist / full_path
         if candidate.is_file():
-            return _FileResponse(str(candidate))
-        return _FileResponse(str(_ui_dist / "index.html"))
+            return _serve_file(candidate, 'no-cache', ae)
+        # Serve pre-rendered SSG index for this route if it exists
+        ssg_index = _ui_dist / full_path / "index.html"
+        if ssg_index.is_file():
+            return _serve_file(ssg_index, 'no-cache', ae)
+        return _serve_file(_ui_dist / "index.html", 'no-cache', ae)

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "tsc && vite build",
+    "build:ssg": "node scripts/generate-assets.mjs && tsc && vite build && node scripts/prerender.mjs",
+    "deploy:r2": "node scripts/deploy-r2.mjs",
+    "build:deploy": "npm run build:ssg && npm run deploy:r2",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -13,17 +16,23 @@
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-helmet-async": "^3.0.0",
+    "react-is": "^19.2.6",
     "react-router-dom": "^6.26.0",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/lib-storage": "^3.1053.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.39",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4"
+    "vite": "^5.3.4",
+    "vite-plugin-compression2": "^2.5.3"
   }
 }

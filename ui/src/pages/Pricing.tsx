@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
+import { SEO } from '../components/SEO'
 
 const PRICES = {
   spark:  { monthly: 39,  annual: 31,  annualTotal: 372  },
@@ -9,7 +10,6 @@ const PRICES = {
 } as const
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 .pricing-root{
   --bg:#07071a;--surf:rgba(255,255,255,.04);--bord:rgba(255,255,255,.09);
@@ -274,11 +274,6 @@ export default function Pricing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   useEffect(() => {
-    document.title = `${brand} — Pricing`
-    return () => { document.title = brand }
-  }, [brand])
-
-  useEffect(() => {
     const obs = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
       { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
@@ -309,6 +304,35 @@ export default function Pricing() {
 
   return (
     <>
+      <SEO
+        title={`${brand} Pricing — From $31/month · AI Trend-Jacking Engine`}
+        description={`${brand} plans from $31/month (yearly). Spark, Growth, Scale, and Pay As You Go credits. Flexible add-ons for any need. 14-day free trial. No credit card required.`}
+        canonical="/pricing"
+        keywords={`${brand} pricing, AI social media pricing, trend jacking cost, content automation plans, social media AI pricing`}
+        structuredData={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              { '@type': 'Question', name: `Can I switch ${brand} plans anytime?`, acceptedAnswer: { '@type': 'Answer', text: 'Yes — upgrade or downgrade at any time. Upgrades are prorated; downgrades are credited to your next invoice. No lock-in, no penalty.' } },
+              { '@type': 'Question', name: 'Do Pay As You Go credits expire?', acceptedAnswer: { '@type': 'Answer', text: 'Never. PAYG credits are yours indefinitely — publish this week or save them for a campaign months from now.' } },
+              { '@type': 'Question', name: 'Is there a free trial?', acceptedAnswer: { '@type': 'Answer', text: `Yes — Spark and Growth plans include a 14-day free trial with no credit card required.` } },
+              { '@type': 'Question', name: `What counts as one post in ${brand}?`, acceptedAnswer: { '@type': 'Answer', text: 'Each publish event to a single platform = 1 base credit. Publishing to 3 platforms simultaneously = 3 base credits.' } },
+            ],
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: `${brand} Pricing Plans`,
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Spark', description: '$39/month — ~150 posts/month. 14-day free trial.' },
+              { '@type': 'ListItem', position: 2, name: 'Growth', description: '$129/month — ~500 posts/month. 14-day free trial.' },
+              { '@type': 'ListItem', position: 3, name: 'Scale', description: '$449/month — ~2,000 posts/month. API access included.' },
+              { '@type': 'ListItem', position: 4, name: 'Pay As You Go', description: 'Buy credits anytime. Credits never expire.' },
+            ],
+          },
+        ]}
+      />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="pricing-root">
         <div className="orb orb-a"/><div className="orb orb-b"/><div className="orb orb-c"/>

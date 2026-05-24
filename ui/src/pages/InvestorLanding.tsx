@@ -1,12 +1,11 @@
 import { } from 'react'
 import { Link } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
+import { SEO } from '../components/SEO'
 
 // ─── styles ───────────────────────────────────────────────────────────────────
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 .invest-root {
   --bg: #07071a;
   --surf: rgba(255,255,255,0.04);
@@ -746,6 +745,21 @@ export default function InvestorLanding() {
 
   return (
     <div className="invest-root">
+      <SEO
+        title={`Invest in ${brand} — AI #TrendJack Engine · Seed Round`}
+        description={`${brand} is raising its seed round. The AI trend-jacking engine that turns viral moments into brand buzz in 90 seconds — 200+ posts generated, 3.8× engagement lift, 170× cheaper than agencies.`}
+        canonical="/invest"
+        keywords={`${brand} investment, AI trend jacking startup, seed funding, housing.com AI, content AI investment, social media AI`}
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: brand,
+          url: (import.meta.env.VITE_BASE_URL as string | undefined)?.replace(/\/$/, '') || undefined,
+          description: `AI-powered trend-jacking engine that turns viral moments into brand buzz — built on Housing.com infrastructure`,
+          foundingDate: '2026',
+          parentOrganization: { '@type': 'Organization', name: 'Housing.com' },
+        }}
+      />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {/* Ambient background */}
@@ -760,7 +774,7 @@ export default function InvestorLanding() {
         <Link to="/login" className="nav-login-btn">Login</Link>
       </nav>
 
-      <div className="page">
+      <main className="page">
 
         {/* ── Hero ─────────────────────────────────────────────────────── */}
         <section className="hero">
@@ -996,7 +1010,7 @@ export default function InvestorLanding() {
           </span>
         </footer>
 
-      </div>
+      </main>
     </div>
   )
 }

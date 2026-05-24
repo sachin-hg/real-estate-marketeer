@@ -6,8 +6,6 @@ import { useBrandName } from '../lib/useBrandName'
 // ─── styles ───────────────────────────────────────────────────────────────────
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 .login-root {
   --bg: #07071a;
   --surf: rgba(255,255,255,0.04);

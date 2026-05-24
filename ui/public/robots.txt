@@ -1,0 +1,14 @@
+# NAVA — robots.txt
+# Dashboard, API, and protected routes are private
+
+User-agent: *
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /login
+Disallow: /pitch
+
+Allow: /
+Allow: /pricing
+Allow: /demo
+Allow: /invest

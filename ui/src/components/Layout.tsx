@@ -32,7 +32,6 @@ const PAGE_TITLES: [string, string][] = [
 ]
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
   .layout-root *{box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
   .layout-root{display:flex;height:100vh;height:100dvh;overflow:hidden;background:#07071a;color:#f1f5f9}
 
@@ -47,8 +46,9 @@ const CSS = `
   .l-bnav-item.active{color:#c4b5fd}
   .l-bnav-lbl{font-size:9.5px;font-weight:600;letter-spacing:0.02em}
 
-  .lsb-logo{display:flex;align-items:center;height:60px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;gap:10px;overflow:hidden;white-space:nowrap}
-  .lsb-logo-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#8B5CF6,#6366F1);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#fff;flex-shrink:0}
+  .lsb-logo{display:flex;align-items:center;height:60px;padding:0 13px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;overflow:hidden;white-space:nowrap}
+  .lsb-logo-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .lsb-logo-icon img{width:32px;height:32px;pointer-events:none;user-select:none}
   .lsb-logo-text{font-weight:900;font-size:16px;letter-spacing:0.01em;background:${GRAD};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
   .lsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
@@ -234,8 +234,10 @@ export default function Layout() {
       >
         {/* Logo */}
         <div className="lsb-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <div className="lsb-logo-icon">{appName[0]}</div>
-          {isWide && <span className="lsb-logo-text">{appName}</span>}
+          {isWide
+            ? <span className="lsb-logo-text">{appName}</span>
+            : <div className="lsb-logo-icon"><img src="/favicon.svg" alt={appName} draggable={false} /></div>
+          }
         </div>
 
         {/* Nav */}

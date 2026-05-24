@@ -2,9 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NAVA — AI #TrendJack Engine</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#8B5CF6" />
+    <meta name="msapplication-TileColor" content="#07071a" />
+
+    <!-- Apple PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NAVA" />
+
+    <!-- Default title & meta (overridden per-page by react-helmet-async) -->
+    <title>NAVA — The AI #TrendJack Engine</title>
+    <meta name="description" content="Turn any trending moment into brand buzz in 90 seconds. Multi-agent AI that detects trends, crafts platform-native posts, and publishes across Twitter, Instagram, LinkedIn and more — autonomously." />
+    <meta name="robots" content="index,follow" />
+
+    <!-- Open Graph defaults -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="NAVA" />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og.png" />
+
+    <!--
+      Search Console / Site Verification
+      Replace placeholder values with real codes from your provider dashboards.
+    -->
+    <!-- <meta name="google-site-verification" content="REPLACE_WITH_GOOGLE_CODE" /> -->
+    <!-- <meta name="apple-itunes-app" content="app-id=REPLACE_WITH_APP_ID" /> -->
+    <!-- <meta name="facebook-domain-verification" content="REPLACE_WITH_FB_CODE" /> -->
+
+    <!-- Font: preconnect upgrades the connection (dns-prefetch is redundant when preconnect exists) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Non-render-blocking font load: media=print trick defers parse until after paint -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" /></noscript>
   </head>
   <body>
     <div id="root"></div>
