@@ -780,70 +780,92 @@ Scoring drivers: 40% hook strength, 25% relevance, 20% emotional resonance, 15% 
 
 ## 8. LangGraph Topology
 
+> Diagrams generated via `get_graph().draw_mermaid()` — source of truth is the compiled graph.
+
 ### Main Graph (`workflow/graph.py`)
 
-```python
-# Nodes
-builder.add_node("researcher",          researcher_node,          retry=_api_retry)
-builder.add_node("trend_researcher",    trend_researcher_node,    retry=_api_retry)
-builder.add_node("planner",             planner_node,             retry=_api_retry)
-builder.add_node("social_creative",     social_creative_node,     retry=_api_retry)
-builder.add_node("news_creative",       news_creative_node,       retry=_api_retry)
-builder.add_node("internal_retriever",  internal_retriever_node,  retry=_api_retry)
-builder.add_node("platform_agents",     platform_orchestrator_node, retry=_api_retry)
-builder.add_node("qa_agent",            qa_agent_node,            retry=_api_retry)
-builder.add_node("publisher",           publisher_node)           # no retry
-builder.add_node("notifier",            notifier_node)            # no retry
+Triggered by the APScheduler cron (9 AM / 6 PM IST) and `POST /run`. Parallel research fan-in at planner; parallel creative fan-in at internal_retriever; conditional QA edge to publisher or notifier.
 
-# Edges — parallel fan-out from START
-builder.add_edge(START,                 "researcher")
-builder.add_edge(START,                 "trend_researcher")
-
-# Fan-in at planner (waits for both researchers)
-builder.add_edge("researcher",          "planner")
-builder.add_edge("trend_researcher",    "planner")
-
-# Parallel fan-out to creative nodes
-builder.add_edge("planner",             "social_creative")
-builder.add_edge("planner",             "news_creative")
-
-# Fan-in at internal_retriever (waits for both creative nodes)
-builder.add_edge("social_creative",     "internal_retriever")
-builder.add_edge("news_creative",       "internal_retriever")
-
-# Linear: retriever → platform → QA
-builder.add_edge("internal_retriever",  "platform_agents")
-builder.add_edge("platform_agents",     "qa_agent")
-
-# Conditional: QA → publisher or notifier
-builder.add_conditional_edges(
-    "qa_agent",
-    lambda state: "publisher" if state["approved_posts"] else "notifier",
-    {"publisher": "publisher", "notifier": "notifier"},
-)
-builder.add_edge("publisher",           "notifier")
-builder.add_edge("notifier",            END)
-
-# Checkpointing (AsyncSqliteSaver)
-checkpointer = AsyncSqliteSaver(settings.checkpoint_db_path)
-graph = builder.compile(checkpointer=checkpointer)
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	researcher(researcher)
+	trend_researcher(trend_researcher)
+	planner(planner)
+	social_creative(social_creative)
+	news_creative(news_creative)
+	internal_retriever(internal_retriever)
+	platform_agents(platform_agents)
+	qa_agent(qa_agent)
+	publisher(publisher)
+	notifier(notifier)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> researcher;
+	__start__ --> trend_researcher;
+	internal_retriever --> platform_agents;
+	news_creative --> internal_retriever;
+	planner --> news_creative;
+	planner --> social_creative;
+	platform_agents --> qa_agent;
+	publisher --> notifier;
+	qa_agent -. &nbsp;end_no_posts&nbsp; .-> notifier;
+	qa_agent -.-> publisher;
+	researcher --> planner;
+	social_creative --> internal_retriever;
+	trend_researcher --> planner;
+	notifier --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
 ```
 
-**_api_retry:** `RetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0)`
+**Retry policy (all nodes except publisher/notifier):** `RetryPolicy(max_attempts=3, initial_interval=1.0, backoff_factor=2.0)`
 
 ### Direct Graph (`workflow/direct_graph.py`)
 
-Identical to main graph except research phase replaced:
+Triggered by Slack bot (`POST /api/runs/direct`). Research phase replaced by topic-specific agents; rest of pipeline is identical to the main graph.
 
-```python
-# Instead of researcher + trend_researcher:
-builder.add_node("topic_researcher",        topic_researcher_node,        retry=_api_retry)
-builder.add_node("topic_trend_researcher",  topic_trend_researcher_node,  retry=_api_retry)
-builder.add_edge(START,                     "topic_researcher")
-builder.add_edge(START,                     "topic_trend_researcher")
-builder.add_edge("topic_researcher",        "planner")
-builder.add_edge("topic_trend_researcher",  "planner")
-# Rest of graph is identical to main graph
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	topic_researcher(topic_researcher)
+	topic_trend_researcher(topic_trend_researcher)
+	planner(planner)
+	social_creative(social_creative)
+	news_creative(news_creative)
+	internal_retriever(internal_retriever)
+	platform_agents(platform_agents)
+	qa_agent(qa_agent)
+	publisher(publisher)
+	notifier(notifier)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> topic_researcher;
+	__start__ --> topic_trend_researcher;
+	internal_retriever --> platform_agents;
+	news_creative --> internal_retriever;
+	planner --> news_creative;
+	planner --> social_creative;
+	platform_agents --> qa_agent;
+	publisher --> notifier;
+	qa_agent -. &nbsp;end_no_posts&nbsp; .-> notifier;
+	qa_agent -.-> publisher;
+	social_creative --> internal_retriever;
+	topic_researcher --> planner;
+	topic_trend_researcher --> planner;
+	notifier --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
 ```
 
 ---
