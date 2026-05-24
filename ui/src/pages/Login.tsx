@@ -457,9 +457,9 @@ export default function Login() {
           {/* Footer links */}
           <div className="links">
             <span>
-              Don't have access yet?{' '}
+              No access?{' '}
               <Link to="/invest" className="invest-link">
-                Get early access →
+                Reach out →
               </Link>
             </span>
             <a href="/">Back to homepage</a>

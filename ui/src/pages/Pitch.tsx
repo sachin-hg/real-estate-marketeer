@@ -36,7 +36,7 @@ const CSS = `
 .pitch-root .pt-exit-btn{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:rgba(255,255,255,.7);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s}
 .pitch-root .pt-exit-btn:hover{border-color:rgba(255,255,255,.28);color:#fff;background:rgba(255,255,255,.07)}
 /* SLIDE TRACK */
-.pitch-root .pt-track{position:fixed;inset:0;z-index:1;display:flex;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.pitch-root .pt-track{position:fixed;inset:0;z-index:2;display:flex;transition:transform .5s cubic-bezier(.4,0,.2,1)}
 /* SLIDE */
 .pitch-root .pt-slide{width:100vw;height:100vh;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:80px 60px 100px;overflow:hidden;position:relative}
 /* GRAD TEXT */
@@ -69,6 +69,8 @@ const CSS = `
 .pitch-root .s1-subtitle{font-size:clamp(18px,2.2vw,26px);font-weight:700;color:rgba(255,255,255,.85);margin-bottom:14px}
 .pitch-root .s1-tagline{font-size:clamp(14px,1.6vw,19px);color:var(--muted);margin-bottom:48px;font-weight:500}
 .pitch-root .s1-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);font-size:12px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.06em;text-transform:uppercase}
+.pitch-root .s1-inner::before{content:'';position:absolute;inset:-55% -65%;background:radial-gradient(ellipse at center,rgba(7,7,26,.98) 0%,rgba(7,7,26,.93) 28%,rgba(7,7,26,.72) 52%,rgba(7,7,26,.28) 72%,transparent 88%);z-index:-1;pointer-events:none}
+.pitch-root .demo-title-box::before{content:'';position:absolute;inset:-32px -56px -40px;background:radial-gradient(ellipse at center,rgba(7,7,26,.93) 0%,rgba(7,7,26,.78) 38%,rgba(7,7,26,.38) 65%,transparent 85%);z-index:-1;pointer-events:none;border-radius:40%}
 /* SLIDE 2 — PROBLEM */
 .pitch-root .pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}
 .pitch-root .pain-card{border-radius:18px;padding:28px 24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);text-align:left;position:relative;overflow:hidden}
@@ -218,13 +220,14 @@ const CSS = `
   .pitch-root .pt-counter{font-size:11px}
   .pitch-root .slide-tag{margin-bottom:10px;font-size:10px}
   .pitch-root .slide-sub{margin-bottom:14px;font-size:13px}
-  .pitch-root .s1-tagline{margin-bottom:20px}
+  .pitch-root .s1-tagline{margin-bottom:20px;font-size:11px}
+  .pitch-root .s1-badge{font-size:9px;padding:4px 10px;letter-spacing:.04em}
   /* Problem */
   .pitch-root .pain-grid{grid-template-columns:1fr;gap:10px;margin:12px 0}
-  .pitch-root .pain-card{padding:16px 14px;border-radius:14px}
-  .pitch-root .pain-icon{width:36px;height:36px;border-radius:10px;margin-bottom:10px}
-  .pitch-root .pain-title{font-size:15px;margin-bottom:5px}
-  .pitch-root .pain-body{font-size:12px;line-height:1.5}
+  .pitch-root .pain-card{padding:16px 14px;border-radius:14px;display:grid;grid-template-columns:36px 1fr;column-gap:10px;row-gap:4px;align-items:center}
+  .pitch-root .pain-icon{width:36px;height:36px;border-radius:10px;margin-bottom:0}
+  .pitch-root .pain-title{font-size:14px;margin-bottom:0}
+  .pitch-root .pain-body{font-size:12px;line-height:1.5;grid-column:1/-1}
   .pitch-root .pain-stat{margin-top:12px;padding:12px 16px;font-size:12px}
   /* Solution */
   .pitch-root .pipeline-grid{grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
@@ -237,22 +240,26 @@ const CSS = `
   /* Performance */
   .pitch-root .big-stat-row{grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
   .pitch-root .big-stat{padding:10px 8px}
+  .pitch-root .big-stat-lbl{font-size:9px;letter-spacing:.05em}
+  .pitch-root .result-metric{font-size:10px;padding:3px 8px}
   .pitch-root .result-grid{grid-template-columns:1fr;gap:10px}
   .pitch-root .result-card{padding:14px 16px}
   .pitch-root .perf-footer{margin-top:10px;font-size:12px}
   /* Market */
   .pitch-root .market-grid{grid-template-columns:1fr;gap:10px;margin:12px 0}
-  .pitch-root .market-card{padding:14px 14px;border-radius:14px}
-  .pitch-root .market-icon{width:34px;height:34px;border-radius:10px;margin-bottom:10px}
-  .pitch-root .market-title{font-size:15px;margin-bottom:5px}
-  .pitch-root .market-body{font-size:12px;line-height:1.5}
+  .pitch-root .market-card{padding:14px 14px;border-radius:14px;display:grid;grid-template-columns:34px 1fr;column-gap:10px;row-gap:4px;align-items:center}
+  .pitch-root .market-icon{width:34px;height:34px;border-radius:10px;margin-bottom:0}
+  .pitch-root .market-title{font-size:14px;margin-bottom:0}
+  .pitch-root .market-body{font-size:12px;line-height:1.5;grid-column:1/-1}
   .pitch-root .market-footer{padding:10px 14px;font-size:12px;margin-top:14px;border-radius:10px}
   /* Pricing */
-  .pitch-root .pricing-grid{grid-template-columns:1fr;gap:10px;margin:10px 0}
-  .pitch-root .pr-card{padding:14px 14px;border-radius:14px}
-  .pitch-root .pr-name{font-size:18px;margin-bottom:2px}
-  .pitch-root .pr-price{font-size:26px;margin-bottom:8px}
-  .pitch-root .pr-features{gap:5px;font-size:12px}
+  .pitch-root .pricing-grid{grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  .pitch-root .pr-card{padding:10px 12px;border-radius:12px}
+  .pitch-root .pr-card:last-child{grid-column:1/-1}
+  .pitch-root .pr-name{font-size:16px;margin-bottom:2px}
+  .pitch-root .pr-price{font-size:22px;margin-bottom:6px}
+  .pitch-root .pr-features{gap:4px;font-size:11px}
+  .pitch-root .pr-badge{margin-bottom:6px}
   .pitch-root .pr-feat-table{display:none}
   .pitch-root .pr-footnote{display:none}
   /* Business model — 2-col to save vertical space */
@@ -272,16 +279,16 @@ const CSS = `
   /* Ask — 2-col use-grid to save vertical space */
   .pitch-root .use-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
   .pitch-root .use-card{border-radius:12px}
-  .pitch-root .ask-equiv{font-size:13px;margin-bottom:14px}
-  .pitch-root .use-pct{font-size:22px;margin-bottom:2px}
-  .pitch-root .use-title{font-size:12px;margin-bottom:2px}
+  .pitch-root .ask-equiv{font-size:11px!important;margin-bottom:14px}
+  .pitch-root .use-pct{font-size:20px;margin-bottom:0}
+  .pitch-root .use-title{font-size:11px;margin-bottom:2px}
   .pitch-root .use-desc{font-size:10px}
   /* Close */
   .pitch-root .close-cta-row{flex-direction:column;align-items:stretch;margin:16px 0;gap:10px}
   .pitch-root .close-btn{justify-content:center;padding:12px 20px;font-size:14px}
   .pitch-root .close-contact{font-size:13px}
   /* SlideDemo: switch to right-to-left marquee on mobile */
-  .pitch-root .demo-inner{padding:60px 14px 76px !important}
+  .pitch-root .demo-inner{padding:60px 0 0 !important}
   .pitch-root .demo-desk{display:none !important}
   .pitch-root .demo-mob{display:flex !important;align-items:flex-start}
   .pitch-root .sd-marquee-track{animation-duration:38s}
@@ -373,11 +380,11 @@ const IconGlobe = () => (
 
 function Slide1({ brand }: { brand: string }) {
   return (
-    <div className="slide-inner" style={{ textAlign: 'center' }}>
+    <div className="slide-inner s1-inner" style={{ textAlign: 'center' }}>
       <div className="slide-tag">Investor Briefing · 2026</div>
       <span className="s1-brand grad-text">{brand}</span>
       <div className="s1-subtitle">Built to <span className="grad-text">#TrendJack</span> — every moment, every platform.</div>
-      <div className="s1-tagline">Trend to published post — 5 platforms — under 90 seconds.</div>
+      <div className="s1-tagline">Trend to post — 5 platforms — under 90 seconds.</div>
       <div className="s1-badge">Confidential · For Accredited Investors Only</div>
     </div>
   )
@@ -815,29 +822,54 @@ const DEMO_COLS_MOB = [
   [() => <YTShortCard />, () => <TWCard3 />],
 ]
 
-function SlideDemo() {
-  const renderTrack = (cols: typeof DEMO_COLS_DESK) => (
-    <div className="sd-marquee-track">
-      {[...cols, ...cols].map(([TopCard, BotCard], i) => {
-        const ci = i % 5
-        return (
-          <div key={i} className="sd-marquee-col">
-            <div style={{ animation:`${SD_POS[ci].anim} ${SD_POS[ci].dur}s ${SD_POS[ci].delay}s ease-in-out infinite` }}><TopCard /></div>
-            <div style={{ animation:`${SD_POS[ci+5].anim} ${SD_POS[ci+5].dur}s ${SD_POS[ci+5].delay}s ease-in-out infinite` }}><BotCard /></div>
-          </div>
-        )
-      })}
+const renderDemoTrack = (cols: typeof DEMO_COLS_DESK) => (
+  <div className="sd-marquee-track">
+    {[...cols, ...cols].map(([TopCard, BotCard], i) => {
+      const ci = i % 5
+      return (
+        <div key={i} className="sd-marquee-col">
+          <div style={{ animation:`${SD_POS[ci].anim} ${SD_POS[ci].dur}s ${SD_POS[ci].delay}s ease-in-out infinite` }}><TopCard /></div>
+          <div style={{ animation:`${SD_POS[ci+5].anim} ${SD_POS[ci+5].dur}s ${SD_POS[ci+5].delay}s ease-in-out infinite` }}><BotCard /></div>
+        </div>
+      )
+    })}
+  </div>
+)
+
+function MarqueeBackground({ visible }: { visible: boolean }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1,
+      opacity: visible ? 1 : 0,
+      transition: 'opacity 0.5s ease',
+      pointerEvents: 'none',
+      overflow: 'hidden',
+    }}>
+      {/* Gradient fade from top — keeps header text readable on both slide 1 and 2 */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2,
+        height: '38%',
+        background: 'linear-gradient(to bottom, #07071a 0%, rgba(7,7,26,0) 100%)',
+      }} />
+      {/* Desktop marquee — full-height, edge-to-edge */}
+      <div className="demo-desk" style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+        {renderDemoTrack(DEMO_COLS_DESK)}
+      </div>
+      {/* Mobile marquee — full-height, edge-to-edge */}
+      <div className="demo-mob" style={{ position: 'absolute', inset: 0, overflow: 'hidden', alignItems: 'flex-start' }}>
+        {renderDemoTrack(DEMO_COLS_MOB)}
+      </div>
     </div>
   )
+}
 
+function SlideDemo() {
   return (
-    <div className="demo-inner" style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'52px 52px 72px' }}>
-      <div style={{ textAlign:'center', marginBottom:8, zIndex:10, position:'relative' }}>
+    <div className="demo-inner" style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', padding:'72px 52px 0' }}>
+      <div className="demo-title-box" style={{ textAlign:'center', zIndex:10, position:'relative', padding:'0 14px' }}>
         <div className="slide-tag" style={{ display:'inline-block' }}>Live Output &middot; Housing.com Pilot</div>
         <h2 className="slide-h2" style={{ margin:'6px 0 0', fontSize:'clamp(22px,2.4vw,38px)' }}>Real posts. Real ERs. <span className="grad-text">Zero manual work.</span></h2>
       </div>
-      <div className="demo-space demo-desk">{renderTrack(DEMO_COLS_DESK)}</div>
-      <div className="demo-space demo-mob">{renderTrack(DEMO_COLS_MOB)}</div>
     </div>
   )
 }
@@ -846,7 +878,7 @@ function Slide2() {
   return (
     <div className="slide-inner" style={{ textAlign: 'center', maxWidth: 1000 }}>
       <div className="slide-tag">The Problem</div>
-      <h2 className="slide-h2">Content teams are stuck in 2015.</h2>
+      <h2 className="slide-h2">Still stuck in 2015.</h2>
       <div className="pain-grid">
         <div className="pain-card red">
           <div className="pain-icon" style={{ background: 'rgba(239,68,68,.12)' }}>
@@ -897,9 +929,6 @@ function Slide3({ brand }: { brand: string }) {
     <div className="slide-inner" style={{ textAlign: 'center', maxWidth: 1080 }}>
       <div className="slide-tag">Our Solution</div>
       <h2 className="slide-h2">Meet <span className="grad-text">{brand}.</span> It learns from every post.</h2>
-      <p style={{ fontSize: 15, color: 'var(--muted)', marginBottom: 0, maxWidth: 680, margin: '0 auto' }}>
-        Autonomous. End-to-end. And it gets sharper every time it runs.
-      </p>
       <div className="pipeline-grid">
         {stages.map(({ num, Icon, label, desc }) => (
           <div className="pip-node" key={num}>
@@ -939,7 +968,7 @@ function Slide4() {
   return (
     <div className="slide-inner" style={{ textAlign: 'center', maxWidth: 1000 }}>
       <div className="slide-tag">Live Results</div>
-      <h2 className="slide-h2">Numbers from actual pipeline runs.</h2>
+      <h2 className="slide-h2">Real numbers. Real runs.</h2>
       <div className="big-stat-row">
         <div className="big-stat">
           <span className="big-stat-val grad-text">97s</span>
@@ -991,28 +1020,28 @@ function Slide5() {
   return (
     <div className="slide-inner" style={{ textAlign: 'center', maxWidth: 1000 }}>
       <div className="slide-tag">Market Opportunity</div>
-      <h2 className="slide-h2">A <span className="grad-text">$15B+</span> manual process waiting to be automated.</h2>
+      <h2 className="slide-h2"><span className="grad-text">$15B+</span> market. All manual.</h2>
       <div className="market-grid">
         <div className="market-card featured">
           <div className="market-icon" style={{ background: 'rgba(139,92,246,.15)' }}>
             <IconGlobe />
           </div>
           <div className="market-title">Every Business Chasing Buzz & Trends</div>
-          <div className="market-body">Media, real estate, retail, fintech, healthcare, BFSI, e-commerce. Any brand running a content team is a customer. $15B+ in addressable spend.</div>
+          <div className="market-body">Any brand with a content team is a customer — media, RE, fintech, healthcare, BFSI. $15B+ TAM.</div>
         </div>
         <div className="market-card">
           <div className="market-icon" style={{ background: 'rgba(16,185,129,.12)' }}>
             <IconBuilding />
           </div>
           <div className="market-title">Pilot — Real Estate ✓</div>
-          <div className="market-body">Validated at Housing.com, India's #1 property platform. 200+ posts. 3.8× engagement lift. 170× cheaper than agency. The proof of concept is live.</div>
+          <div className="market-body">Housing.com pilot: 200+ posts, 3.8× engagement lift, 170× cheaper than agency.</div>
         </div>
         <div className="market-card">
           <div className="market-icon" style={{ background: 'rgba(6,182,212,.12)' }}>
             <IconDollar />
           </div>
           <div className="market-title">Next Verticals</div>
-          <div className="market-body">Auto, travel, BFSI, news media, e-commerce — every trend-driven vertical where timing and relevance are money.</div>
+          <div className="market-body">Auto, travel, BFSI, media, e-commerce — wherever timing and relevance are money.</div>
         </div>
       </div>
       <div className="market-footer">
@@ -1191,22 +1220,22 @@ function Slide9() {
     {
       pct: '35%', color: '#8B5CF6', amt: '₹1.23 Cr',
       title: 'Team & Talent',
-      desc: '2 engineers · 1 designer · 1 product/ops. Core build team salaries for 18 months.',
+      desc: '2 engineers, 1 designer, 1 ops — 18 months.',
     },
     {
       pct: '25%', color: '#06B6D4', amt: '₹87.5 L',
       title: 'Sales & GTM',
-      desc: 'Sales hire + first 50 publisher contracts. Content marketing, outbound, conference presence.',
+      desc: 'Sales hire + 50 publisher contracts. Outbound.',
     },
     {
       pct: '20%', color: '#10B981', amt: '₹70 L',
       title: 'Infrastructure & APIs',
-      desc: 'Cloud compute, AI API costs, DevOps tooling, domain portfolio, security audits.',
+      desc: 'Cloud compute, AI APIs, DevOps + security.',
     },
     {
       pct: '20%', color: '#F59E0B', amt: '₹70 L',
       title: 'Ops, Legal & Buffer',
-      desc: 'IP filings, legal, CS tooling, onboarding, compliance, contingency. Includes buffer for unknowns.',
+      desc: 'IP filings, CS tooling, compliance + buffer.',
     },
   ]
   return (
@@ -1215,42 +1244,44 @@ function Slide9() {
       <h2 className="slide-h2" style={{ marginBottom: 8 }}>What we need to win.</h2>
       <div className="ask-center">
         <span className="ask-amount grad-text" style={{ fontSize: 'clamp(34px,5vw,56px)', marginBottom: 4 }}>Seed Round · ₹3.5 Cr</span>
-        <div className="ask-equiv" style={{ marginBottom: 16, fontSize: 14 }}>~$420,000 USD · 18-month runway · ~₹19L / month avg burn</div>
+        <div className="ask-equiv" style={{ marginBottom: 16, fontSize: 14 }}>~$420K USD · 18-month runway · ~₹19L/mo avg burn</div>
         <div className="use-grid" style={{ marginBottom: 14 }}>
           {buckets.map(b => (
-            <div className="use-card" key={b.title} style={{ padding: '14px 14px' }}>
-              <div className="use-pct" style={{ color: b.color, fontSize: 26, marginBottom: 3 }}>{b.pct}</div>
+            <div className="use-card" key={b.title} style={{ padding: '10px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 3 }}>
+                <div className="use-pct" style={{ color: b.color, fontSize: 26, marginBottom: 0 }}>{b.pct}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: b.color, opacity: 0.75 }}>{b.amt}</div>
+              </div>
               <div className="use-title" style={{ fontSize: 13, marginBottom: 3 }}>{b.title}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: b.color, marginBottom: 4, opacity: 0.8 }}>{b.amt}</div>
               <div className="use-desc" style={{ fontSize: 11 }}>{b.desc}</div>
             </div>
           ))}
         </div>
 
         {/* What's in it for you */}
-        <div style={{ marginTop: 14, padding: '14px 18px', borderRadius: 14, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.22)' }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
+        <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 14, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.22)' }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
             What's in it for you
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, textAlign: 'left' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, textAlign: 'left' }}>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#c4b5fd', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 4 }}>10%</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9', marginBottom: 3 }}>Equity stake</div>
-              <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.55 }}>Pre-money ₹31.5 Cr. Post-money ₹35 Cr. Clean cap table — no prior rounds.</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#c4b5fd', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 2 }}>10%</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>Equity stake</div>
+              <div style={{ fontSize: 9, color: '#64748b', lineHeight: 1.5 }}>₹31.5 Cr pre-money. Clean cap table.</div>
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#6ee7b7', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 4 }}>4–12×</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9', marginBottom: 3 }}>Return potential</div>
-              <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.55 }}>$2M ARR at 8× → ₹133 Cr valuation. Your 10% = ₹13 Cr on ₹3.5 Cr in. M&A or IPO path unlocks 10×+.</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#6ee7b7', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 2 }}>4–12×</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>Return potential</div>
+              <div style={{ fontSize: 9, color: '#64748b', lineHeight: 1.5 }}>8× path → ₹133 Cr. Your 10% = ₹13 Cr.</div>
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#38bdf8', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 4 }}>Full rights</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9', marginBottom: 3 }}>Investor privileges</div>
-              <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.55 }}>Board observer seat. Pro-rata in Series A. Quarterly reporting + information rights.</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#38bdf8', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 2 }}>Rights</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>Investor privileges</div>
+              <div style={{ fontSize: 9, color: '#64748b', lineHeight: 1.5 }}>Observer seat. Pro-rata in Series A.</div>
             </div>
           </div>
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(139,92,246,0.15)', fontSize: 11, color: '#64748b' }}>
-            Target: 50 paying publisher contracts within 6 months of close · Path to $150K ARR in Year 1
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(139,92,246,0.15)', fontSize: 10, color: '#64748b' }}>
+            50 publishers in 6 months · $150K ARR target, Year 1
           </div>
         </div>
       </div>
@@ -1280,8 +1311,8 @@ function Slide10({ brand }: { brand: string }) {
             Back to Homepage
           </a>
         </div>
-        <div className="close-contact">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 6, color: 'var(--muted)' }}>
+        <div className="close-contact" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--muted)', flexShrink: 0 }}>
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
             <polyline points="22,6 12,13 2,6"/>
           </svg>
@@ -1376,6 +1407,9 @@ export default function Pitch() {
       <div className="orb orb-b" />
       <div className="orb orb-c" />
       <div className="dot-grid" />
+
+      {/* SHARED MARQUEE BACKGROUND — sticky behind slides 1 & 2, fades when leaving */}
+      <MarqueeBackground visible={currentSlide <= 1} />
 
       {/* PROGRESS BAR */}
       <div className="pt-progress">

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "tsc && vite build",
-    "build:ssg": "node scripts/generate-assets.mjs && tsc && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && node scripts/ssr-render.mjs",
+    "build:ssg": "node scripts/generate-assets.mjs && tsc && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && node scripts/ssr-render.mjs && node scripts/compress-ssg.mjs",
     "deploy:r2": "node scripts/deploy-r2.mjs",
     "build:deploy": "npm run build:ssg && npm run deploy:r2",
     "preview": "vite preview"

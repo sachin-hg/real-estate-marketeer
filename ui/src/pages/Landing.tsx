@@ -6,27 +6,14 @@ import { SEO } from '../components/SEO'
 import {
   Radio, Search, Layers, Sparkles, Send,
   Zap, Bot, Target, Clock, DollarSign,
-  TrendingUp, Users, ArrowRight,
+  TrendingUp, ArrowRight,
   Mail,
 } from 'lucide-react'
 
 const GRAD = 'linear-gradient(90deg,#C4B5FD 0%,#818CF8 38%,#38BDF8 72%,#67E8F9 100%)'
 const SECTION_COUNT = 9
-const CAR_W = 420
-const CAR_H = 440
 
 const useAppName = useBrandName
-
-function useMobile() {
-  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
-  useEffect(() => {
-    let t: ReturnType<typeof setTimeout>
-    const h = () => { clearTimeout(t); t = setTimeout(() => setMobile(window.innerWidth < 768), 150) }
-    window.addEventListener('resize', h, { passive: true })
-    return () => { window.removeEventListener('resize', h); clearTimeout(t) }
-  }, [])
-  return mobile
-}
 
 function GradText({ children }: { children: React.ReactNode }) {
   return (
@@ -72,22 +59,24 @@ function MetricBar({ label, value, max, color, suffix = '' }: {
 }
 
 // ─── carousel card — memoized so only the active card re-renders ──────────────
-const CarouselCard = memo(function CarouselCard({ node, i, active, n, cardW, cardH }: {
-  node: React.ReactNode; i: number; active: number; n: number; cardW: number; cardH: number
+// Card width, height, and horizontal offset are all driven by the CSS custom property
+// --card-w (set on the wrapper), so no JS viewport reads are needed here.
+const CarouselCard = memo(function CarouselCard({ node, i, active, n, tall }: {
+  node: React.ReactNode; i: number; active: number; n: number; tall?: boolean
 }) {
   const raw = ((i - active) % n + n) % n
   const d = raw > n / 2 ? raw - n : raw
   const isC = d === 0
   const isAdj = Math.abs(d) === 1
-  const tx = d * cardW * 0.76
   const ty = isC ? -24 : 0
   const sc = isC ? 1 : 0.84
   const opacity = isC ? 1 : isAdj ? 0.55 : 0
   return (
     <div style={{
       position: 'absolute', left: '50%', top: 24,
-      marginLeft: -(cardW / 2), width: cardW, height: cardH,
-      transform: `translateX(${tx}px) translateY(${ty}px) scale(${sc})`,
+      marginLeft: 'calc(-1 * var(--card-w) / 2)',
+      width: 'var(--card-w)',
+      transform: `translateX(calc(${d} * var(--card-w) * 0.76)) translateY(${ty}px) scale(${sc})`,
       transformOrigin: 'center top', opacity,
       zIndex: isC ? 3 : 1,
       background: isC ? '#08081e' : 'transparent',
@@ -97,18 +86,17 @@ const CarouselCard = memo(function CarouselCard({ node, i, active, n, cardW, car
       transition: 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.5s ease',
       willChange: 'transform, opacity',
       contain: 'layout style',
-    }}>
+    } as React.CSSProperties} className={tall ? 'car-card-h-lg' : 'car-card-h'}>
       {node}
     </div>
   )
 })
 
 // ─── carousel: centre card prominent, side cards peek from behind ─────────────
-function NodeCarousel({ nodes, interval = 3600, cardW = CAR_W, cardH = CAR_H }: {
+function NodeCarousel({ nodes, interval = 3600, tall }: {
   nodes: React.ReactNode[]
   interval?: number
-  cardW?: number
-  cardH?: number
+  tall?: boolean
 }) {
   const [active, setActive] = useState(0)
   const n = nodes.length
@@ -118,7 +106,6 @@ function NodeCarousel({ nodes, interval = 3600, cardW = CAR_W, cardH = CAR_H }: 
     return () => clearInterval(id)
   }, [n, interval])
 
-  // Dot widths precomputed so the map below is allocation-free
   const dotStyles = useMemo(() => nodes.map((_, i) => ({
     width: i === active ? 28 : 8, height: 8, borderRadius: 4,
     border: 'none' as const, cursor: 'pointer' as const, padding: 0,
@@ -127,10 +114,10 @@ function NodeCarousel({ nodes, interval = 3600, cardW = CAR_W, cardH = CAR_H }: 
   })), [active, nodes.length])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      <div style={{ position: 'relative', height: cardH + 40, width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', '--card-w': 'min(420px, calc(100vw - 48px))' } as React.CSSProperties}>
+      <div className={tall ? 'car-stage-lg' : 'car-stage'} style={{ position: 'relative', width: '100%' }}>
         {nodes.map((node, i) => (
-          <CarouselCard key={i} node={node} i={i} active={active} n={n} cardW={cardW} cardH={cardH} />
+          <CarouselCard key={i} node={node} i={i} active={active} n={n} tall={tall} />
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
@@ -187,7 +174,7 @@ function InstagramMockup() {
         </div>
         <InstagramIcon size={18} />
       </div>
-      <div style={{ width: '100%', aspectRatio: '1.4', background: 'linear-gradient(135deg,#3B0764 0%,#1E1B4B 40%,#0C4A6E 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative' }}>
+      <div className="ig-img" style={{ width: '100%', aspectRatio: '1.4', background: 'linear-gradient(135deg,#3B0764 0%,#1E1B4B 40%,#0C4A6E 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative' }}>
         <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600, letterSpacing: '0.15em', marginBottom: 12, textTransform: 'uppercase' }}>PropMax</div>
         <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', textAlign: 'center', lineHeight: 1.25, marginBottom: 10 }}>Ee Sala Cup<br />Namdu!</div>
         <div style={{ fontSize: 12, color: '#c4b5fd', textAlign: 'center', lineHeight: 1.5 }}>RCB ne 18 saal baad<br />apna ghar jeeta.</div>
@@ -251,7 +238,6 @@ const CONTACT_HREF = 'mailto:a.sachin533@gmail.com?subject=NAVA%20%E2%80%94%20Le
 // ─── main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
   const appName = useAppName()
-  const mobile = useMobile()
   // Stable reference — avoids re-reading window.location.origin on every render
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const [visible, setVisible] = useState(false)
@@ -264,18 +250,6 @@ export default function Landing() {
   const wheelAcc = useRef(0)
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartY = useRef(0)
-
-  // Derive from mobile state — no direct window.innerWidth access during render
-  // (avoids SSR mismatch and repeated layout reads)
-  const [winW, setWinW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 768)
-  useEffect(() => {
-    let t: ReturnType<typeof setTimeout>
-    const h = () => { clearTimeout(t); t = setTimeout(() => setWinW(window.innerWidth), 150) }
-    window.addEventListener('resize', h, { passive: true })
-    return () => { window.removeEventListener('resize', h); clearTimeout(t) }
-  }, [])
-  const carW = mobile ? Math.min(CAR_W, winW - 48) : CAR_W
-  const carH = mobile ? 360 : CAR_H
 
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
 
@@ -366,19 +340,19 @@ export default function Landing() {
 
   const ref = (i: number) => (el: HTMLDivElement | null) => { sectionRefs.current[i] = el }
 
+  // Base section style — paddingTop handled by .snap-sect CSS class (responsive via media query)
   const S: React.CSSProperties = {
     height: '100vh', overflow: 'hidden',
     position: 'relative', zIndex: 1,
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    paddingTop: mobile ? '60px' : '72px',
   }
 
   const pipelineSteps = [
-    { Icon: Radio,    label: 'Trend Detection',  desc: '15+ sources. Google, X, YouTube, Reddit. Real-time.', time: '0–30s',   color: '#8B5CF6' },
-    { Icon: Search,   label: 'Deep Research',    desc: 'RERA data, breaking news, market signals. Verified.',  time: '30–45s',  color: '#6366F1' },
-    { Icon: Layers,   label: 'Content Strategy', desc: 'Trend mapped to your brand angle, tone, and hook.',   time: '45–60s',  color: '#3B82F6' },
-    { Icon: Sparkles, label: 'AI Creative',      desc: 'Hinglish-native drafts, QA-verified, ready to ship.', time: '60–75s',  color: '#06B6D4' },
-    { Icon: Send,     label: 'Auto-Publish',     desc: 'Twitter · Instagram · LinkedIn · News. Simultaneous.',time: '< 90s',   color: '#10B981' },
+    { Icon: Radio,    label: 'Trend Detection',  desc: 'Google, X, YouTube, Reddit. Real-time.', time: '0–30s',   color: '#8B5CF6' },
+    { Icon: Search,   label: 'Deep Research',    desc: 'Breaking news, market signals. Verified.',  time: '30–45s',  color: '#6366F1' },
+    { Icon: Layers,   label: 'Content Strategy', desc: 'Brand angle, tone hooked to brand',   time: '45–60s',  color: '#3B82F6' },
+    { Icon: Sparkles, label: 'AI Creative',      desc: 'Dialect-native drafts, QA-gated, shipped.', time: '60–75s',  color: '#06B6D4' },
+    { Icon: Send,     label: 'Auto-Publish',     desc: 'Twitter · Instagram · LinkedIn. Simultaneous.',time: '< 90s',   color: '#10B981' },
   ]
 
   const features = [
@@ -388,9 +362,9 @@ export default function Landing() {
     { Icon: TrendingUp, title: 'Gets smarter over time',  glow: 'rgba(16,185,129,0.25)', body: "Every published post feeds real engagement signals back into the pipeline. NAVA tracks what resonates — likes, shares, reach — and autonomously refines tone, hooks, and timing. The longer it runs, the better it gets." },
   ]
 
-  // Platform nodes for mobile S2 carousel
+  // Platform nodes for mobile carousel (desktop uses 3-col grid via CSS)
   const platformNodes: React.ReactNode[] = [
-    <div key="tw" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div key="tw" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 16px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.15)' }}><TwitterIcon size={13} /></div>
         <span style={{ fontWeight: 700, fontSize: 14 }}>X / Twitter</span>
@@ -398,7 +372,7 @@ export default function Landing() {
       </div>
       <TwitterMockup />
     </div>,
-    <div key="ig" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div key="ig" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 16px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><InstagramIcon size={13} /></div>
         <span style={{ fontWeight: 700, fontSize: 14 }}>Instagram</span>
@@ -406,7 +380,7 @@ export default function Landing() {
       </div>
       <InstagramMockup />
     </div>,
-    <div key="li" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div key="li" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 16px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LinkedInIcon size={13} /></div>
         <span style={{ fontWeight: 700, fontSize: 14 }}>LinkedIn</span>
@@ -416,12 +390,12 @@ export default function Landing() {
     </div>,
   ]
 
-  // metric carousel nodes
+  // metric carousel nodes — CSS classes handle font-size/padding responsiveness
   const metricNodes: React.ReactNode[] = [
-    <div key="m0" className="glass" style={{ borderRadius: 24, padding: mobile ? '24px 20px' : '36px 30px', height: '100%', boxSizing: 'border-box' }}>
+    <div key="m0" className="glass car-card-inner" style={{ borderRadius: 24, height: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
         <Clock size={20} style={{ color: '#f59e0b' }} />
-        <span style={{ fontWeight: 700, fontSize: mobile ? 15 : 17 }}>Time to Publish</span>
+        <span className="car-card-title">Time to Publish</span>
       </div>
       <MetricBar label="NAVA (trend → live)" value={1.5} max={50} color="#f59e0b" suffix="m" />
       <MetricBar label="Social media manager" value={240} max={2880} color="#6366F1" suffix="m" />
@@ -429,48 +403,48 @@ export default function Landing() {
       <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
         {[['90s','NAVA','#f59e0b'],['4 hrs','Team','#6366F1'],['48 hrs','Agency','#334155']].map(([v,l,c]) => (
           <div key={l} style={{ padding: '10px 4px', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }}>
-            <div style={{ fontSize: mobile ? 15 : 18, fontWeight: 800, color: c as string }}>{v}</div>
+            <div className="car-stat-num" style={{ color: c as string }}>{v}</div>
             <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{l}</div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: mobile ? 12 : 13, color: '#f59e0b', fontWeight: 600 }}>
+      <div className="car-badge-sm" style={{ marginTop: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b', fontWeight: 600 }}>
         160× faster than the average agency
       </div>
     </div>,
 
-    <div key="m1" className="glass" style={{ borderRadius: 24, padding: mobile ? '24px 20px' : '36px 30px', height: '100%', boxSizing: 'border-box', border: '1px solid rgba(16,185,129,0.25)', boxShadow: '0 0 60px rgba(16,185,129,0.12)' }}>
+    <div key="m1" className="glass car-card-inner" style={{ borderRadius: 24, height: '100%', boxSizing: 'border-box', border: '1px solid rgba(16,185,129,0.25)', boxShadow: '0 0 60px rgba(16,185,129,0.12)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
         <TrendingUp size={20} style={{ color: '#10b981' }} />
-        <span style={{ fontWeight: 700, fontSize: mobile ? 15 : 17 }}>Engagement Rate</span>
+        <span className="car-card-title">Engagement Rate</span>
       </div>
       <MetricBar label="NAVA-generated posts" value={3.8} max={5} color="#8B5CF6" suffix="%" />
       <MetricBar label="Manual content team" value={1.8} max={5} color="#6366F1" suffix="%" />
       <MetricBar label="Industry average" value={0.9} max={5} color="#334155" suffix="%" />
       <div style={{ marginTop: 18, padding: '12px 16px', borderRadius: 12, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
-        <span style={{ fontSize: mobile ? 12 : 14, color: '#10b981', fontWeight: 600 }}>↑ 3.8× higher than industry average</span>
+        <span className="car-badge-sm" style={{ color: '#10b981', fontWeight: 600 }}>↑ 3.8× higher than industry average</span>
       </div>
       <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
         {[['3.8%','NAVA','#10b981'],['1.8%','Teams','#6366F1'],['0.9%','Avg','#334155']].map(([v,l,c]) => (
-          <div key={l}><div style={{ fontSize: mobile ? 18 : 22, fontWeight: 800, color: c as string }}>{v}</div><div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{l}</div></div>
+          <div key={l}><div className="car-engage-num" style={{ color: c as string }}>{v}</div><div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{l}</div></div>
         ))}
       </div>
     </div>,
 
-    <div key="m2" className="glass" style={{ borderRadius: 24, padding: mobile ? '24px 20px' : '36px 30px', height: '100%', boxSizing: 'border-box' }}>
+    <div key="m2" className="glass car-card-inner" style={{ borderRadius: 24, height: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
         <DollarSign size={20} style={{ color: '#06b6d4' }} />
-        <span style={{ fontWeight: 700, fontSize: mobile ? 15 : 17 }}>Cost Per Post</span>
+        <span className="car-card-title">Cost Per Post</span>
       </div>
       <MetricBar label="NAVA (Spark — entry plan)" value={0.26} max={50} color="#06b6d4" />
       <MetricBar label="In-house team" value={22} max={50} color="#6366F1" />
       <MetricBar label="Content agency" value={45} max={50} color="#334155" />
       <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
         {[['$0.26','NAVA entry','#06b6d4'],['$45','Agency','#334155'],['170×','Cheaper','#10b981']].map(([v,l,c]) => (
-          <div key={l}><div style={{ fontSize: mobile ? 18 : 24, fontWeight: 800, color: c as string }}>{v}</div><div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{l}</div></div>
+          <div key={l}><div className="car-stat-num-lg" style={{ color: c as string }}>{v}</div><div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{l}</div></div>
         ))}
       </div>
-      <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)', fontSize: mobile ? 12 : 13, color: '#06b6d4', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+      <div className="car-badge-sm" style={{ marginTop: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)', color: '#06b6d4', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
         <span>170× cheaper than agency at entry · Scale plan: $0.18/post</span>
         <a href="/pricing" target="_blank" rel="noreferrer" style={{ color: '#c4b5fd', textDecoration: 'none', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>See plans →</a>
       </div>
@@ -481,28 +455,28 @@ export default function Landing() {
   const featureNodes: React.ReactNode[] = features.map((f, i) => {
     const FIcon = f.Icon
     return (
-      <div key={i} className="glass ghov" style={{ borderRadius: 22, padding: mobile ? '32px 28px' : '44px 40px', height: '100%', boxSizing: 'border-box', boxShadow: `0 0 60px ${f.glow}`, border: i === 1 ? '1px solid rgba(99,102,241,0.25)' : undefined }}>
+      <div key={i} className="glass ghov feat-card-inner" style={{ borderRadius: 22, height: '100%', boxSizing: 'border-box', boxShadow: `0 0 60px ${f.glow}`, border: i === 1 ? '1px solid rgba(99,102,241,0.25)' : undefined }}>
         <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
           <FIcon size={26} style={{ color: '#a78bfa' }} />
         </div>
-        <h3 style={{ fontWeight: 700, fontSize: mobile ? 18 : 21, marginBottom: 14, color: '#f1f5f9' }}>{f.title}</h3>
-        <p style={{ color: '#64748b', fontSize: mobile ? 14 : 15, lineHeight: 1.8 }}>{f.body}</p>
+        <h3 className="feat-h3">{f.title}</h3>
+        <p className="feat-body">{f.body}</p>
       </div>
     )
   })
 
   // case study carousel nodes
   const caseNodes: React.ReactNode[] = CASE_CARDS.map((c, i) => (
-    <div key={i} className="glass" style={{
-      borderRadius: 24, padding: mobile ? '32px 28px' : '40px 36px', height: '100%', boxSizing: 'border-box',
+    <div key={i} className="glass case-card-inner" style={{
+      borderRadius: 24, height: '100%', boxSizing: 'border-box',
       border: `1px solid ${c.color}44`,
       boxShadow: `0 0 60px ${c.color}22`,
       display: 'flex', flexDirection: 'column', justifyContent: 'center',
     }}>
-      <div style={{ fontSize: mobile ? 48 : 60, fontWeight: 900, color: c.color, letterSpacing: '-0.03em', marginBottom: 10, lineHeight: 1 }}>{c.value}</div>
-      <div style={{ fontSize: mobile ? 17 : 20, fontWeight: 700, color: '#f1f5f9', marginBottom: 6 }}>{c.label}</div>
+      <div className="case-val" style={{ color: c.color }}>{c.value}</div>
+      <div className="case-lbl">{c.label}</div>
       <div style={{ fontSize: 13, color: c.color, fontWeight: 600, marginBottom: 16 }}>{c.detail}</div>
-      <div style={{ fontSize: mobile ? 13 : 14, color: '#64748b', lineHeight: 1.7 }}>{c.sub}</div>
+      <div className="case-body">{c.sub}</div>
     </div>
   ))
 
@@ -560,13 +534,123 @@ export default function Landing() {
         .btn-g:hover{border-color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.06);transform:translateY(-2px)}
         .dot-grid{background-image:radial-gradient(circle,rgba(255,255,255,0.055) 1px,transparent 1px);background-size:32px 32px}
         .pdot{animation:pdot 2s ease-in-out infinite}
-        .snap-box{height:100vh;overflow-y:scroll}
+        .snap-box{height:100vh;overflow-y:scroll;overflow-x:hidden}
         .pip{border:none;cursor:pointer;border-radius:99px;transition:all .35s cubic-bezier(.22,1,.36,1)}
         .pipe-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:20px 16px;transition:border-color .25s,transform .25s,box-shadow .25s}
         .pipe-card:hover{transform:translateY(-4px)}
+
+        /* ── Responsive show/hide ── */
+        /* .hide-mobile and .mob-show are hidden on their respective breakpoints */
+        .mob-show{display:block}      /* mobile-only element */
+        .mob-show-flex{display:flex}  /* mobile-only flex element */
+        /* Carousel stage + card height — CSS-only, no JS viewport reads */
+        .car-stage{height:480px}
+        .car-card-h{height:440px}
+        /* -lg variant: used only for platform carousel (S2) on narrow mobile */
+        .car-stage-lg{height:480px}
+        .car-card-h-lg{height:440px}
+        @media(max-width:427px){
+          .car-stage{height:400px}
+          .car-card-h{height:360px}
+          .car-stage-lg{height:460px}
+          .car-card-h-lg{height:420px}
+        }
+        /* Carousel card inner padding */
+        .car-card-inner{padding:36px 30px}
+        /* Feature card inner */
+        .feat-card-inner{padding:44px 40px}
+        /* Case card inner */
+        .case-card-inner{padding:40px 36px}
+        /* Typography */
+        .car-card-title{font-size:17px;font-weight:700}
+        .car-stat-num{font-size:18px;font-weight:800}
+        .car-stat-num-lg{font-size:24px;font-weight:800}
+        .car-engage-num{font-size:22px;font-weight:800}
+        .car-badge-sm{font-size:13px}
+        .feat-h3{font-size:21px;font-weight:700;margin-bottom:14px;color:#f1f5f9}
+        .feat-body{font-size:15px;color:#64748b;line-height:1.8;margin:0}
+        .case-val{font-size:60px;font-weight:900;letter-spacing:-.03em;margin-bottom:10px;line-height:1}
+        .case-lbl{font-size:20px;font-weight:700;color:#f1f5f9;margin-bottom:6px}
+        .case-body{font-size:14px;color:#64748b;line-height:1.7}
+        /* Section headings */
+        .sec-h2{font-size:clamp(34px,4.5vw,56px);font-weight:900;letter-spacing:-.03em;margin-bottom:12px}
+        .sec-sub{font-size:18px;color:#94a3b8}
+        /* Nav */
+        .nav-root{padding:18px 52px}
+        .nav-brand{font-size:32px}
+        .nav-lnk{padding:8px 16px;font-size:13px}
+        .nav-pricing{padding:8px 16px;font-size:13px}
+        /* Snap section top padding */
+        .snap-sect{padding-top:72px}
+        /* Section content padding */
+        .sec-pad{padding:0 48px}
+        /* Investor card layout */
+        .inv-card-inner{padding:44px 52px;flex-direction:row;align-items:center}
+        /* CTA section */
+        .cta-h2{font-size:clamp(40px,6vw,72px);font-weight:900;letter-spacing:-.035em;margin-bottom:16px;color:#fff}
+        .cta-sub{font-size:18px;color:#94a3b8}
+        .cta-btn-p{padding:18px 44px;font-size:17px}
+        .cta-btn-g{padding:18px 32px;font-size:16px}
+        /* Footer */
+        .footer-inner{padding:20px 52px}
+        .footer-brand{font-size:18px}
+        .footer-copy{font-size:12px}
+        /* Share section */
+        .share-h3{font-size:clamp(26px,3vw,40px);font-weight:900;letter-spacing:-.03em;margin-bottom:20px}
+        .share-btn{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;will-change:transform}
+        .share-btn:hover{transform:translateY(-3px)}
+        .share-btn-x{background:#000}.share-btn-x:hover{box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+        .share-btn-li{background:#0077b5}.share-btn-li:hover{box-shadow:0 8px 24px rgba(0,119,181,0.45)}
+        .share-btn-wa{background:#25d366}.share-btn-wa:hover{box-shadow:0 8px 24px rgba(37,211,102,0.45)}
+        .share-btn-cp{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.18);color:#e2e8f0;transition:transform .15s,background .15s}
+        .share-btn-cp:hover{background:rgba(255,255,255,0.12);transform:translateY(-3px)}
+
+        /* Instagram image — taller aspect-ratio on mobile so it fits the 420px card */
+        @media(max-width:767px){
+          .ig-img{aspect-ratio:2!important}
+        }
+        /* ── Mobile overrides ── */
         @media(max-width:767px){
           .hide-mobile{display:none!important}
           .nav-btn-secondary{display:none!important}
+          .mob-show{display:block}
+          .mob-show-flex{display:flex}
+          /* On desktop these are hidden */
+          .car-card-inner{padding:24px 20px}
+          .feat-card-inner{padding:32px 28px}
+          .case-card-inner{padding:32px 28px}
+          .car-card-title{font-size:15px}
+          .car-stat-num{font-size:15px}
+          .car-stat-num-lg{font-size:18px}
+          .car-engage-num{font-size:18px}
+          .car-badge-sm{font-size:12px}
+          .feat-h3{font-size:18px}
+          .feat-body{font-size:14px}
+          .case-val{font-size:48px}
+          .case-lbl{font-size:17px}
+          .case-body{font-size:13px}
+          .sec-h2{font-size:clamp(24px,6vw,36px)}
+          .sec-sub{font-size:14px}
+          .nav-root{padding:14px 20px}
+          .nav-brand{font-size:24px}
+          .nav-lnk{padding:6px 10px;font-size:12px}
+          .nav-pricing{padding:6px 10px;font-size:12px}
+          .snap-sect{padding-top:60px}
+          .sec-pad{padding:0 20px}
+          .inv-card-inner{padding:28px 24px;flex-direction:column;align-items:flex-start}
+          .cta-h2{font-size:clamp(32px,8vw,56px)}
+          .cta-sub{font-size:15px}
+          .cta-btn-p{padding:14px 28px;font-size:15px}
+          .cta-btn-g{padding:14px 20px;font-size:14px}
+          .footer-inner{padding:16px 20px}
+          .footer-brand{font-size:16px}
+          .footer-copy{font-size:11px}
+          .share-h3{font-size:clamp(22px,5.5vw,32px)}
+        }
+        /* ── Desktop-only show ── */
+        @media(min-width:768px){
+          .mob-show{display:none!important}
+          .mob-show-flex{display:none!important}
         }
       `}</style>
 
@@ -581,147 +665,143 @@ export default function Landing() {
         </div>
 
         {/* fixed nav */}
-        <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: mobile ? '14px 20px' : '18px 52px', background: 'rgba(7,7,26,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <span style={{ fontWeight: 900, fontSize: mobile ? 24 : 32, letterSpacing: '0.01em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{appName}</span>
+        <nav className="nav-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(7,7,26,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <span className="nav-brand" style={{ fontWeight: 900, letterSpacing: '0.01em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{appName}</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Link to="/dashboard" className="btn-g" style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 500, color: '#cbd5e1', background: 'transparent', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Dashboard</Link>
+            <Link to="/dashboard" className="btn-g nav-lnk" style={{ borderRadius: 8, fontWeight: 500, color: '#cbd5e1', background: 'transparent', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Dashboard</Link>
             <Link to="/invest" className="btn-p nav-btn-secondary" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Invest</Link>
-            <Link to="/pricing" style={{ padding: mobile ? '6px 10px' : '8px 16px', borderRadius: 8, fontSize: mobile ? 12 : 13, fontWeight: 600, color: '#c4b5fd', background: 'transparent', border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Pricing</Link>
-            <a href={CONTACT_HREF} className="btn-g" style={{ padding: mobile ? '8px 14px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#e2e8f0', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
-              <Mail size={14} />{!mobile && "Let's Talk"}
+            <Link to="/pricing" className="nav-pricing" style={{ borderRadius: 8, fontWeight: 600, color: '#c4b5fd', background: 'transparent', border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Pricing</Link>
+            <a href={CONTACT_HREF} className="btn-g nav-lnk" style={{ borderRadius: 8, fontWeight: 600, color: '#e2e8f0', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+              <Mail size={14} /><span className="hide-mobile">Let's Talk</span>
             </a>
           </div>
         </nav>
 
-        {/* section nav dots — hidden on mobile */}
-        {!mobile && (
-          <div style={{ position: 'fixed', right: 28, top: '50%', transform: 'translateY(-50%)', zIndex: 300, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {Array.from({ length: SECTION_COUNT }).map((_, i) => (
-              <button key={i} className="pip" onClick={() => scrollTo(i)} aria-label={`Section ${i + 1}`}
-                style={{ width: 8, height: activeSection === i ? 32 : 8, padding: 0, background: activeSection === i ? 'linear-gradient(180deg,#818CF8,#38BDF8)' : 'rgba(255,255,255,0.2)' }} />
-            ))}
-          </div>
-        )}
+        {/* section nav dots — hidden on mobile via CSS */}
+        <div className="hide-mobile" style={{ position: 'fixed', right: 28, top: '50%', transform: 'translateY(-50%)', zIndex: 300, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {Array.from({ length: SECTION_COUNT }).map((_, i) => (
+            <button key={i} className="pip" onClick={() => scrollTo(i)} aria-label={`Section ${i + 1}`}
+              style={{ width: 8, height: activeSection === i ? 32 : 8, padding: 0, background: activeSection === i ? 'linear-gradient(180deg,#818CF8,#38BDF8)' : 'rgba(255,255,255,0.2)' }} />
+          ))}
+        </div>
 
         {/* scroll container */}
         <main ref={containerRef} className="snap-box" aria-label="NAVA landing page content">
 
           {/* ── S1 · HERO ───────────────────────────────────────────── */}
-          <div ref={ref(0)} style={S} role="region" aria-label="Hero">
+          <div ref={ref(0)} style={S} className="snap-sect" role="region" aria-label="Hero">
             <CardMarqueeBg />
             {visible && (
               <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', maxWidth: 860, width: '100%' }}>
-                <div className="anim-up" style={{ marginBottom: mobile ? 20 : 28 }}>
+                <div className="anim-up" style={{ marginBottom: 'clamp(20px,2.5vw,28px)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px 6px 10px', borderRadius: 100, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)', fontSize: 13, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.04em' }}>
                     <span className="pdot" style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#a78bfa' }} />
                     AI #TrendJacker
                   </span>
                 </div>
-                <h1 className="anim-up d1" style={{ fontSize: 'clamp(64px,14vw,156px)', fontWeight: 900, lineHeight: 0.88, letterSpacing: '-0.04em', marginBottom: mobile ? 24 : 40, background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', textShadow: '0 0 50px rgba(139,92,246,0.4)' }}>
+                <h1 className="anim-up d1" style={{ fontSize: 'clamp(64px,14vw,156px)', fontWeight: 900, lineHeight: 0.88, letterSpacing: '-0.04em', marginBottom: 'clamp(24px,3vw,40px)', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', textShadow: '0 0 50px rgba(139,92,246,0.4)' }}>
                   {appName}
                 </h1>
                 <p className="anim-up d2" style={{ fontSize: 'clamp(18px,3.2vw,36px)', fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2, maxWidth: 700, marginBottom: 14, letterSpacing: '-0.025em' }}>
                   Content at the speed of trends.
                 </p>
-                <p className="anim-up d3" style={{ fontSize: mobile ? 14 : 16, color: '#94a3b8', marginBottom: mobile ? 36 : 56, lineHeight: 1.7, maxWidth: 480 }}>
+                <p className="anim-up d3 sec-sub" style={{ marginBottom: 'clamp(36px,4vw,56px)', lineHeight: 1.7, maxWidth: 480 }}>
                   Trend detected → AI-crafted post → published. In 90 seconds.
                 </p>
                 <div className="anim-up d4" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <Link to="/pricing" className="btn-p" style={{ padding: mobile ? '13px 28px' : '16px 38px', borderRadius: 12, fontSize: mobile ? 14 : 16, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                  <Link to="/pricing" className="btn-p cta-btn-p" style={{ borderRadius: 12, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
                     Get Started <ArrowRight size={16} />
                   </Link>
-                  <Link to="/demo" className="btn-g" style={{ padding: mobile ? '13px 20px' : '16px 28px', borderRadius: 12, fontSize: mobile ? 13 : 15, fontWeight: 600, color: '#c4b5fd', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none' }}>
+                  <Link to="/demo" className="btn-g cta-btn-g" style={{ borderRadius: 12, fontWeight: 600, color: '#c4b5fd', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none' }}>
                     Watch It Happen
                   </Link>
                 </div>
               </section>
             )}
-            {/* Bottom stat bar — hidden on mobile to save space */}
-            {!mobile && (
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '24px 52px', display: 'flex', justifyContent: 'center', gap: 56, flexWrap: 'wrap', background: 'rgba(7,7,26,0.5)', backdropFilter: 'blur(10px)' }}>
-                {[['15+','Trend sources'],['10+','AI agents'],['<90s','Trend to post'],['5+','Platforms'],['3.8×','Engagement lift']].map(([v,l]) => (
-                  <div key={l} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{v}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Bottom stat bar — hidden on mobile via CSS */}
+            <div className="hide-mobile" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '24px 52px', display: 'flex', justifyContent: 'center', gap: 56, flexWrap: 'wrap', background: 'rgba(7,7,26,0.5)', backdropFilter: 'blur(10px)' }}>
+              {[['15+','Trend sources'],['10+','AI agents'],['<90s','Trend to post'],['5+','Platforms'],['3.8×','Engagement lift']].map(([v,l]) => (
+                <div key={l} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{v}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* ── S2 · PLATFORM SAMPLES ───────────────────────────────── */}
-          <div ref={ref(1)} style={S} role="region" aria-label="Platform post examples">
-            <section style={{ width: '100%', maxWidth: 1200, padding: mobile ? '0 20px' : '0 48px' }}>
-              <div style={{ textAlign: 'center', marginBottom: mobile ? 28 : 48 }}>
-                <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>
-                  Same trend. <GradText>Three perfect posts.</GradText>
+          <div ref={ref(1)} style={S} className="snap-sect" role="region" aria-label="Platform post examples">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1200 }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(28px,3.5vw,48px)' }}>
+                <h2 className="sec-h2">
+                  One trend. <GradText>3 perfect posts.</GradText>
                 </h2>
-                <p style={{ color: '#94a3b8', fontSize: mobile ? 14 : 18 }}>
-                  RCB wins IPL → NAVA fires platform-native content across every channel in under 2 minutes.
+                <p className="sec-sub">
+                  RCB wins IPL → NAVA fires witty posts across 3+ channels in 2 minutes.
                 </p>
               </div>
 
-              {mobile ? (
-                // Carousel on mobile
-                <NodeCarousel nodes={platformNodes} interval={3800} cardW={carW} cardH={380} />
-              ) : (
-                // 3-col grid on desktop
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 32, alignItems: 'start' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.15)' }}><TwitterIcon size={14} /></div>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>X / Twitter</span>
-                        <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Wit · Punchy</span>
-                      </div>
-                      <div style={{ animation: 'card-live 5.5s ease-in-out 0s infinite', '--g': 'rgba(29,155,240,0.35)' } as React.CSSProperties}>
-                        <TwitterMockup />
-                      </div>
+              {/* Carousel on mobile — hidden on desktop */}
+              <div className="mob-show">
+                <NodeCarousel nodes={platformNodes} interval={3800} tall />
+              </div>
+
+              {/* 3-col grid on desktop — hidden on mobile */}
+              <div className="hide-mobile">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 32, alignItems: 'start' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.15)' }}><TwitterIcon size={14} /></div>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>X / Twitter</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Wit · Punchy</span>
                     </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><InstagramIcon size={14} /></div>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>Instagram</span>
-                        <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Visual · Branded</span>
-                      </div>
-                      <div style={{ animation: 'card-live 5.5s ease-in-out 1.83s infinite', '--g': 'rgba(225,48,108,0.35)' } as React.CSSProperties}>
-                        <InstagramMockup />
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LinkedInIcon size={14} /></div>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>LinkedIn</span>
-                        <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Authority · Reach</span>
-                      </div>
-                      <div style={{ animation: 'card-live 5.5s ease-in-out 3.67s infinite', '--g': 'rgba(0,119,181,0.35)' } as React.CSSProperties}>
-                        <LinkedInMockup />
-                      </div>
+                    <div style={{ animation: 'card-live 5.5s ease-in-out 0s infinite', '--g': 'rgba(29,155,240,0.35)' } as React.CSSProperties}>
+                      <TwitterMockup />
                     </div>
                   </div>
-                  <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#64748b' }}>
-                    All three generated autonomously · No human in the loop · QA-verified before publish
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><InstagramIcon size={14} /></div>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>Instagram</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Visual · Branded</span>
+                    </div>
+                    <div style={{ animation: 'card-live 5.5s ease-in-out 1.83s infinite', '--g': 'rgba(225,48,108,0.35)' } as React.CSSProperties}>
+                      <InstagramMockup />
+                    </div>
                   </div>
-                </>
-              )}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LinkedInIcon size={14} /></div>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>LinkedIn</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Authority · Reach</span>
+                    </div>
+                    <div style={{ animation: 'card-live 5.5s ease-in-out 3.67s infinite', '--g': 'rgba(0,119,181,0.35)' } as React.CSSProperties}>
+                      <LinkedInMockup />
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#64748b' }}>
+                  All three generated autonomously · No human in the loop · QA-verified before publish
+                </div>
+              </div>
             </section>
           </div>
 
           {/* ── S3 · PIPELINE ───────────────────────────────────────── */}
-          <div ref={ref(2)} style={S} role="region" aria-label="How it works">
-            <section style={{ width: '100%', maxWidth: 1160, padding: mobile ? '0 20px' : '0 48px' }}>
-              <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
-                <h2 style={{ fontSize: mobile ? 'clamp(22px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 10 }}>
+          <div ref={ref(2)} style={S} className="snap-sect" role="region" aria-label="How it works">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1160 }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(16px,3vw,44px)' }}>
+                <h2 className="sec-h2">
                  Multi AI agents. <GradText>One unstoppable pipeline.</GradText>
                 </h2>
-                <p style={{ color: '#94a3b8', fontSize: mobile ? 13 : 17 }}>Trend to published post. Fully autonomous. Under 90 seconds.</p>
+                <p className="sec-sub" style={{ fontSize: 'clamp(13px,2vw,17px)' }}>Trend to post. Automated. In 90 seconds.</p>
               </div>
 
-              {mobile ? (
-                // Compact vertical list on mobile
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Compact vertical list on mobile */}
+              <div className="mob-show">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {pipelineSteps.map(({ Icon, label, desc, color, time }, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}22` }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '9px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}22` }}>
                       <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: `${color}18`, border: `1.5px solid ${color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Icon size={17} style={{ color }} />
                       </div>
@@ -735,143 +815,125 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                // Desktop: icon row + card row
-                <>
-                  <div style={{ position: 'relative', marginBottom: 20 }}>
-                    {/* animated wire — current flows left→right */}
-                    <div style={{ position: 'absolute', top: 36, left: '10%', right: '10%', height: 2, background: 'rgba(255,255,255,0.07)', borderRadius: 1, overflow: 'hidden' }}>
-                      <div className="pipe-wire-fill" />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-around', position: 'relative', zIndex: 1 }}>
-                      {pipelineSteps.map(({ Icon, color, time }, i) => (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 72, height: 72, borderRadius: '50%', background: `${color}18`, border: `2px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', animation: `node-${i} 2.8s linear infinite` }}>
-                            <Icon size={28} style={{ color }} />
-                          </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`, padding: '3px 10px', borderRadius: 100, border: `1px solid ${color}33` }}>{time}</span>
-                        </div>
-                      ))}
-                    </div>
+              </div>
+
+              {/* Desktop: icon row + card row */}
+              <div className="hide-mobile">
+                <div style={{ position: 'relative', marginBottom: 20 }}>
+                  {/* animated wire — current flows left→right */}
+                  <div style={{ position: 'absolute', top: 36, left: '10%', right: '10%', height: 2, background: 'rgba(255,255,255,0.07)', borderRadius: 1, overflow: 'hidden' }}>
+                    <div className="pipe-wire-fill" />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
-                    {pipelineSteps.map(({ label, desc, color }, i) => (
-                      <div key={label} className="pipe-card" style={{ borderTop: `2px solid ${color}` }}>
-                        <div style={{ fontSize: 10, color, fontWeight: 800, letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' }}>Step {String(i + 1).padStart(2, '0')}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 8, lineHeight: 1.3 }}>{label}</div>
-                        <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.75 }}>{desc}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-around', position: 'relative', zIndex: 1 }}>
+                    {pipelineSteps.map(({ Icon, color, time }, i) => (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 72, height: 72, borderRadius: '50%', background: `${color}18`, border: `2px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', animation: `node-${i} 2.8s linear infinite` }}>
+                          <Icon size={28} style={{ color }} />
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`, padding: '3px 10px', borderRadius: 100, border: `1px solid ${color}33` }}>{time}</span>
                       </div>
                     ))}
                   </div>
-                </>
-              )}
-
-              {/* total time strip */}
-              <div style={{ marginTop: mobile ? 16 : 28, display: 'flex', alignItems: 'center', gap: 12, padding: mobile ? '12px 16px' : '14px 24px', borderRadius: 12, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)', flexWrap: 'wrap' }}>
-                <Zap size={16} style={{ color: '#10b981', flexShrink: 0 }} />
-                <span style={{ fontSize: mobile ? 12 : 14, color: '#10b981', fontWeight: 600 }}>Full pipeline: Trend → Research → Plan → Create → Publish in under 90 seconds</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
+                  {pipelineSteps.map(({ label, desc, color }, i) => (
+                    <div key={label} className="pipe-card" style={{ borderTop: `2px solid ${color}` }}>
+                      <div style={{ fontSize: 10, color, fontWeight: 800, letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' }}>Step {String(i + 1).padStart(2, '0')}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 8, lineHeight: 1.3 }}>{label}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.75 }}>{desc}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
               {/* self-improving callout */}
-              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, padding: mobile ? '10px 16px' : '12px 24px', borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.18)', flexWrap: 'wrap' }}>
-                <TrendingUp size={15} style={{ color: '#818cf8', flexShrink: 0 }} />
-                <span style={{ fontSize: mobile ? 11 : 13, color: '#818cf8', fontWeight: 600 }}>Self-improving — engagement feedback from every post trains the next one. Quality compounds over time.</span>
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-start', gap: 8, padding: 'clamp(10px,1.2vw,12px) clamp(16px,2vw,24px)', borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.18)' }}>
+                <TrendingUp size={15} style={{ color: '#818cf8', flexShrink: 0, marginTop: 1 }} />
+                <span className="car-badge-sm" style={{ color: '#818cf8', fontWeight: 600 }}>Self-improving — engagement from every post trains the model. Quality compounds over time.</span>
               </div>
             </section>
           </div>
 
           {/* ── S4 · METRICS (carousel) ─────────────────────────────── */}
-          <div ref={ref(3)} style={S} role="region" aria-label="Performance metrics">
-            <section style={{ width: '100%', maxWidth: 1200, padding: mobile ? '0 20px' : '0 48px' }}>
-              <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
-                <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>Proof, not promises.</h2>
-                <p style={{ color: '#94a3b8', fontSize: mobile ? 14 : 18 }}>Real-world performance vs traditional content production.</p>
+          <div ref={ref(3)} style={S} className="snap-sect" role="region" aria-label="Performance metrics">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1200 }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(24px,3vw,44px)' }}>
+                <h2 className="sec-h2">Proof, not promises.</h2>
+                <p className="sec-sub">Real-world performance vs traditional content production.</p>
               </div>
-              <NodeCarousel nodes={metricNodes} interval={4000} cardW={carW} cardH={carH} />
+              <NodeCarousel nodes={metricNodes} interval={4000} />
             </section>
           </div>
 
           {/* ── S5 · CASE STUDY (carousel) ──────────────────────────── */}
-          <div ref={ref(4)} style={S} role="region" aria-label="Results and case studies">
-            <section style={{ width: '100%', maxWidth: 1140, padding: mobile ? '0 20px' : '0 48px' }}>
-              <div style={{ textAlign: 'center', marginBottom: mobile ? 20 : 40 }}>
-                <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>Numbers Don't Lie.</h2>
+          <div ref={ref(4)} style={S} className="snap-sect" role="region" aria-label="Results and case studies">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1140 }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(20px,2.5vw,40px)' }}>
+                <h2 className="sec-h2">Numbers Don't Lie.</h2>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: '#94a3b8' }}>India's #1 RE Platform</span>
-                  <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24', letterSpacing: '0.08em' }}>PILOT</span>
+                  <span className="car-badge-sm" style={{ fontWeight: 700, color: '#94a3b8' }}>India's #1 RE Platform</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24', letterSpacing: '0.08em' }}>PILOT Metrics</span>
                 </div>
-                {!mobile && <p style={{ color: '#64748b', fontSize: 13 }}>Real results from our pilot deployment · Q1–Q2 2026</p>}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#a78bfa', fontSize: 13, fontWeight: 600, marginTop: 6 }}>
-                  <Users size={13} /> Pilot Metrics
-                </div>
+                <p className="hide-mobile" style={{ color: '#64748b', fontSize: 13 }}>Real results from our pilot deployment · Q1–Q2 2026</p>
               </div>
-              <NodeCarousel nodes={caseNodes} interval={3600} cardW={carW} cardH={carH} />
+              <NodeCarousel nodes={caseNodes} interval={3600} />
             </section>
           </div>
 
           {/* ── S6 · FEATURES (carousel) ────────────────────────────── */}
-          <div ref={ref(5)} style={S} role="region" aria-label="Key features">
-            <section style={{ width: '100%', maxWidth: 1200, padding: mobile ? '0 20px' : '0 48px' }}>
-              <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 44 }}>
-                <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(34px,4.5vw,56px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>Built different.</h2>
-                <p style={{ color: '#94a3b8', fontSize: mobile ? 14 : 18 }}>Not a scheduling tool. Not a template engine. An autonomous content machine.</p>
+          <div ref={ref(5)} style={S} className="snap-sect" role="region" aria-label="Key features">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1200 }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(24px,3vw,44px)' }}>
+                <h2 className="sec-h2">Built different.</h2>
+                <p className="sec-sub">Not a scheduling tool. Not a template engine. An autonomous content machine.</p>
               </div>
-              <NodeCarousel nodes={featureNodes} interval={4500} cardW={carW} cardH={carH} />
+              <NodeCarousel nodes={featureNodes} interval={4500} />
             </section>
           </div>
 
           {/* ── S7 · INVESTOR + SHARE ───────────────────────────────── */}
-          <div ref={ref(6)} style={S} role="region" aria-label="Investor and social share">
-            <section style={{ width: '100%', maxWidth: 1100, padding: mobile ? '0 20px' : '0 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mobile ? 32 : 48 }}>
+          <div ref={ref(6)} style={S} className="snap-sect" role="region" aria-label="Investor and social share">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1100, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(32px,4vw,48px)' }}>
 
               {/* Investor card */}
-              <div className="glass" style={{ width: '100%', borderRadius: 24, padding: mobile ? '28px 24px' : '44px 52px', border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 0 80px rgba(139,92,246,0.12)', display: 'flex', flexDirection: mobile ? 'column' : 'row', alignItems: mobile ? 'flex-start' : 'center', gap: mobile ? 24 : 48 }}>
+              <div className="glass inv-card-inner" style={{ width: '100%', borderRadius: 24, border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 0 80px rgba(139,92,246,0.12)', display: 'flex', gap: 'clamp(24px,4vw,48px)' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 100, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', fontSize: 11, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.06em', marginBottom: 16 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    EARLY ACCESS
+                    SEED STAGE
                   </div>
-                  <h2 style={{ fontSize: mobile ? 'clamp(24px,6vw,36px)' : 'clamp(28px,3.5vw,44px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 14, lineHeight: 1.1 }}>
-                    Built for the future of<br /><GradText>AI-First #TrendJacking.</GradText>
+                  <h2 style={{ fontSize: 'clamp(24px,3.5vw,44px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 14, lineHeight: 1.1 }}>
+                  AI-First <GradText>#TrendJacking.</GradText>
                   </h2>
-                  <p style={{ color: '#94a3b8', fontSize: mobile ? 14 : 16, lineHeight: 1.7, maxWidth: 480, marginBottom: 24 }}>
-                    A $15B+ addressable market. AI-native infrastructure. Recurring revenue from Day 1. Starting with real estate — expanding to every vertical that publishes.
+                  <p className="sec-sub" style={{ lineHeight: 1.7, maxWidth: 480, marginBottom: 24 }}>
+                    $15B+ market. AI-native. Recurring revenue from Day 1. Expanding rapidly.
                   </p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <Link to="/invest" className="btn-p" style={{ padding: mobile ? '12px 24px' : '14px 32px', borderRadius: 12, fontSize: mobile ? 14 : 15, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-                      View Investor Brief <ArrowRight size={15} />
+                    <Link to="/invest" className="btn-p" style={{ padding: 'clamp(12px,1.2vw,14px) clamp(24px,2.5vw,32px)', borderRadius: 12, fontSize: 'clamp(14px,1.2vw,15px)', fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                      Investor Brief <ArrowRight size={15} />
                     </Link>
-                    <a href={CONTACT_HREF} className="btn-g" style={{ padding: mobile ? '12px 20px' : '14px 28px', borderRadius: 12, fontSize: mobile ? 13 : 14, fontWeight: 600, color: '#e2e8f0', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-                      <Mail size={14} /> Partner With Us
+                    <a href={CONTACT_HREF} className="btn-g" style={{ padding: 'clamp(12px,1.2vw,14px) clamp(20px,2vw,28px)', borderRadius: 12, fontSize: 'clamp(13px,1.1vw,14px)', fontWeight: 600, color: '#e2e8f0', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                      <Mail size={14} /> Reach Out
                     </a>
                   </div>
                 </div>
-                {!mobile && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, flexShrink: 0 }}>
-                    {[['$2B+','Addressable Market','#8B5CF6'],['3.8×','Engagement Lift','#10b981'],['170×','Cost Advantage','#06b6d4'],['<90s','Time to Publish','#f59e0b']].map(([v,l,c]) => (
-                      <div key={l} style={{ padding: '20px 24px', borderRadius: 16, background: 'rgba(255,255,255,0.04)', border: `1px solid ${c}33`, textAlign: 'center' }}>
-                        <div style={{ fontSize: 28, fontWeight: 900, color: c as string, letterSpacing: '-0.03em' }}>{v}</div>
-                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Stat grid — hidden on mobile */}
+                <div className="hide-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, flexShrink: 0 }}>
+                  {[['$2B+','Addressable Market','#8B5CF6'],['3.8×','Engagement Lift','#10b981'],['170×','Cost Advantage','#06b6d4'],['<90s','Time to Publish','#f59e0b']].map(([v,l,c]) => (
+                    <div key={l} style={{ padding: '20px 24px', borderRadius: 16, background: 'rgba(255,255,255,0.04)', border: `1px solid ${c}33`, textAlign: 'center' }}>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: c as string, letterSpacing: '-0.03em' }}>{v}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Share section */}
               <div style={{ width: '100%', textAlign: 'center' }}>
-                <div style={{ fontSize: mobile ? 11 : 12, fontWeight: 700, color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 14 }}>Blown away? Pass it on.</div>
-                <h3 style={{ fontSize: mobile ? 'clamp(22px,5.5vw,32px)' : 'clamp(26px,3vw,40px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 20 }}>
+                <div style={{ fontSize: 'clamp(11px,1.2vw,12px)', fontWeight: 700, color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 14 }}>Blown away? Pass it on.</div>
+                <h3 className="share-h3">
                   Loved it? <GradText>Spread the word.</GradText>
                 </h3>
-                <style>{`
-                  .share-btn{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;will-change:transform}
-                  .share-btn:hover{transform:translateY(-3px)}
-                  .share-btn-x{background:#000}.share-btn-x:hover{box-shadow:0 8px 24px rgba(0,0,0,0.5)}
-                  .share-btn-li{background:#0077b5}.share-btn-li:hover{box-shadow:0 8px 24px rgba(0,119,181,0.45)}
-                  .share-btn-wa{background:#25d366}.share-btn-wa:hover{box-shadow:0 8px 24px rgba(37,211,102,0.45)}
-                  .share-btn-cp{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.18);color:#e2e8f0;transition:transform .15s,background .15s}
-                  .share-btn-cp:hover{background:rgba(255,255,255,0.12);transform:translateY(-3px)}
-                `}</style>
                 <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
                   <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('This AI goes from trending topic → published post across Twitter, Instagram & LinkedIn in under 90 seconds.\n\n3.8× engagement lift. 170× cheaper than agencies. Zero human in the loop.\n\nContent marketing just changed. 🔥 #AI #ContentMarketing #TrendJacking')}&url=${encodeURIComponent(origin)}`} target="_blank" rel="noreferrer" title="Share on X" style={{ textDecoration: 'none' }}>
                     <button className="share-btn share-btn-x"><TwitterIcon size={18} /></button>
@@ -894,83 +956,80 @@ export default function Landing() {
           </div>
 
           {/* ── S8 · WORK WITH US ───────────────────────────────────── */}
-          <div ref={ref(7)} style={S} role="region" aria-label="Careers">
-            <section style={{ width: '100%', maxWidth: 1100, padding: mobile ? '0 20px' : '0 48px' }}>
-              <div style={{ textAlign: 'center', marginBottom: mobile ? 24 : 40 }}>
+          <div ref={ref(7)} style={S} className="snap-sect" role="region" aria-label="Careers">
+            <section className="sec-pad" style={{ width: '100%', maxWidth: 1100 }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(24px,3vw,40px)' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 14px 5px 10px', borderRadius: 100, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)', fontSize: 11, fontWeight: 700, color: '#6ee7b7', letterSpacing: '0.06em', marginBottom: 16 }}>
                   <span className="pdot" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#6ee7b7' }} />
                   #WeAreHiring
                 </span>
-                <h2 style={{ fontSize: mobile ? 'clamp(26px,7vw,40px)' : 'clamp(34px,4vw,54px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12, lineHeight: 1.1 }}>
+                <h2 className="sec-h2">
                   Come build the <GradText>future of content.</GradText>
                 </h2>
-                <p style={{ color: '#94a3b8', fontSize: mobile ? 13 : 16, maxWidth: 540, margin: '0 auto', lineHeight: 1.7 }}>
+                <p className="sec-sub" style={{ maxWidth: 540, margin: '0 auto', lineHeight: 1.7 }}>
                   Small team. Huge mission. We're growing fast and hiring across every discipline. If the intersection of AI and content excites you — we want to hear from you.
                 </p>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mobile ? 24 : 32 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(24px,3vw,32px)' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
                   {['Engineering', 'Design', 'Growth', 'Operations', 'Partnerships', 'Sales'].map(dept => (
-                    <span key={dept} style={{ padding: '7px 18px', borderRadius: 100, border: '1px solid rgba(139,92,246,0.28)', background: 'rgba(139,92,246,0.07)', fontSize: mobile ? 12 : 13, color: '#c4b5fd', fontWeight: 600 }}>
+                    <span key={dept} className="car-badge-sm" style={{ padding: '7px 18px', borderRadius: 100, border: '1px solid rgba(139,92,246,0.28)', background: 'rgba(139,92,246,0.07)', color: '#c4b5fd', fontWeight: 600 }}>
                       {dept}
                     </span>
                   ))}
                 </div>
                 <a href={CONTACT_HREF} style={{ textDecoration: 'none' }}>
-                  <button className="btn-p" style={{ padding: mobile ? '13px 32px' : '16px 44px', borderRadius: 12, fontSize: mobile ? 14 : 15, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <button className="btn-p cta-btn-p" style={{ borderRadius: 12, fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     <Mail size={15} /> Reach Out
                   </button>
                 </a>
-                <div style={{ fontSize: mobile ? 12 : 13, color: '#475569' }}>No formal process. Just say hi.</div>
+                <div className="car-badge-sm" style={{ color: '#475569' }}>No formal process. Just say hi.</div>
               </div>
             </section>
           </div>
 
           {/* ── S9 · CTA + FOOTER ───────────────────────────────────── */}
-          <div ref={ref(8)} style={{ ...S, justifyContent: 'space-between' }} role="region" aria-label="Get started">
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: mobile ? '0 20px' : '0 24px' }}>
-              <h2 style={{ fontSize: mobile ? 'clamp(32px,8vw,56px)' : 'clamp(40px,6vw,72px)', fontWeight: 900, letterSpacing: '-0.035em', marginBottom: 16, color: '#fff' }}>
+          <div ref={ref(8)} style={{ ...S, justifyContent: 'space-between' }} className="snap-sect" role="region" aria-label="Get started">
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 clamp(20px,3vw,24px)' }}>
+              <h2 className="cta-h2">
                 Ready to <GradText>#TrendJack?</GradText>
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: mobile ? 15 : 18, marginBottom: mobile ? 32 : 48 }}>See it working live — right now.</p>
+              <p className="cta-sub" style={{ marginBottom: 'clamp(32px,4vw,48px)' }}>See it working live — right now.</p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link to="/pricing" className="btn-p" style={{ padding: mobile ? '14px 28px' : '18px 44px', borderRadius: 14, fontSize: mobile ? 15 : 17, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                <Link to="/pricing" className="btn-p cta-btn-p" style={{ borderRadius: 14, fontWeight: 700, color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
                   Get Started <ArrowRight size={18} />
                 </Link>
-                <Link to="/demo" className="btn-g" style={{ padding: mobile ? '14px 20px' : '18px 32px', borderRadius: 14, fontSize: mobile ? 14 : 16, fontWeight: 600, color: '#c4b5fd', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none' }}>
+                <Link to="/demo" className="btn-g cta-btn-g" style={{ borderRadius: 14, fontWeight: 600, color: '#c4b5fd', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(139,92,246,.35)', textDecoration: 'none' }}>
                   Watch It Happen
                 </Link>
               </div>
-              {!mobile && (
-                <div style={{ marginTop: 52, display: 'flex', gap: 48, color: '#64748b', fontSize: 13 }}>
-                  {[['15+','signal sources'],['<90s','trend to post'],['5','platforms'],['0','human steps']].map(([v,l]) => (
-                    <div key={l} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: '#94a3b8', marginBottom: 4 }}>{v}</div>
-                      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{l}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <footer style={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', padding: mobile ? '16px 20px' : '20px 52px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 900, fontSize: mobile ? 16 : 18, letterSpacing: '0.01em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{appName}</span>
-                {!mobile && <span style={{ color: '#475569', fontSize: 13 }}>— AI Content Engine</span>}
+              {/* Stat strip — hidden on mobile */}
+              <div className="hide-mobile" style={{ marginTop: 52, display: 'flex', gap: 48, color: '#64748b', fontSize: 13 }}>
+                {[['15+','signal sources'],['<90s','trend to post'],['5','platforms'],['0','human steps']].map(([v,l]) => (
+                  <div key={l} style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#94a3b8', marginBottom: 4 }}>{v}</div>
+                    <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{l}</div>
+                  </div>
+                ))}
               </div>
-              {!mobile && (
-                <div style={{ display: 'flex', gap: 28 }}>
-                  {[['Dashboard','/dashboard',false],['Invest','/invest',false],['Watch It Happen','/demo',true],['Pricing','/pricing',true]].map(([label,path,blank]) => (
-                    <a key={label as string} href={path as string} target={blank ? '_blank' : undefined} rel="noreferrer"
-                      style={{ color: '#64748b', fontSize: 13, textDecoration: 'none', fontWeight: 500 }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>
-                      {label}
-                    </a>
-                  ))}
-                </div>
-              )}
-              <span style={{ color: '#475569', fontSize: mobile ? 11 : 12 }}>© 2026 {appName} · All rights reserved</span>
+            </div>
+            <footer className="footer-inner" style={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="footer-brand" style={{ fontWeight: 900, letterSpacing: '0.01em', background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{appName}</span>
+                <span className="hide-mobile" style={{ color: '#475569', fontSize: 13 }}>— AI Content Engine</span>
+              </div>
+              <div className="hide-mobile" style={{ display: 'flex', gap: 28 }}>
+                {[['Dashboard','/dashboard',false],['Invest','/invest',false],['Watch It Happen','/demo',true],['Pricing','/pricing',true]].map(([label,path,blank]) => (
+                  <a key={label as string} href={path as string} target={blank ? '_blank' : undefined} rel="noreferrer"
+                    style={{ color: '#64748b', fontSize: 13, textDecoration: 'none', fontWeight: 500 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>
+                    {label}
+                  </a>
+                ))}
+              </div>
+              <span className="footer-copy" style={{ color: '#475569' }}>© 2026 {appName} · All rights reserved</span>
             </footer>
           </div>
 

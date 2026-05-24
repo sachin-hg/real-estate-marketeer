@@ -694,6 +694,35 @@ const CSS = `
     padding: 24px 20px;
   }
 }
+
+/* pill sizing — desktop base, mobile override */
+.invest-root .hero-pills {
+  gap: 10px;
+}
+.invest-root .hero-pill {
+  font-size: 13px;
+  padding: 8px 16px;
+  gap: 7px;
+}
+.invest-root .hero-pill svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  .invest-root .hero-pills {
+    gap: 8px;
+  }
+  .invest-root .hero-pill {
+    font-size: 11px;
+    padding: 5px 11px;
+    gap: 5px;
+  }
+  .invest-root .hero-pill svg {
+    width: 11px;
+    height: 11px;
+  }
+}
 `
 
 
@@ -788,7 +817,7 @@ export default function InvestorLanding() {
             <span className="grad-text">boarding.</span>
           </h1>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 52 }}>
+          <div className="hero-pills" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 52 }}>
             {([
               {
                 icon: (
@@ -831,11 +860,10 @@ export default function InvestorLanding() {
                 text: 'Tiny team, big mission', color: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', fg: '#fcd34d',
               },
             ] as { icon: React.ReactNode; text: string; color: string; border: string; fg: string }[]).map(({ icon, text, color, border, fg }) => (
-              <span key={text} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                padding: '8px 16px', borderRadius: 100,
+              <span key={text} className="hero-pill" style={{
+                display: 'inline-flex', alignItems: 'center', borderRadius: 100,
                 background: color, border: `1px solid ${border}`,
-                fontSize: 13, fontWeight: 700, color: fg,
+                fontWeight: 700, color: fg,
               }}>
                 {icon}{text}
               </span>
