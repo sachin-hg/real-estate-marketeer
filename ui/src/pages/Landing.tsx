@@ -240,7 +240,6 @@ export default function Landing() {
   const appName = useAppName()
   // Stable reference — avoids re-reading window.location.origin on every render
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const [visible, setVisible] = useState(false)
   const [activeSection, setActiveSection] = useState(0)
   const containerRef = useRef<HTMLElement>(null)
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -250,8 +249,6 @@ export default function Landing() {
   const wheelAcc = useRef(0)
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartY = useRef(0)
-
-  useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -691,8 +688,7 @@ export default function Landing() {
           {/* ── S1 · HERO ───────────────────────────────────────────── */}
           <div ref={ref(0)} style={S} className="snap-sect" role="region" aria-label="Hero">
             <CardMarqueeBg />
-            {visible && (
-              <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', maxWidth: 860, width: '100%' }}>
+            <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', maxWidth: 860, width: '100%' }}>
                 <div className="anim-up" style={{ marginBottom: 'clamp(20px,2.5vw,28px)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px 6px 10px', borderRadius: 100, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)', fontSize: 13, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.04em' }}>
                     <span className="pdot" style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#a78bfa' }} />
@@ -717,7 +713,6 @@ export default function Landing() {
                   </Link>
                 </div>
               </section>
-            )}
             {/* Bottom stat bar — hidden on mobile via CSS */}
             <div className="hide-mobile" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '24px 52px', display: 'flex', justifyContent: 'center', gap: 56, flexWrap: 'wrap', background: 'rgba(7,7,26,0.5)', backdropFilter: 'blur(10px)' }}>
               {[['15+','Trend sources'],['10+','AI agents'],['<90s','Trend to post'],['5+','Platforms'],['3.8×','Engagement lift']].map(([v,l]) => (
