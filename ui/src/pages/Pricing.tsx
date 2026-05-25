@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
 import { SEO } from '../components/SEO'
@@ -72,8 +71,7 @@ const CSS = `
 /* PLANS GRID */
 .pricing-root .plans-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:52px;align-items:stretch}
 /* PLAN CARD — flex column for CTA alignment */
-.pricing-root .plan-card{border-radius:20px;padding:32px 28px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(16px);position:relative;transition:transform .3s,box-shadow .3s,border-color .3s;display:flex;flex-direction:column;opacity:0;transform:translateY(30px)}
-.pricing-root .plan-card.animated{opacity:1;transform:translateY(0)}
+.pricing-root .plan-card{border-radius:20px;padding:32px 28px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(16px);position:relative;transition:transform .3s,box-shadow .3s,border-color .3s;display:flex;flex-direction:column}
 .pricing-root .plan-card:hover{transform:translateY(-5px);box-shadow:0 20px 60px rgba(0,0,0,.4);border-color:rgba(255,255,255,.18)}
 .pricing-root .plan-card.featured{background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.35);box-shadow:0 0 40px rgba(139,92,246,.15),0 20px 60px rgba(0,0,0,.5);overflow:hidden}
 .pricing-root .plan-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
@@ -232,18 +230,69 @@ const CSS = `
 .pricing-root .faq-question{width:100%;background:none;border:none;color:var(--text);font-family:'Inter',sans-serif;font-size:16px;font-weight:700;text-align:left;padding:22px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;transition:color .2s}
 .pricing-root .faq-question:hover{color:#c4b5fd}
 .pricing-root .faq-icon{font-size:20px;color:var(--muted);transition:transform .35s cubic-bezier(.34,1.56,.64,1),color .2s;flex-shrink:0;font-weight:400;line-height:1}
-.pricing-root .faq-item.open .faq-icon{transform:rotate(45deg);color:#c4b5fd}
-.pricing-root .faq-answer{max-height:0;overflow:hidden;transition:max-height .4s ease}
-.pricing-root .faq-answer-inner{padding-bottom:20px;font-size:14px;color:var(--muted);line-height:1.75}
-.pricing-root .faq-item.open .faq-answer{max-height:400px}
-/* SCROLL REVEAL */
-.pricing-root .reveal{opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
-.pricing-root .reveal.visible{opacity:1;transform:translateY(0)}
+/* SCROLL REVEAL — CSS-only: animate in on render, no JS required */
+.pricing-root .reveal{animation:pr-slide-up .6s cubic-bezier(.22,1,.36,1) both}
 /* RESPONSIVE */
 @media(max-width:1100px){.pricing-root .plans-grid{grid-template-columns:repeat(2,1fr)}.pricing-root .packs-grid,.pricing-root .recharge-grid{grid-template-columns:repeat(3,1fr)}.pricing-root .ent-inner{grid-template-columns:1fr}.pricing-root .addons-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.pricing-root .pr-nav{padding:12px 20px}.pricing-root .plans-grid{grid-template-columns:1fr}.pricing-root .section{padding:0 20px}.pricing-root .enterprise-card{padding:36px 28px}.pricing-root .addons-grid{grid-template-columns:1fr}.pricing-root .value-ladder-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.pricing-root .pr-nav{padding:12px 16px}.pricing-root .nav-logo{font-size:24px}.pricing-root .pricing-hero{padding:52px 16px 36px}.pricing-root .hero-h1{font-size:clamp(28px,8vw,44px)}.pricing-root .comp-table th:first-child,.pricing-root .comp-table td:first-child{position:sticky;left:0;background:#07071a;z-index:2;min-width:120px}.pricing-root .nav-link{display:none}.pricing-root .nav-primary{padding:8px 14px;font-size:12px}}
 @media(max-width:560px){.pricing-root .recharge-grid{grid-template-columns:repeat(2,1fr)}.pricing-root .action-grid{grid-template-columns:1fr}.pricing-root .addons-row{grid-template-columns:1fr}}
+
+/* ── CSS-only interactive controls ─────────────────────────────────── */
+.pr-state{display:none;position:absolute}
+
+/* Mode tabs: both sections hidden by default, shown via :checked */
+#tab-subscription,#tab-payg{display:none}
+#mode-sub:checked~#tab-subscription{display:block}
+#mode-payg:checked~#tab-payg{display:block}
+#mode-sub:checked~.mode-tabs-wrap label[for="mode-sub"]{background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.4);color:#c4b5fd}
+#mode-payg:checked~.mode-tabs-wrap label[for="mode-payg"]{background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.4);color:#c4b5fd}
+.pricing-root .mode-tab{cursor:pointer;display:block}
+
+/* Billing toggle labels */
+.lbl-monthly{color:var(--text);transition:color .2s}
+.lbl-annual{color:var(--muted);transition:color .2s}
+.price-annual-val{display:none}.note-annual{display:none}.note-monthly{display:block}
+#billing-annual:checked~#tab-subscription .toggle-switch{background:linear-gradient(135deg,rgba(139,92,246,.6),rgba(99,102,241,.6))}
+#billing-annual:checked~#tab-subscription .toggle-knob{transform:translateX(22px)}
+#billing-annual:checked~#tab-subscription .lbl-monthly{color:var(--muted)}
+#billing-annual:checked~#tab-subscription .lbl-annual{color:var(--text)}
+#billing-annual:checked~#tab-subscription .price-annual-val{display:inline}
+#billing-annual:checked~#tab-subscription .price-monthly-val{display:none}
+#billing-annual:checked~#tab-subscription .note-annual{display:block}
+#billing-annual:checked~#tab-subscription .note-monthly{display:none}
+label.toggle-switch{cursor:pointer}
+
+/* Compare toggle */
+.comp-wrap{display:none}.comp-lbl-hide{display:none}
+#comp-open:checked~#tab-subscription .comp-wrap{display:block;animation:pr-comp-in .38s cubic-bezier(.22,1,.36,1) both}
+#comp-open:checked~#tab-subscription .comp-lbl-show{display:none}
+#comp-open:checked~#tab-subscription .comp-lbl-hide{display:inline}
+#comp-open:checked~#tab-subscription .comp-icon{transform:rotate(180deg);opacity:1}
+#comp-open:checked~#tab-subscription label.comp-toggle-btn{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.06);color:#c4b5fd}
+label.comp-toggle-btn{cursor:pointer}
+
+/* Plan card entrance via CSS (no JS observer needed) */
+.pricing-root .plans-grid .plan-card{opacity:1;transform:none;animation:pr-slide-up .55s cubic-bezier(.22,1,.36,1) both}
+.pricing-root .plans-grid>.plan-card:nth-child(1){animation-delay:0ms}
+.pricing-root .plans-grid>.plan-card:nth-child(2){animation-delay:90ms}
+.pricing-root .plans-grid>.plan-card:nth-child(3){animation-delay:180ms}
+.pricing-root .plans-grid>.plan-card:nth-child(4){animation-delay:270ms}
+.pricing-root .recharge-card{opacity:1;transform:none}
+
+/* FAQ via <details>/<summary> */
+details.faq-item{border-bottom:1px solid rgba(255,255,255,.07)}
+details.faq-item summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:22px 0;cursor:pointer;background:none;color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:16px;font-weight:700;transition:color .2s}
+details.faq-item summary::-webkit-details-marker,details.faq-item summary::marker{display:none}
+details.faq-item summary:hover,details.faq-item[open] summary{color:#c4b5fd}
+details.faq-item[open] .faq-icon{transform:rotate(45deg);color:#c4b5fd}
+/* Height accordion via grid 0fr→1fr (animates both open and close) */
+details.faq-item .faq-body{display:grid;grid-template-rows:0fr;overflow:hidden;transition:grid-template-rows .38s cubic-bezier(.22,1,.36,1)}
+details.faq-item[open] .faq-body{grid-template-rows:1fr}
+/* Content: starts hidden, transitions in on open; @starting-style drives enter animation */
+details.faq-item .faq-answer-inner{min-height:0;overflow:hidden;padding-bottom:20px;font-size:14px;color:var(--muted);line-height:1.75;opacity:0;transform:translateY(-10px);transition:opacity .3s ease,transform .3s ease}
+details.faq-item[open] .faq-answer-inner{opacity:1;transform:translateY(0)}
+@starting-style{details.faq-item[open] .faq-body{grid-template-rows:0fr}details.faq-item[open] .faq-answer-inner{opacity:0;transform:translateY(-10px)}}
 `
 
 const ChevronSvg = () => (
@@ -267,37 +316,6 @@ const GridIcon = () => (
 
 export default function Pricing() {
   const brand = useBrandName()
-  const [isAnnual, setIsAnnual] = useState(false)
-  const [mode, setMode] = useState<'subscription' | 'payg'>('subscription')
-  const [compOpen, setCompOpen] = useState(false)
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
-    )
-    const cards = new IntersectionObserver(
-      entries => entries.forEach(e => {
-        if (e.isIntersecting) {
-          const delay = parseInt((e.target as HTMLElement).dataset.delay ?? '0')
-          setTimeout(() => {
-            ;(e.target as HTMLElement).style.transition = `opacity .5s ease ${delay}ms, transform .5s ease ${delay}ms`
-            e.target.classList.add('animated')
-          }, 50)
-          cards.unobserve(e.target)
-        }
-      }),
-      { threshold: 0.06 }
-    )
-    document.querySelectorAll('.pricing-root .reveal').forEach(el => obs.observe(el))
-    document.querySelectorAll('.pricing-root .plan-card, .pricing-root .recharge-card').forEach(el => cards.observe(el))
-    return () => { obs.disconnect(); cards.disconnect() }
-  }, [mode])
-
-  const price = (plan: keyof typeof PRICES) => isAnnual ? PRICES[plan].annual : PRICES[plan].monthly
-  const note = (plan: keyof typeof PRICES) =>
-    isAnnual ? `Billed $${PRICES[plan].annualTotal.toLocaleString()}/yr` : ' '
 
   const email = (subj: string) => `mailto:a.sachin533@gmail.com?subject=${encodeURIComponent(subj)}`
 
@@ -350,6 +368,12 @@ export default function Pricing() {
         </nav>
 
         <main>
+          {/* CSS state inputs — must precede all controlled siblings */}
+          <input type="radio" id="mode-sub" name="pmode" className="pr-state" defaultChecked />
+          <input type="radio" id="mode-payg" name="pmode" className="pr-state" />
+          <input type="checkbox" id="billing-annual" className="pr-state" />
+          <input type="checkbox" id="comp-open" className="pr-state" />
+
           {/* HERO */}
           <div className="pricing-hero">
             <div className="beta-pill"><span className="beta-dot"/>&nbsp;Currently in Private Beta</div>
@@ -360,27 +384,26 @@ export default function Pricing() {
             <p className="hero-sub">AI-powered publishing from $31/month. Trend to live post in under 90 seconds, across 5 platforms. First 14 days free.</p>
           </div>
 
-          {/* MODE TABS */}
+          {/* MODE TABS — labels control hidden radio inputs above */}
           <div className="mode-tabs-wrap">
             <div className="mode-tabs">
-              <button className={`mode-tab${mode === 'subscription' ? ' active' : ''}`} onClick={() => setMode('subscription')}>Subscription</button>
-              <button className={`mode-tab${mode === 'payg' ? ' active' : ''}`} onClick={() => setMode('payg')}>Pay As You Go</button>
+              <label htmlFor="mode-sub" className="mode-tab">Subscription</label>
+              <label htmlFor="mode-payg" className="mode-tab">Pay As You Go</label>
             </div>
           </div>
 
           {/* SUBSCRIPTION */}
-          {mode === 'subscription' && (
-            <div id="tab-subscription">
+          <div id="tab-subscription">
               <div className="section">
                 <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--muted)', marginTop: 12 }}>All plans include: trend detection · AI writing · QA · multi-platform publishing · analytics</p>
 
-                {/* BILLING TOGGLE */}
+                {/* BILLING TOGGLE — label controls hidden #billing-annual checkbox */}
                 <div className="billing-toggle-wrap">
-                  <span className={`toggle-label${!isAnnual ? ' active-lbl' : ''}`}>Monthly</span>
-                  <div className={`toggle-switch${isAnnual ? ' annual' : ''}`} onClick={() => setIsAnnual(v => !v)} style={{ cursor: 'pointer' }}>
+                  <span className="toggle-label lbl-monthly">Monthly</span>
+                  <label htmlFor="billing-annual" className="toggle-switch">
                     <div className="toggle-knob"/>
-                  </div>
-                  <span className={`toggle-label${isAnnual ? ' active-lbl' : ''}`}>Annual</span>
+                  </label>
+                  <span className="toggle-label lbl-annual">Annual</span>
                   <span className="save-badge">Save 20%</span>
                 </div>
 
@@ -395,11 +418,11 @@ export default function Pricing() {
                     <div className="plan-desc">Text + image posts for local markets. Single language. Entry-level AI content on 2 platforms.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
-                        <span className="price-dollar">${price('spark')}</span>
+                        <span className="price-dollar"><span className="price-monthly-val">${PRICES.spark.monthly}</span><span className="price-annual-val">${PRICES.spark.annual}</span></span>
                         <span className="price-period">/mo</span>
                       </div>
                     </div>
-                    <div className="annual-note">{note('spark')}</div>
+                    <div className="annual-note"><span className="note-monthly">&nbsp;</span><span className="note-annual">Billed ${PRICES.spark.annualTotal.toLocaleString()}/yr</span></div>
                     <div className="per-post-chip">≈ $0.26 / post · 170× cheaper than agency</div>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
@@ -425,11 +448,11 @@ export default function Pricing() {
                     <div className="plan-desc">National reach. 2 languages. Memes, Stories &amp; smart scheduling on 3 platforms.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
-                        <span className="price-dollar">${price('growth')}</span>
+                        <span className="price-dollar"><span className="price-monthly-val">${PRICES.growth.monthly}</span><span className="price-annual-val">${PRICES.growth.annual}</span></span>
                         <span className="price-period">/mo</span>
                       </div>
                     </div>
-                    <div className="annual-note">{note('growth')}</div>
+                    <div className="annual-note"><span className="note-monthly">&nbsp;</span><span className="note-annual">Billed ${PRICES.growth.annualTotal.toLocaleString()}/yr</span></div>
                     <div className="per-post-chip">≈ $0.22 / post · more reach, more formats</div>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
@@ -455,11 +478,11 @@ export default function Pricing() {
                     <div className="plan-desc">Every format, all 5 platforms, global trends, unlimited languages &amp; dialects. Maximum output.</div>
                     <div className="plan-price-wrap">
                       <div className="plan-price">
-                        <span className="price-dollar">${price('scale')}</span>
+                        <span className="price-dollar"><span className="price-monthly-val">${PRICES.scale.monthly}</span><span className="price-annual-val">${PRICES.scale.annual}</span></span>
                         <span className="price-period">/mo</span>
                       </div>
                     </div>
-                    <div className="annual-note">{note('scale')}</div>
+                    <div className="annual-note"><span className="note-monthly">&nbsp;</span><span className="note-annual">Billed ${PRICES.scale.annualTotal.toLocaleString()}/yr</span></div>
                     <div className="per-post-chip grad">≈ $0.18 / post · best value per post</div>
                     <div className="plan-divider"/>
                     <ul className="plan-features">
@@ -530,13 +553,13 @@ export default function Pricing() {
                 {/* COMPARISON */}
                 <div className="comparison-section reveal" style={{ paddingBottom: 80 }}>
                   <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                    <button className={`comp-toggle-btn${compOpen ? ' open' : ''}`} onClick={() => setCompOpen(v => !v)}>
+                    <label htmlFor="comp-open" className="comp-toggle-btn">
                       <GridIcon/>
-                      {compOpen ? 'Hide comparison' : 'Compare all features'}
-                    </button>
+                      <span className="comp-lbl-show">Compare all features</span>
+                      <span className="comp-lbl-hide">Hide comparison</span>
+                    </label>
                   </div>
-                  {compOpen && (
-                    <div className="comp-wrap">
+                  <div className="comp-wrap">
                       <table className="comp-table">
                         <thead>
                           <tr>
@@ -587,15 +610,12 @@ export default function Pricing() {
                         </tbody>
                       </table>
                     </div>
-                  )}
                 </div>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* PAY AS YOU GO */}
-          {mode === 'payg' && (
-            <div id="tab-payg">
+          <div id="tab-payg">
               <div className="section">
                 <div className="wallet-hero reveal">
                   <h2>Top up. Create. That's it.</h2>
@@ -684,8 +704,7 @@ export default function Pricing() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* ADD-ONS */}
           <div className="addons-section">
@@ -760,15 +779,15 @@ export default function Pricing() {
                   { q: 'Is there a free trial?', a: <span>Yes — both <strong>Spark</strong> and <strong>Growth</strong> include a <strong>14-day free trial</strong> with no credit card required. You get full access to the plan's features so you can see real posts go live before committing.</span> },
                   { q: `Which platforms does ${brand} support?`, a: <span>{brand} currently supports: <strong>Twitter / X</strong>, <strong>Instagram</strong> (Feed, Stories, Carousels), <strong>LinkedIn</strong>, <strong>YouTube Shorts</strong>, and <strong>Housing News</strong> — our proprietary distribution channel reaching 50M+ monthly users on Housing.com.</span> },
                 ].map((item, i) => (
-                  <div key={i} className={`faq-item reveal${openFaq === i ? ' open' : ''}`}>
-                    <button className="faq-question" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                  <details key={i} className="faq-item reveal">
+                    <summary className="faq-question">
                       {item.q}
                       <span className="faq-icon">+</span>
-                    </button>
-                    <div className="faq-answer">
+                    </summary>
+                    <div className="faq-body">
                       <div className="faq-answer-inner">{item.a}</div>
                     </div>
-                  </div>
+                  </details>
                 ))}
               </div>
             </div>

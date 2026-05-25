@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBrandName } from '../lib/useBrandName'
 import { CardMarqueeBg } from '../components/CardMarqueeBg'
@@ -58,71 +58,166 @@ function MetricBar({ label, value, max, color, suffix = '' }: {
   )
 }
 
-// ─── carousel card — memoized so only the active card re-renders ──────────────
-// Card width, height, and horizontal offset are all driven by the CSS custom property
-// --card-w (set on the wrapper), so no JS viewport reads are needed here.
-const CarouselCard = memo(function CarouselCard({ node, i, active, n, tall }: {
-  node: React.ReactNode; i: number; active: number; n: number; tall?: boolean
-}) {
-  const raw = ((i - active) % n + n) % n
-  const d = raw > n / 2 ? raw - n : raw
-  const isC = d === 0
-  const isAdj = Math.abs(d) === 1
-  const ty = isC ? -24 : 0
-  const sc = isC ? 1 : 0.84
-  const opacity = isC ? 1 : isAdj ? 0.55 : 0
-  return (
-    <div style={{
-      position: 'absolute', left: '50%', top: 24,
-      marginLeft: 'calc(-1 * var(--card-w) / 2)',
-      width: 'var(--card-w)',
-      transform: `translateX(calc(${d} * var(--card-w) * 0.76)) translateY(${ty}px) scale(${sc})`,
-      transformOrigin: 'center top', opacity,
-      zIndex: isC ? 3 : 1,
-      background: isC ? '#08081e' : 'transparent',
-      borderRadius: isC ? 24 : 0,
-      overflow: isC ? 'hidden' : 'visible',
-      pointerEvents: (isC || isAdj) ? 'auto' : 'none',
-      transition: 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.5s ease',
-      willChange: 'transform, opacity',
-      contain: 'layout style',
-    } as React.CSSProperties} className={tall ? 'car-card-h-lg' : 'car-card-h'}>
-      {node}
-    </div>
-  )
-})
-
-// ─── carousel: centre card prominent, side cards peek from behind ─────────────
-function NodeCarousel({ nodes, interval = 3600, tall }: {
+// ─── Pure CSS coverflow carousel ──────────────────────────────────────────────
+// Replicates the JS coverflow exactly: center card prominent (elevated,
+// solid-dark background), adjacent cards scaled/dimmed and peeking.
+//
+// Key details that match the original exactly:
+//   • background: rgba(8,8,30,1) on center, rgba(8,8,30,0) on others —
+//     the solid background on the center card is what makes side cards
+//     disappear "behind" it rather than show through
+//   • cubic-bezier(.22,1,.36,1) easing baked into each hold→transition
+//     keyframe boundary, matching the original CSS transition timing
+//   • Dot keyframes sync with card transitions using the same easing;
+//     CSS transition on .cs-dot handles the smooth click animation
+function CssCarousel({ id, nodes, dur = 3.6, tall }: {
+  id: string
   nodes: React.ReactNode[]
-  interval?: number
+  dur?: number
   tall?: boolean
 }) {
-  const [active, setActive] = useState(0)
   const n = nodes.length
+  const total = n * dur
+  const slotPct = 100 / n
+  const tr = (0.55 / total) * 100    // card transition window %
+  const ease = 'cubic-bezier(.22,1,.36,1)'
 
+  function dAt(ci: number, ai: number): number {
+    const raw = ((ci - ai) % n + n) % n
+    return raw > n / 2 ? raw - n : raw
+  }
+
+  function pos(d: number) {
+    const adj = Math.abs(d) === 1
+    const tx = d === 0 ? 0 : d * 0.76
+    return {
+      tf: d === 0
+        ? 'translateX(0) translateY(-24px) scale(1)'
+        : `translateX(calc(${tx} * var(--card-w))) translateY(0px) scale(0.84)`,
+      op: d === 0 ? 1 : adj ? 0.55 : 0,
+      zi: d === 0 ? 3 : 1,
+      bg: d === 0 ? 'rgba(8,8,30,1)' : 'rgba(8,8,30,0)',
+    }
+  }
+
+  const kfCards = nodes.map((_, ci) => {
+    const seq = Array.from({ length: n }, (_, ai) => dAt(ci, ai))
+    let out = `@keyframes cc-${id}-${ci}{`
+    for (let k = 0; k < n; k++) {
+      const { tf, op, zi, bg } = pos(seq[k])
+      const he = +((k + 1) * slotPct - tr).toFixed(3)
+      const se = +((k + 1) * slotPct).toFixed(3)
+      if (k === 0) out += `0%{transform:${tf};opacity:${op};z-index:${zi};background:${bg};animation-timing-function:linear}`
+      out += `${he}%{transform:${tf};opacity:${op};z-index:${zi};background:${bg};animation-timing-function:${ease}}`
+      if (k < n - 1) {
+        const { tf: nt, op: no, zi: nz, bg: nb } = pos(seq[k + 1])
+        out += `${se}%{transform:${nt};opacity:${no};z-index:${nz};background:${nb};animation-timing-function:linear}`
+      }
+    }
+    const { tf, op, zi, bg } = pos(seq[0])
+    out += `100%{transform:${tf};opacity:${op};z-index:${zi};background:${bg}}}`
+    return out
+  }).join('')
+
+  // Dot keyframes: grow/shrink in sync with the card transition using the
+  // same cubic-bezier easing so the pill animation matches the card motion.
+  const kfDots = nodes.map((_, i) => {
+    const s = +(i * slotPct).toFixed(3)          // slot start
+    const e = +((i + 1) * slotPct).toFixed(3)    // slot end
+    const he = +(e - tr).toFixed(3)               // card starts transitioning out
+    const gs = +(s - tr).toFixed(3)               // incoming card starts transitioning in
+    const on = `width:28px;background:#818CF8`
+    const off = `width:8px;background:rgba(255,255,255,.18)`
+
+    if (i === 0) {
+      // Dot 0 starts active at 0%; shrinks at he; grows again before wrap
+      const wrapGs = +(100 - tr).toFixed(3)
+      return `@keyframes cd-${id}-0{` +
+        `0%{${on};animation-timing-function:linear}` +
+        `${he}%{${on};animation-timing-function:${ease}}` +
+        `${e}%{${off};animation-timing-function:linear}` +
+        `${wrapGs}%{${off};animation-timing-function:${ease}}` +
+        `100%{${on}}}`
+    }
+    // Dots 1..n-1: narrow at 0%, grow at gs (when incoming card starts transition)
+    const tail = i === n - 1
+      ? `${he}%{${on};animation-timing-function:${ease}}100%{${off}}`
+      : `${he}%{${on};animation-timing-function:${ease}}${e}%,100%{${off}}`
+    return `@keyframes cd-${id}-${i}{` +
+      `0%{${off};animation-timing-function:linear}` +
+      `${gs}%{${off};animation-timing-function:${ease}}` +
+      `${s}%{${on};animation-timing-function:linear}` +
+      tail + `}`
+  }).join('')
+
+  // Base animation assignments — kept in <style> (NOT inline) so the nav ID
+  // selector rules can override animation:none. Inline styles have highest
+  // cascade priority and would silently block animation:none from firing.
+  const base = nodes.map((_, i) => [
+    `.cst-${id} .cs-sl:nth-child(${i + 1}){animation-name:cc-${id}-${i};animation-duration:${total}s;animation-iteration-count:infinite;animation-fill-mode:both}`,
+    `.csd-${id} .cs-dot:nth-child(${i + 1}){animation-name:cd-${id}-${i};animation-duration:${total}s;animation-iteration-count:infinite;animation-fill-mode:both}`,
+  ].join('')).join('')
+
+  // Radio nav: ID-selector rules (specificity > base) cancel animation and snap
+  // cards/dots to the static coverflow layout for the selected slide.
+  const nav = nodes.map((_, ai) => {
+    const cards = nodes.map((_, ci) => {
+      const { tf, op, zi, bg } = pos(dAt(ci, ai))
+      return `#cr-${id}-${ai}:checked~.cst-${id} .cs-sl:nth-child(${ci + 1}){transform:${tf};opacity:${op};z-index:${zi};background:${bg}}`
+    }).join('')
+    return [
+      `#cr-${id}-${ai}:checked~.cst-${id} .cs-sl{animation:none}`,
+      cards,
+      `#cr-${id}-${ai}:checked~.csd-${id} .cs-dot{animation:none;width:8px;background:rgba(255,255,255,.18)}`,
+      `#cr-${id}-${ai}:checked~.csd-${id} label:nth-child(${ai + 1}){width:28px;background:#818CF8}`,
+    ].join('')
+  }).join('')
+
+  // Radio buttons stay :checked forever — once checked the animation:none nav
+  // rule applies permanently. Listen for clicks on the dot labels; after 3 s of
+  // inactivity uncheck all radios so :checked rules vanish and auto-play resumes.
   useEffect(() => {
-    const id = setInterval(() => setActive(a => (a + 1) % n), interval)
-    return () => clearInterval(id)
-  }, [n, interval])
+    let timer: ReturnType<typeof setTimeout>
+    const resume = () => {
+      document.querySelectorAll<HTMLInputElement>(`input[name="car-${id}"]`)
+        .forEach(inp => { inp.checked = false })
+    }
+    const handleClick = () => { clearTimeout(timer); timer = setTimeout(resume, 3000) }
+    const dots = Array.from(document.querySelectorAll<HTMLElement>(`.csd-${id} .cs-dot`))
+    dots.forEach(d => d.addEventListener('click', handleClick))
+    return () => { clearTimeout(timer); dots.forEach(d => d.removeEventListener('click', handleClick)) }
+  }, [id])
 
-  const dotStyles = useMemo(() => nodes.map((_, i) => ({
-    width: i === active ? 28 : 8, height: 8, borderRadius: 4,
-    border: 'none' as const, cursor: 'pointer' as const, padding: 0,
-    background: i === active ? '#818CF8' : 'rgba(255,255,255,0.18)',
-    transition: 'width 0.35s cubic-bezier(.22,1,.36,1), background 0.35s ease',
-  })), [active, nodes.length])
+  const stgCls = tall ? 'car-stage-lg' : 'car-stage'
+  const sldCls = tall ? 'car-card-h-lg' : 'car-card-h'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', '--card-w': 'min(420px, calc(100vw - 48px))' } as React.CSSProperties}>
-      <div className={tall ? 'car-stage-lg' : 'car-stage'} style={{ position: 'relative', width: '100%' }}>
+      <style>{kfCards + kfDots + base + nav}</style>
+      {nodes.map((_, i) => (
+        <input key={i} type="radio" id={`cr-${id}-${i}`} name={`car-${id}`} className="car-radio" />
+      ))}
+      <div className={`cst-${id} ${stgCls}`} style={{ position: 'relative', width: '100%' }}>
         {nodes.map((node, i) => (
-          <CarouselCard key={i} node={node} i={i} active={active} n={n} tall={tall} />
+          <div key={i} className={`cs-sl ${sldCls}`} style={{
+            position: 'absolute',
+            left: '50%',
+            top: 24,
+            marginLeft: 'calc(-1 * var(--card-w) / 2)',
+            width: 'var(--card-w)',
+            borderRadius: 24,
+            overflow: 'hidden',
+            transformOrigin: 'center top',
+            willChange: 'transform, opacity',
+            contain: 'layout style',
+          }}>
+            {node}
+          </div>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+      <div className={`csd-${id}`} style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
         {nodes.map((_, i) => (
-          <button key={i} onClick={() => setActive(i)} style={dotStyles[i]} />
+          <label key={i} htmlFor={`cr-${id}-${i}`} className="cs-dot" />
         ))}
       </div>
     </div>
@@ -533,6 +628,8 @@ export default function Landing() {
         .pdot{animation:pdot 2s ease-in-out infinite}
         .snap-box{height:100vh;overflow-y:scroll;overflow-x:hidden}
         .pip{border:none;cursor:pointer;border-radius:99px;transition:all .35s cubic-bezier(.22,1,.36,1)}
+        .car-radio{position:absolute;opacity:0;width:0;height:0;pointer-events:none;margin:0}
+        .cs-dot{display:inline-block;height:8px;border-radius:4px;cursor:pointer;transition:width .35s cubic-bezier(.22,1,.36,1),background .35s ease}
         .pipe-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:20px 16px;transition:border-color .25s,transform .25s,box-shadow .25s}
         .pipe-card:hover{transform:translateY(-4px)}
 
@@ -738,7 +835,7 @@ export default function Landing() {
 
               {/* Carousel on mobile — hidden on desktop */}
               <div className="mob-show">
-                <NodeCarousel nodes={platformNodes} interval={3800} tall />
+                <CssCarousel id="plat" nodes={platformNodes} dur={3.8} tall />
               </div>
 
               {/* 3-col grid on desktop — hidden on mobile */}
@@ -856,7 +953,7 @@ export default function Landing() {
                 <h2 className="sec-h2">Proof, not promises.</h2>
                 <p className="sec-sub">Real-world performance vs traditional content production.</p>
               </div>
-              <NodeCarousel nodes={metricNodes} interval={4000} />
+              <CssCarousel id="metric" nodes={metricNodes} dur={4.0} />
             </section>
           </div>
 
@@ -871,7 +968,7 @@ export default function Landing() {
                 </div>
                 <p className="hide-mobile" style={{ color: '#64748b', fontSize: 13 }}>Real results from our pilot deployment · Q1–Q2 2026</p>
               </div>
-              <NodeCarousel nodes={caseNodes} interval={3600} />
+              <CssCarousel id="case" nodes={caseNodes} dur={3.6} />
             </section>
           </div>
 
@@ -882,7 +979,7 @@ export default function Landing() {
                 <h2 className="sec-h2">Built different.</h2>
                 <p className="sec-sub">Not a scheduling tool. Not a template engine. An autonomous content machine.</p>
               </div>
-              <NodeCarousel nodes={featureNodes} interval={4500} />
+              <CssCarousel id="feat" nodes={featureNodes} dur={4.5} />
             </section>
           </div>
 

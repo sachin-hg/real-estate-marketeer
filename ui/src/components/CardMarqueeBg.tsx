@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react' // useState/useEffect retained for YT only
 
 /* ── shared micro-styles ───────────────────────────────────── */
 const B:    React.CSSProperties = { borderRadius:16, backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)', cursor:'default' }
@@ -45,13 +45,7 @@ function IGMed({ gradient, body, cta, children }: { gradient:string; body?:strin
     </div>
   )
 }
-function Dots({ n, a, c }: { n:number; a:number; c:string }) {
-  return (
-    <div style={{ display:'flex', gap:5, justifyContent:'center', marginTop:7 }}>
-      {Array.from({length:n}).map((_,i) => <div key={i} style={{ width:i===a?14:5, height:5, borderRadius:i===a?3:10, background:i===a?c:'rgba(255,255,255,0.2)', transition:'all 0.35s' }} />)}
-    </div>
-  )
-}
+
 function TWBase({ handle, tags, children }: { handle:string; tags:string; children:React.ReactNode }) {
   return (
     <div style={{ ...B, width:200, padding:'13px 14px', background:'rgba(7,7,30,0.9)', border:'1px solid rgba(96,165,250,0.2)', boxShadow:'0 6px 24px rgba(96,165,250,0.1)' }}>
@@ -108,20 +102,68 @@ const STORY_SL = [
   { g:'linear-gradient(160deg,#1e1b4b,#6d28d9)', head:'Apna ghar\napni shaam ☕', body:'Stay cool. Buy smart. #BandaHeatwave', cta:'Explore now →' },
 ]
 function Story() {
-  const [i, setI] = useState(0)
-  useEffect(() => { const t = setInterval(() => setI(s => (s+1) % STORY_SL.length), 2400); return () => clearInterval(t) }, [])
-  const s = STORY_SL[i]
+  const n = STORY_SL.length  // 5
+  const total = n * 2.4      // 12 s
+  const sp = 100 / n         // 20 % per slot
+  const xf = (0.28 / total) * 100  // ~2.33 % crossfade window
+
+  // Slide opacity keyframes — stacked absolutely, crossfade between slots
+  const kfSl = STORY_SL.map((_, ci) => {
+    const s = ci * sp, e = (ci + 1) * sp
+    if (ci === 0) {
+      return `@keyframes ist-sl-0{0%{opacity:1}${(e-xf).toFixed(2)}%{opacity:1}${e.toFixed(2)}%{opacity:0}${(100-xf).toFixed(2)}%{opacity:0}100%{opacity:1}}`
+    }
+    return `@keyframes ist-sl-${ci}{0%{opacity:0}${(s-xf).toFixed(2)}%{opacity:0}${s.toFixed(2)}%{opacity:1}${(e-xf).toFixed(2)}%{opacity:1}${e.toFixed(2)}%{opacity:0}100%{opacity:0}}`
+  }).join('')
+
+  // Progress bar fill keyframes — linear width 0→100% during each slot, stays full after
+  const kfPb = STORY_SL.map((_, i) => {
+    const s = i * sp, e = (i + 1) * sp
+    return i === 0
+      ? `@keyframes ist-pb-0{0%{width:0%}${e.toFixed(2)}%{width:100%}100%{width:100%}}`
+      : `@keyframes ist-pb-${i}{0%,${s.toFixed(2)}%{width:0%}${e.toFixed(2)}%{width:100%}100%{width:100%}}`
+  }).join('')
+
+  const css = STORY_SL.map((_, i) =>
+    `.ist-slides .ist-sl:nth-child(${i+1}){animation:ist-sl-${i} ${total}s linear infinite both}` +
+    `.ist-bars .ist-pb:nth-child(${i+1}) .ist-fill{animation:ist-pb-${i} ${total}s linear infinite both}`
+  ).join('')
+
   return (
     <div style={{ ...B, width:190, padding:'10px 10px 11px', background:'rgba(7,7,26,0.92)', border:'1px solid rgba(244,114,182,0.28)', boxShadow:'0 8px 32px rgba(244,114,182,0.18)' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:7 }}><IGAv size={26} /><div style={{ fontSize:10.5, fontWeight:800, color:'#f1f5f9', flex:1 }}>housing.com</div><Live /></div>
-      <div style={{ borderRadius:10, background:s.g, height:282, position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', marginBottom:8 }}>
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.56))' }} />
-        <div style={{ height:26, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:2 }}><span style={{ fontSize:7.5, letterSpacing:'.2em', fontWeight:700, color:'rgba(196,181,253,0.88)', textTransform:'uppercase' }}>HOUSING.COM</span></div>
-        <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', position:'relative', zIndex:1, padding:'0 12px' }}>
-          <div style={{ fontSize:18, fontWeight:900, color:'#fff', lineHeight:1.28, textAlign:'center', whiteSpace:'pre-line' }}>{s.head}</div>
-          <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.68)', fontWeight:400, marginTop:9, lineHeight:1.45, textAlign:'center' }}>{s.body}</div>
+      <style dangerouslySetInnerHTML={{ __html: kfSl + kfPb + css }} />
+      <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:7 }}>
+        <IGAv size={26} />
+        <div style={{ fontSize:10.5, fontWeight:800, color:'#f1f5f9', flex:1 }}>housing.com</div>
+        <Live />
+      </div>
+      <div style={{ borderRadius:10, height:282, position:'relative', overflow:'hidden', marginBottom:8 }}>
+        {/* Instagram-style progress bars */}
+        <div className="ist-bars" style={{ position:'absolute', top:0, left:0, right:0, zIndex:10, display:'flex', gap:3, padding:'7px 7px 0' }}>
+          {STORY_SL.map((_, i) => (
+            <div key={i} className="ist-pb" style={{ flex:1, height:2, borderRadius:1, background:'rgba(255,255,255,0.25)', overflow:'hidden' }}>
+              <div className="ist-fill" style={{ height:'100%', background:'rgba(255,255,255,0.9)', width:'0%' }} />
+            </div>
+          ))}
         </div>
-        <div style={{ height:36, display:'flex', alignItems:'center', padding:'0 10px', flexShrink:0, position:'relative', zIndex:2 }}><div style={GCTA}>{s.cta}</div></div>
+        {/* Slides stacked */}
+        <div className="ist-slides" style={{ position:'absolute', inset:0 }}>
+          {STORY_SL.map((s, i) => (
+            <div key={i} className="ist-sl" style={{ position:'absolute', inset:0, background:s.g, display:'flex', flexDirection:'column', opacity: i === 0 ? 1 : 0 }}>
+              <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.56))' }} />
+              <div style={{ height:26, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:2 }}>
+                <span style={{ fontSize:7.5, letterSpacing:'.2em', fontWeight:700, color:'rgba(196,181,253,0.88)', textTransform:'uppercase' }}>HOUSING.COM</span>
+              </div>
+              <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', position:'relative', zIndex:1, padding:'0 12px' }}>
+                <div style={{ fontSize:18, fontWeight:900, color:'#fff', lineHeight:1.28, textAlign:'center', whiteSpace:'pre-line' }}>{s.head}</div>
+                <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.68)', fontWeight:400, marginTop:9, lineHeight:1.45, textAlign:'center' }}>{s.body}</div>
+              </div>
+              <div style={{ height:36, display:'flex', alignItems:'center', padding:'0 10px', flexShrink:0, position:'relative', zIndex:2 }}>
+                <div style={GCTA}>{s.cta}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       <div style={{ fontSize:9.5, color:'rgba(167,139,250,0.7)', textAlign:'center', fontWeight:700 }}>#BandaHeatwave #HousingDotCom</div>
     </div>
@@ -189,17 +231,56 @@ const CAR_SL = [
   { g:'linear-gradient(135deg,#2d1b69,#7c3aed)', l1:'Tu kis', l2:'side hai? 🗳️', body:'Comment karo 👇' },
 ]
 function Car() {
-  const [i, setI] = useState(0)
-  useEffect(() => { const t = setInterval(() => setI(s => (s+1) % CAR_SL.length), 2000); return () => clearInterval(t) }, [])
-  const cs = CAR_SL[i]
+  const n = CAR_SL.length   // 5
+  const total = n * 2.0     // 10 s
+  const sp = 100 / n        // 20 % per slot
+  const xf = (0.25 / total) * 100  // 2.5 % crossfade window
+  const dt = (0.35 / total) * 100  // 3.5 % dot transition window
+
+  // Slide opacity keyframes
+  const kfSl = CAR_SL.map((_, ci) => {
+    const s = ci * sp, e = (ci + 1) * sp
+    if (ci === 0) {
+      return `@keyframes icc-sl-0{0%{opacity:1}${(e-xf).toFixed(2)}%{opacity:1}${e.toFixed(2)}%{opacity:0}${(100-xf).toFixed(2)}%{opacity:0}100%{opacity:1}}`
+    }
+    return `@keyframes icc-sl-${ci}{0%{opacity:0}${(s-xf).toFixed(2)}%{opacity:0}${s.toFixed(2)}%{opacity:1}${(e-xf).toFixed(2)}%{opacity:1}${e.toFixed(2)}%{opacity:0}100%{opacity:0}}`
+  }).join('')
+
+  // Dot keyframes — width+bg transition matching original CSS transition:0.35s
+  const on = `width:14px;border-radius:3px;background:#f472b6`
+  const off = `width:5px;border-radius:10px;background:rgba(255,255,255,0.2)`
+  const kfDt = CAR_SL.map((_, i) => {
+    const s = i * sp, e = (i + 1) * sp
+    if (i === 0) {
+      // active at start, wraps back active at end
+      return `@keyframes icc-dt-0{0%{${on}}${(e-dt).toFixed(2)}%{${on}}${e.toFixed(2)}%{${off}}${(100-dt).toFixed(2)}%{${off}}100%{${on}}}`
+    }
+    return `@keyframes icc-dt-${i}{0%{${off}}${(s-dt).toFixed(2)}%{${off}}${s.toFixed(2)}%{${on}}${(e-dt).toFixed(2)}%{${on}}${e.toFixed(2)}%{${off}}100%{${off}}}`
+  }).join('')
+
+  const css = CAR_SL.map((_, i) =>
+    `.icc-slides .icc-sl:nth-child(${i+1}){animation:icc-sl-${i} ${total}s linear infinite both}` +
+    `.icc-dots .icc-dt:nth-child(${i+1}){animation:icc-dt-${i} ${total}s linear infinite both}`
+  ).join('')
+
   return (
     <div style={{ ...B, width:205, padding:'12px 12px 11px', background:'linear-gradient(#07071a,#07071a) padding-box, linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045) border-box', border:'1px solid transparent', boxShadow:'0 8px 32px rgba(244,114,182,0.16)' }}>
+      <style dangerouslySetInnerHTML={{ __html: kfSl + kfDt + css }} />
       <IGHdr label="Carousel · Swipe →" />
-      <div key={i}>
-        <IGMed gradient={cs.g} body={cs.body}>{cs.l1}<br/>{cs.l2}</IGMed>
+      {/* CSS Grid stacks all slides in the same cell; first child sizes the container */}
+      <div className="icc-slides" style={{ display:'grid' }}>
+        {CAR_SL.map((cs, i) => (
+          <div key={i} className="icc-sl" style={{ gridColumn:1, gridRow:1, opacity: i === 0 ? 1 : 0 }}>
+            <IGMed gradient={cs.g} body={cs.body}>{cs.l1}<br/>{cs.l2}</IGMed>
+          </div>
+        ))}
       </div>
       <div style={{ ...CAP, marginTop:8, fontSize:10.5 }}>Rasgulla vs Idli chhodo 🍡 asli debate: Delhi 2BHK ya Hyderabad villa?</div>
-      <Dots n={5} a={i} c="#f472b6" />
+      <div className="icc-dots" style={{ display:'flex', gap:5, justifyContent:'center', marginTop:7 }}>
+        {CAR_SL.map((_, i) => (
+          <div key={i} className="icc-dt" style={{ height:5, ...(i === 0 ? { width:14, borderRadius:3, background:'#f472b6' } : { width:5, borderRadius:10, background:'rgba(255,255,255,0.2)' }) }} />
+        ))}
+      </div>
     </div>
   )
 }
