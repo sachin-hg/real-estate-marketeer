@@ -12,9 +12,13 @@ import { StaticRouter } from 'react-router-dom/server'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import { Routes, Route } from 'react-router-dom'
+import { Suspense } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 
-// Import public pages eagerly — lazy() returns Suspense fallbacks in renderToString
+// Import public pages eagerly — lazy() returns Suspense fallbacks in renderToString.
+// Suspense wrappers here mirror App.tsx exactly so the server and client React trees
+// match during hydration. Since imports are eager, Suspense never actually suspends.
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import InvestorLanding from './pages/InvestorLanding'
@@ -26,13 +30,16 @@ function PublicApp() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/invest" element={<InvestorLanding />} />
-      <Route path="/pricing" element={<Pricing />} />
-      <Route path="/demo" element={<Demo />} />
-      {/* Auth-gated at the server — FastAPI redirects unauthenticated requests
-          before this HTML is ever served, so no client-side auth wrapper needed. */}
-      <Route path="/pitch" element={<Pitch />} />
+      <Route path="/login" element={<Suspense fallback={null}><Login /></Suspense>} />
+      <Route path="/invest" element={<Suspense fallback={null}><InvestorLanding /></Suspense>} />
+      <Route path="/pricing" element={<Suspense fallback={null}><Pricing /></Suspense>} />
+      <Route path="/demo" element={<Suspense fallback={null}><Demo /></Suspense>} />
+      {/* Mirror the client's ProtectedRoute wrapper so the React tree matches on hydration.
+          ProtectedRoute with optimistic=true renders <Outlet /> while isLoading=true,
+          which is always the case during SSR (useEffect never runs server-side). */}
+      <Route element={<ProtectedRoute optimistic />}>
+        <Route path="/pitch" element={<Suspense fallback={null}><Pitch /></Suspense>} />
+      </Route>
     </Routes>
   )
 }
